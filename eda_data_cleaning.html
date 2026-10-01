@@ -1,0 +1,1596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Exploring and Cleaning Data</title>
+<style>
+/* Layout: one slide at a time, headline on top, text left and live visual right, nav bar at the bottom */
+:root{
+  --bg:#ffffff; --fg:#111111; --muted:#5f6368; --line:#d9dce1; --soft:#f3f4f6;
+  --accent:#1a56db; --accent-soft:#e1eafd;
+  --bad:#c5221f; --bad-soft:#fce8e6; --good:#137333; --good-soft:#e6f4ea;
+  --mono: ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:18px;line-height:1.5}
+.deck{height:100%;display:flex;flex-direction:column}
+#slides{flex:1;min-height:0}
+.slide{display:none;height:100%;overflow-y:auto;box-sizing:border-box;padding:36px clamp(16px,5vw,64px) 40px}
+.slide.active{display:block}
+.inner{max-width:1200px;margin:0 auto}
+h1{font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;margin:0 0 28px;text-wrap:balance}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:44px;align-items:start}
+.cols > *{min-width:0}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.txt{font-size:1.15rem;line-height:1.6;max-width:62ch;margin:0 0 22px}
+.txt p{margin:0 0 .9em}
+.txt p:last-child{margin-bottom:0}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.08em .35em;border-radius:4px}
+pre.code{font-family:var(--mono);font-size:1rem;background:var(--soft);padding:14px 16px;border-radius:6px;margin:0 0 22px;overflow-x:auto;white-space:pre}
+.note{color:var(--muted);font-size:1rem;margin:0 0 16px}
+button{font:inherit;font-size:.95rem;padding:7px 14px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);border-radius:6px;cursor:pointer}
+button:hover{background:var(--soft)}
+button.on,button.primary{background:var(--fg);color:var(--bg)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.readout{font-family:var(--mono);font-size:1rem}
+.viz{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto}
+svg text{fill:var(--fg);font-family:var(--sans);font-size:13px}
+
+/* tables */
+.tbl{border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:4px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:pre}
+.tbl th{border-bottom:2px solid var(--fg)}
+.tbl.sm th,.tbl.sm td{padding:2px 10px;font-size:.85rem}
+.tbl .ix{color:var(--muted)}
+.tbl .num{text-align:right}
+.tbl tr{transition:opacity .45s, background .3s}
+.tbl tr.fade{opacity:.25}
+.tbl tr.gone{opacity:0}
+.tbl tr.warn td{background:var(--bad-soft)}
+.tbl tr.dup td{background:var(--bad-soft)}
+.tbl td.t{color:var(--good);font-weight:600}
+.tbl td.f{color:var(--muted)}
+.tbl tfoot td{border-top:2px solid var(--fg);border-bottom:0;font-weight:700}
+.nan{color:var(--bad);font-weight:700}
+td.nan{background:var(--bad-soft)}
+td.hl,th.hl{background:var(--accent-soft)}
+td.hot{background:var(--accent);color:#fff}
+td.newv{background:var(--good-soft)}
+.grow tr{animation:rowin .35s both}
+@keyframes rowin{from{opacity:0;transform:translateY(-6px)}}
+
+/* raw csv */
+pre.raw{font-family:var(--mono);font-size:1.05rem;background:var(--soft);padding:16px 18px;border-radius:6px;margin:0;white-space:pre;line-height:1.7}
+.comma{color:var(--bad);font-weight:700;background:var(--bad-soft);border-radius:3px}
+
+/* mini grid (head/shape) */
+.mini{display:grid;grid-template-columns:repeat(6,46px);gap:3px;width:max-content}
+.mini span{height:13px;background:var(--soft);border-radius:2px;transition:background .3s}
+.mini span.h{background:var(--fg)}
+.mini span.on{background:var(--accent)}
+.shape-wrap{display:flex;gap:14px;align-items:flex-start}
+.brace-v{writing-mode:vertical-rl;transform:rotate(180deg);font-weight:700;color:var(--accent);align-self:center}
+
+/* type list */
+.types{display:grid;grid-template-columns:auto auto 1fr auto;gap:10px 16px;align-items:center;font-size:1rem}
+.types .c{font-family:var(--mono)}
+.badge{font-size:.85rem;padding:2px 8px;border-radius:999px;border:1.5px solid var(--line);white-space:nowrap}
+.badge.num{border-color:var(--accent);color:var(--accent)}
+.badge.bad{border-color:var(--bad);color:var(--bad);background:var(--bad-soft)}
+.fill{height:10px;background:var(--soft);border-radius:5px;overflow:hidden;min-width:80px}
+.fill i{display:block;height:100%;background:var(--fg)}
+
+/* column picker */
+.picks{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.picks button{font-family:var(--mono)}
+
+/* bars */
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center}
+.bars .lab{font-family:var(--mono);white-space:pre;text-align:right}
+.bars .track{height:24px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bars .bar{height:100%;background:var(--fg);width:0;transition:width .35s}
+.bars .n{font-variant-numeric:tabular-nums;min-width:2ch;font-weight:700}
+
+/* chips */
+.chips{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:8px}
+.chip{border:1.5px solid var(--line);border-radius:6px;padding:6px 8px;transition:background .3s,border-color .3s}
+.chip small{display:block;color:var(--muted);font-size:.8rem}
+.chip b{font-family:var(--mono);font-size:1.05rem}
+.chip.miss{border-color:var(--bad)}
+.chip.miss b{color:var(--bad)}
+.chip.filled{border-color:var(--good);background:var(--good-soft)}
+.chip.filled b{color:var(--good)}
+
+/* checks */
+.checks{list-style:none;margin:0;padding:10px 14px;border-top:1px solid var(--line)}
+.checks li{padding:3px 0}
+.checks li.ok::before{content:"\2713  ";color:var(--good);font-weight:700}
+.checks li.no::before{content:"\2717  ";color:var(--bad);font-weight:700}
+
+/* code runner */
+.runner{border:1.5px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 18px;background:var(--bg)}
+.runner textarea{display:block;width:100%;box-sizing:border-box;border:0;resize:vertical;font-family:var(--mono);font-size:1rem;line-height:1.5;padding:12px 14px;background:var(--soft);color:var(--fg);white-space:pre;overflow-x:auto;tab-size:4}
+.run-bar{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.run-bar .hint{color:var(--muted);font-size:.85rem;margin-left:auto}
+.out{margin:0;padding:12px 14px;font-family:var(--mono);font-size:.86rem;line-height:1.45;border-top:1px solid var(--line);max-height:360px;overflow:auto;white-space:pre}
+
+/* nav */
+.bar{display:flex;align-items:center;gap:12px;padding:10px clamp(16px,5vw,64px) calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg)}
+#count{font-variant-numeric:tabular-nums;color:var(--muted);min-width:5ch;text-align:center}
+#pystat{color:var(--muted);font-size:.85rem;margin-right:auto}
+#pystat.ready{color:var(--good)}
+
+
+.ex-wrap{display:flex;flex-wrap:wrap;gap:18px;align-items:center}
+.model{border:2px solid var(--fg);border-radius:8px;padding:14px 18px;font-weight:700;text-align:center;min-width:120px}
+.model small{display:block;font-weight:400;color:var(--muted);font-size:.85rem;max-width:180px}
+.model.on{background:var(--accent-soft);border-color:var(--accent)}
+.newpet{border:1.5px dashed var(--line);border-radius:8px;padding:10px 14px;font-size:.95rem}
+.newpet b{font-family:var(--mono)}
+.tbl td.click{cursor:pointer}
+.tbl td.click:hover{outline:2px solid var(--accent);outline-offset:-2px}
+.tbl td.found{background:var(--bad-soft);color:var(--bad);font-weight:700}
+.tbl td.ok-flash{background:var(--soft)}
+.srcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.src{border:1.5px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
+.src h3{margin:0 0 6px;font-size:1rem}
+.src .tbl{font-size:.82rem}
+.src pre{margin:0;font-family:var(--mono);font-size:.82rem;white-space:pre;overflow-x:auto;line-height:1.55}
+input[type=range]{width:220px;accent-color:var(--fg)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="deck">
+<main id="slides">
+
+<!-- intro 1 -->
+<section class="slide"><div class="inner">
+<h1>Machine learning learns from examples</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>With normal programming, you write the rules yourself. In machine learning you hand the computer lots of examples instead, and it works out the rules on its own.</p>
+      <p>Say a shelter wants to know which pets are likely to get adopted. We could show a model a long list of past pets, each with its age, its species and whether it found a home, and it would pick up the patterns, like younger pets getting adopted more often.</p>
+      <p>That list of examples is the data, and everything the model knows comes from it.</p>
+    </div>
+  </div>
+  <div>
+    <div class="viz" id="v-ml"></div>
+    <div class="ctrls"><button id="b-ml1" class="primary">Learn from the examples</button><button id="b-ml2" disabled>Ask about a new pet</button></div>
+    <p class="readout" id="r-ml">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- intro 2 -->
+<section class="slide"><div class="inner">
+<h1>A model only knows what the data shows</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A model has no idea what a pet actually is. If the data says a dog weighs 2.8 kg when it really weighs 28, the model believes it, and what it learns gets bent around that mistake.</p>
+      <p>The line on the right is what a simple model learns about age and weight. Add the typo and watch how far one bad value drags the whole line.</p>
+      <p>This is why so much of machine learning happens before any model is trained, in getting to know the data and fixing what's wrong with it.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-typo" class="primary">Add the typo</button></div>
+    <div class="viz"><svg id="v-typo" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-typo">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- intro 3 -->
+<section class="slide"><div class="inner">
+<h1>Exploring and cleaning</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Getting to know a dataset is called exploratory data analysis, or EDA for short. It just means looking at the data from a few different angles until you understand what's in it and whether you can trust it.</p>
+      <p>Exploring almost always turns up problems, like missing values, typos and numbers that can't possibly be right. Fixing them is called cleaning. The two go together, since you look, find something, fix it, and then look again.</p>
+      <p>Try it on the table. There are 5 problems hiding in these 6 rows, see how many you can spot.</p>
+    </div>
+  </div>
+  <div>
+    <div class="viz" id="v-spot"></div>
+    <div class="ctrls"><span class="readout" id="n-spot"></span><button id="b-spot">Show me all of them</button></div>
+    <p class="readout" id="r-spot">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- intro 4 -->
+<section class="slide"><div class="inner">
+<h1>Most data comes as a table</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Data comes from all over the place, like school records, shop sales, weather stations and game leaderboards. Very often it ends up in the same shape, a table where each row is one thing and each column describes it.</p>
+      <p>When people want to share a table, the most common way is a CSV file. Pretty much every tool can open one and save one, which is why it's the first format you'll learn to work with.</p>
+      <p>Press the button to see what these tables look like saved as CSV.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-src" class="primary">Save them as CSV</button></div>
+    <div class="srcs" id="v-src"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 1 -->
+<section class="slide"><div class="inner">
+<h1>A CSV is just text</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Open a CSV file in a text editor and you won't see a grid at all, just lines of text. CSV stands for comma separated values. Each line of the file is one row, and the commas mark where one column ends and the next one starts.</p>
+      <p>The first line is special because it holds the column names. And when a value is missing, you'll see two commas with nothing between them.</p>
+      <p>For the rest of these slides we'll use pets.csv, a small file about animals at a shelter. It has a few problems hidden in it on purpose, and by the end you'll have found and fixed every one of them.</p>
+    </div>
+  </div>
+  <div>
+    <div class="viz" id="v-csv"></div>
+    <div class="ctrls"><button id="b-csv" class="primary">Show as a table</button></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 2 -->
+<section class="slide"><div class="inner">
+<h1>Rows and columns</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Once a CSV is loaded, it becomes a table. Each row is one pet, each column is one fact about every pet, like its age or its weight, and each box holds a single value.</p>
+      <p>The grey numbers on the left are the index, which is how pandas labels its rows. It starts counting from 0, so the first pet is row 0, not row 1.</p>
+    </div>
+  </div>
+  <div>
+    <p class="note">Hover or tap any box in the table</p>
+    <div class="viz" id="v-rc"></div>
+    <p class="readout" id="r-rc">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 3 -->
+<section class="slide"><div class="inner">
+<h1>Loading a CSV</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>pandas is the Python library people use for working with tables, and almost everyone imports it under the short name <code>pd</code>.</p>
+      <p><code>read_csv</code> reads the file and hands back a DataFrame, which is just pandas' name for a table. We save it in a variable called <code>df</code> so we can keep working with it.</p>
+      <p>The file needs to sit in the same folder as your notebook. If it's somewhere else, you'll have to give the full path instead.</p>
+    </div>
+    <p class="note">Code boxes: change the code if you want, then press Run or Ctrl+Enter. The other boxes in these slides already have pandas imported, so they skip that line.</p>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">import pandas as pd
+
+df = pd.read_csv("pets.csv")
+df</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 4 -->
+<section class="slide"><div class="inner">
+<h1>First look: head and shape</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The first thing to do with any new file is simply look at it. <code>df.head()</code> shows the first 5 rows, which is usually enough to see what the columns are and what the values look like.</p>
+      <p><code>df.shape</code> tells you how big the table is, written as (rows, columns).</p>
+      <p>You might notice that <code>head()</code> has brackets and <code>shape</code> doesn't. That's because <code>head()</code> is something the table does, while <code>shape</code> is just a fact it already knows about itself.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+print(df.shape)
+df.head()</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button data-m="head" class="on">df.head()</button><button data-m="shape">df.shape</button></div>
+    <div class="shape-wrap"><span class="brace-v" id="sh-rows" hidden>20 rows</span><div><div class="mini" id="v-mini"></div><p class="readout" id="r-mini"></p></div></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 5 -->
+<section class="slide"><div class="inner">
+<h1>What type is each column?</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Next you want to know what kind of data each column holds. <code>df.info()</code> lists every column along with its type and how many values are actually filled in.</p>
+      <p>Numbers show up as <code>int64</code> for whole numbers or <code>float64</code> for numbers with decimals. Text shows up as <code>object</code>, or <code>str</code> in newer versions of pandas.</p>
+      <p>This matters because you can only do math on numbers. The price column looks like numbers to us, but the dollar sign makes pandas read it as text, so we'll need to fix that later.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df.info()</textarea></div>
+  </div>
+  <div>
+    <div class="types" id="v-types"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 6 -->
+<section class="slide"><div class="inner">
+<h1>Picking columns</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A lot of the time you only care about one or two columns. Put a column name in square brackets, like <code>df["age"]</code>, and you get just that column back.</p>
+      <p>To get several, you put a list of names inside the brackets, which is why you end up with double brackets: <code>df[["name", "age"]]</code>.</p>
+      <p>A single column comes back as a Series, which is basically one column with its row numbers attached.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df[["name", "age"]].head()</textarea></div>
+  </div>
+  <div>
+    <p class="note">Click column names to pick them</p>
+    <div class="picks" id="p-cols"></div>
+    <pre class="code" id="c-cols"></pre>
+    <div class="viz" id="v-cols"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 7 -->
+<section class="slide"><div class="inner">
+<h1>Filtering rows</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>To keep only some of the rows, you start by asking a question about a column. <code>df["age"] &gt; 4</code> asks that question of every row and gets back True or False for each one.</p>
+      <p>Wrapping it in <code>df[ ]</code> keeps the rows that answered True and leaves out the rest. A row with a missing age always answers False, since there's nothing there to compare.</p>
+      <p>The same idea works with <code>&lt;</code>, <code>==</code> for equal and <code>!=</code> for not equal.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df[df["age"] &gt; 4]</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><label for="s-filter">age &gt;</label><input type="range" id="s-filter" min="0" max="10" value="4"><span class="readout" id="n-filter"></span></div>
+    <pre class="code" id="c-filter"></pre>
+    <div class="viz" id="v-filter"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 8 -->
+<section class="slide"><div class="inner">
+<h1>Quick stats with describe</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p><code>describe()</code> gives you a quick summary of a number column all in one go.</p>
+      <p><code>mean</code> is the average, and <code>50%</code> is the median, the value right in the middle once everything is sorted. <code>25%</code> and <code>75%</code> mark off the bottom quarter and the top quarter, and <code>std</code> tells you how spread out the values are.</p>
+      <p>Notice the mean is about 13 kg even though most of these pets weigh less than 6. Keep that in mind for the next slide.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df["weight"].describe()</textarea></div>
+  </div>
+  <div>
+    <p class="note">Each dot is one pet's weight in kg, hover a row of the table</p>
+    <div class="viz"><svg id="v-desc" viewBox="0 0 640 210"></svg></div>
+    <div class="viz" id="t-desc"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 9 -->
+<section class="slide"><div class="inner">
+<h1>Mean vs median</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The mean adds up every value and divides by how many there are, so every single value pulls on it. The median sorts the values and takes the one in the middle, so it only cares about order.</p>
+      <p>Try dragging one dot far to the right. The mean follows it, but the median barely moves, because the middle value is still in the middle.</p>
+      <p>That's why, when a column has a few extreme values, the median gives a more honest picture of a typical value than the mean does.</p>
+    </div>
+  </div>
+  <div>
+    <div class="viz"><svg id="v-mm" viewBox="0 0 640 190" style="touch-action:none"></svg></div>
+    <p class="readout" id="r-mm"></p>
+    <div class="ctrls"><button id="b-mm">Reset dots</button></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 10 -->
+<section class="slide"><div class="inner">
+<h1>Counting categories</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>For text columns, the useful question is how many of each value there are. <code>value_counts()</code> counts them for you and sorts them from most to least common.</p>
+      <p>Look closely at the bars, though. Dog shows up four separate times, as Dog, dog, DOG, and "dog " with a space on the end. To a computer those are four different words, so we'll have to clean them up later.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df["species"].value_counts()</textarea></div>
+  </div>
+  <div>
+    <div class="bars" id="v-vc"></div>
+    <div class="ctrls"><button id="b-vc" class="primary">Count the rows</button><span class="readout" id="r-vc"></span></div>
+    <p class="note">Quotes are added so you can see the spaces</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 11 -->
+<section class="slide"><div class="inner">
+<h1>Histograms show the shape of a column</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A histogram shows the shape of a number column. It cuts the range into equal slices and draws a bar for how many values land in each slice.</p>
+      <p>Here you can see two clear groups, lots of small pets under 6 kg and a group of big dogs between 24 and 35 kg, with almost nothing in between. A single average would hide that completely.</p>
+      <p>The slider changes how many slices there are. pandas uses 10 unless you tell it otherwise.</p>
+    </div>
+    <pre class="code">df["weight"].hist()</pre>
+    <p class="note">Plots show up in your notebook</p>
+  </div>
+  <div>
+    <div class="viz"><svg id="v-hist" viewBox="0 0 640 320"></svg></div>
+    <div class="ctrls"><label for="s-hist">Ranges</label><input type="range" id="s-hist" min="2" max="15" value="10"><span class="readout" id="n-hist"></span></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 12 -->
+<section class="slide"><div class="inner">
+<h1>Scatter plots compare two columns</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A scatter plot puts two columns against each other. Each dot is one pet, placed by its age along the bottom and its weight up the side, which makes it easy to see whether two things are related.</p>
+      <p>Here something is clearly off. One pet sits way out at age 200 and squashes every other dot into a thin strip on the left. Hover the dots to find out who it is.</p>
+    </div>
+    <pre class="code">df.plot.scatter(x="age", y="weight")</pre>
+  </div>
+  <div>
+    <div class="viz"><svg id="v-sc1" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-sc1">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 13 -->
+<section class="slide"><div class="inner">
+<h1>Finding missing values</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>When a box in the CSV is empty, pandas fills it with <span class="nan">NaN</span>, short for not a number. It's pandas' way of saying there's nothing here.</p>
+      <p><code>df.isna()</code> goes through the whole table and marks each missing box as True. Adding <code>.sum()</code> counts the Trues in each column, so you end up with the number of missing values per column.</p>
+      <p>Most models can't handle NaN at all, so every missing value has to be dealt with somehow. The next two slides show the two simplest ways.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df.isna().sum()</textarea></div>
+  </div>
+  <div>
+    <div class="viz" id="v-na"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 14 -->
+<section class="slide"><div class="inner">
+<h1>Fix 1: drop rows with missing values</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The simplest fix is to throw away any row that has a missing value, which is exactly what <code>dropna()</code> does.</p>
+      <p>pandas doesn't change <code>df</code> itself, it gives you back a new table, so we write <code>df = df.dropna()</code> to keep the result.</p>
+      <p>It's quick, but every dropped row is data you lose. Here that's 5 of our 20 pets, a quarter of the file, so this works best when only a few rows have gaps.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+print(df.shape)
+df = df.dropna()
+df.shape</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-drop" class="primary">Run dropna()</button><button id="b-drop-r">Reset</button><span class="readout" id="r-drop"></span></div>
+    <div class="viz" id="v-drop"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 15 -->
+<section class="slide"><div class="inner">
+<h1>Fix 2: fill missing values</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Instead of dropping rows, you can fill the gaps with a sensible guess. <code>fillna()</code> puts a value into every empty box of a column.</p>
+      <p>It helps to read the line from the inside out. First it works out the median age, and then it fills the empty ages with that number.</p>
+      <p>Try filling with the mean as well. Daisy's age of 200 drags the mean up to about 15, which is an odd guess for a pet, while the median stays at a sensible 4.</p>
+    </div>
+    <pre class="code" id="c-fill">df["age"] = df["age"].fillna(df["age"].median())</pre>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+print(df["age"].mean(), df["age"].median())
+df["age"] = df["age"].fillna(df["age"].median())
+df["age"].isna().sum()</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button data-f="mean">Fill with mean</button><button data-f="median">Fill with median</button><button data-f="none">Reset</button></div>
+    <p class="readout" id="r-fill">&nbsp;</p>
+    <div class="chips" id="v-fill"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 16 -->
+<section class="slide"><div class="inner">
+<h1>Duplicate rows</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Sometimes the same row ends up in a file twice, usually because data got copied and pasted or combined from two places. A duplicate counts that pet twice and quietly throws off everything else.</p>
+      <p><code>df.duplicated()</code> flags every row that's an exact copy of an earlier one, and <code>.sum()</code> counts them. Then <code>drop_duplicates()</code> removes the copies and keeps the first.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+print(df.duplicated().sum())
+df = df.drop_duplicates()
+df.shape</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-dup" class="primary">Run drop_duplicates()</button><button id="b-dup-r">Reset</button><span class="readout" id="r-dup"></span></div>
+    <div class="viz" id="v-dup"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 17 -->
+<section class="slide"><div class="inner">
+<h1>Cleaning messy text</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>To fix the species column we need text tools that work on every value at once, and that's what <code>.str</code> gives you.</p>
+      <p><code>.lower()</code> turns everything lowercase and <code>.strip()</code> cuts off any spaces at the start or end. Chaining them means each step works on the result of the one before it.</p>
+      <p>After both steps the four versions of dog become one, and the counts finally make sense.</p>
+    </div>
+    <pre class="code">df["species"] = df["species"].str.lower().str.strip()</pre>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df["species"] = df["species"].str.lower().str.strip()
+df["species"].value_counts()</textarea></div>
+  </div>
+  <div>
+    <div class="viz" id="t-txt"></div>
+    <div class="ctrls"><button id="b-txt" class="primary">Clean the column</button></div>
+    <div class="bars" id="v-txt"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 18 -->
+<section class="slide"><div class="inner">
+<h1>Numbers stored as text</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Every value in the price column starts with a dollar sign, so pandas treats the whole column as text, and you can't take the average of text.</p>
+      <p>We fix it in two steps. <code>.str.replace("$", "")</code> swaps each dollar sign for nothing, which leaves text that looks like a number, and <code>.astype(float)</code> then turns that text into actual numbers.</p>
+      <p>Click through the steps on the right to watch it happen.</p>
+    </div>
+    <pre class="code">df["price"] = df["price"].str.replace("$", "").astype(float)</pre>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df["price"] = df["price"].str.replace("$", "").astype(float)
+df["price"].mean()</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-pr-back">Back</button><button id="b-pr" class="primary">Next step</button><span class="readout" id="r-pr"></span></div>
+    <div class="viz" id="v-pr"></div>
+    <p class="readout" id="r-pr2">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 19 -->
+<section class="slide"><div class="inner">
+<h1>Impossible values</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Some values are wrong in a way no tool will flag for you, like a cat that's 200 years old. You only catch these by looking at the data, which is why the plots from earlier matter so much.</p>
+      <p>To find them, filter for values that can't be real, <code>df[df["age"] &gt; 30]</code>. To get rid of them, keep only the sensible rows with <code>df = df[df["age"] &lt; 30]</code>.</p>
+      <p>One catch is that a missing age fails that check too, so those rows get dropped along with it. Fill the missing ages first if you want to keep them.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+print(df[df["age"] &gt; 30])
+df["age"] = df["age"].fillna(df["age"].median())
+df = df[df["age"] &lt; 30]
+df.shape</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-imp" class="primary">Remove impossible ages</button></div>
+    <div class="viz"><svg id="v-sc2" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-sc2">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 20 -->
+<section class="slide"><div class="inner">
+<h1>Dropping columns you don't need</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Not every column helps a model. A pet's name doesn't tell you anything about whether it gets adopted, so to a model it's just noise.</p>
+      <p><code>df.drop(columns=["name"])</code> removes it, and the list can hold as many column names as you want to get rid of.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df = df.drop(columns=["name"])
+df.head()</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-dc" class="primary">Drop the name column</button></div>
+    <div class="viz" id="v-dc"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 21 -->
+<section class="slide"><div class="inner">
+<h1>Making a new column</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>You can also build new columns out of the ones you already have. Assign to a column name that doesn't exist yet and pandas creates it for you.</p>
+      <p>The math runs on every row at the same time, so there's no need for a loop. If either value in a row is missing, the answer for that row is missing too.</p>
+    </div>
+    <pre class="code">df["price_per_kg"] = df["price"] / df["weight"]</pre>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df["price"] = df["price"].str.replace("$", "").astype(float)
+df["price_per_kg"] = df["price"] / df["weight"]
+df.head()</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-nc" class="primary">Create the column</button></div>
+    <div class="viz" id="v-nc"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 22 -->
+<section class="slide"><div class="inner">
+<h1>Models only understand numbers</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Models work with numbers, so a column full of words like cat and dog has to be turned into numbers somehow.</p>
+      <p><code>get_dummies</code> does this by giving each category its own column. A pet gets True in the column for its species and False in the others, and models read those as 1 and 0.</p>
+      <p>Make sure you clean the text first, otherwise Dog and dog would each end up with a column of their own.</p>
+    </div>
+    <pre class="code">df = pd.get_dummies(df, columns=["species"])</pre>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df["species"] = df["species"].str.lower().str.strip()
+df = pd.get_dummies(df, columns=["species"])
+df.head()</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-gd" class="primary">Run get_dummies</button></div>
+    <div class="viz" id="v-gd"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 23 -->
+<section class="slide"><div class="inner">
+<h1>Saving your clean data</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Once the data is clean, save it so you never have to redo the work. <code>to_csv</code> writes the table out to a CSV file.</p>
+      <p>Add <code>index=False</code>, or pandas will also save the row numbers as an extra column with no name. And save it under a new name, so the original file stays exactly as it was.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("pets.csv")
+df = df.dropna()
+df.to_csv("pets_clean.csv", index=False)
+pd.read_csv("pets_clean.csv")</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button data-ix="0" class="on">index=False</button><button data-ix="1">without index=False</button></div>
+    <pre class="code" id="c-save"></pre>
+    <pre class="raw" id="v-save"></pre>
+  </div>
+</div>
+</div></section>
+
+<!-- 24 -->
+<section class="slide"><div class="inner">
+<h1>Your turn: clean games.csv</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>games.csv is a small file about video games with the same kinds of problems you've just fixed, except this time nobody is pointing them out to you.</p>
+      <p>Start by exploring it with <code>head</code>, <code>info</code>, <code>isna</code> and <code>value_counts</code>. Then fix one problem at a time, running your code after each fix to make sure it worked.</p>
+      <p>When you think <code>df</code> is clean, press Check. The columns are title, genre, year, rating and price.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner" data-check><textarea spellcheck="false">df = pd.read_csv("games.csv")
+df</textarea></div>
+  </div>
+</div>
+</div></section>
+
+</main>
+<nav class="bar">
+  <span id="pystat">Python: loading</span>
+  <button id="prev">&larr; Back</button>
+  <span id="count">1 / 28</span>
+  <button id="next" class="primary">Next &rarr;</button>
+</nav>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const PETS = `name,species,age,weight,adopted,price
+Max,Dog,3,24.5,yes,$150
+Luna,cat,2,4.1,no,$80
+Bella,Dog,5,,yes,$120
+Milo,cat,1,3.6,yes,$90
+Coco,rabbit,,1.8,no,$40
+Charlie,dog ,7,30.2,no,$100
+Lucy,Cat,4,5.0,yes,$75
+Oreo,rabbit,2,2.1,yes,$45
+Rocky,DOG,6,28.0,no,
+Daisy,cat,200,4.4,no,$70
+Buddy,Dog,9,33.1,yes,$60
+Nala,cat,3,4.8,no,$85
+Thumper,rabbit,1,1.5,yes,$50
+Bear,Dog,,35.0,no,$110
+Lily,Cat,8,5.6,yes,$65
+Max,Dog,3,24.5,yes,$150
+Simba,cat,5,,no,$80
+Duke,dog,4,26.3,yes,$130
+Pepper,rabbit,3,2.4,no,$35
+Rosie,Cat,6,4.9,yes,$70
+`;
+
+const GAMES = `title,genre,year,rating,price
+Star Hop,Puzzle,2019,8.5,$20
+Turbo Lane,racing,2021,7.9,$35
+Goal Rush,Sports,2020,,$30
+Block Drop,puzzle ,2018,9.1,$15
+Night Drift,Racing,3021,8.2,$40
+Slam Court,sports,2022,7.4,$25
+Turbo Lane,racing,2021,7.9,$35
+Pixel Maze,PUZZLE,2023,8.8,$10
+Kart Clash,racing,2017,,$20
+Net Strike,Sports,2019,6.9,
+Gem Swap,puzzle,2020,8.0,$5
+Ice Run,Racing,2022,7.7,$30
+`;
+
+const COLS = ["name","species","age","weight","adopted","price"];
+const ROWS = PETS.trim().split("\n").slice(1).map(l => {
+  const v = l.split(","); const o = {};
+  COLS.forEach((c,i) => o[c] = v[i] === "" ? null : v[i]);
+  o.age = o.age == null ? null : +o.age;
+  o.weight = o.weight == null ? null : +o.weight;
+  o.priceNum = o.price == null ? null : +o.price.replace("$","");
+  return o;
+});
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const NUMC = new Set(["age","weight","priceNum","price_per_kg"]);
+function fmt(c, v){
+  if (v == null || (typeof v === "number" && isNaN(v))) return "NaN";
+  if (c === "age" || c === "weight" || c === "priceNum") return Number(v).toFixed(1);
+  if (c === "price_per_kg") return Number(v).toFixed(2);
+  return String(v);
+}
+function cell(c, v, extra = ""){
+  const isNan = v == null;
+  const cls = [NUMC.has(c) ? "num" : "", isNan ? "nan" : "", extra].join(" ").trim();
+  return `<td class="${cls}">${esc(fmt(c, v))}</td>`;
+}
+function head(cols, labels = {}){
+  return "<thead><tr><th></th>" + cols.map(c => `<th class="${NUMC.has(c) ? "num" : ""}">${esc(labels[c] || c)}</th>`).join("") + "</tr></thead>";
+}
+const SVGNS = "http://www.w3.org/2000/svg";
+function S(tag, attrs = {}, text){
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  return e;
+}
+function niceStep(max){
+  const raw = max / 5, p = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / p;
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p;
+}
+const mean = a => a.reduce((s,x) => s + x, 0) / a.length;
+function quant(sorted, q){
+  const p = (sorted.length - 1) * q, lo = Math.floor(p), hi = Math.ceil(p);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (p - lo);
+}
+const r1 = x => (Math.round(x * 100) / 100).toString();
+
+/* ---------- slide navigation ---------- */
+const slides = $$(".slide");
+let cur = 0;
+function show(i){
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle("active", k === cur));
+  $("#count").textContent = `${cur + 1} / ${slides.length}`;
+  $("#prev").disabled = cur === 0;
+  $("#next").disabled = cur === slides.length - 1;
+  slides[cur].scrollTop = 0;
+  try { history.replaceState(null, "", "#" + (cur + 1)); } catch (e) {}
+}
+$("#prev").onclick = () => show(cur - 1);
+$("#next").onclick = () => show(cur + 1);
+document.addEventListener("keydown", e => {
+  const t = e.target.tagName;
+  if (t === "TEXTAREA" || t === "INPUT") return;
+  if (["ArrowRight","PageDown"].includes(e.key) || (e.key === " " && t !== "BUTTON")) { e.preventDefault(); show(cur + 1); }
+  if (["ArrowLeft","PageUp"].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+});
+show((parseInt(location.hash.slice(1)) || 1) - 1);
+
+/* ---------- intro 1: learning from examples ---------- */
+(function(){
+  const box = $("#v-ml"), out = $("#r-ml"), b1 = $("#b-ml1"), b2 = $("#b-ml2");
+  const ex = [["Biscuit","dog",1,"yes"],["Mochi","cat",2,"yes"],["Shadow","cat",6,"no"],["Pickles","cat",3,"yes"],["Rex","dog",7,"no"],["Ziggy","rabbit",2,"yes"],["Gus","dog",9,"no"],["Tank","dog",8,"no"]];
+  box.innerHTML = '<div class="ex-wrap"><table class="tbl sm"><thead><tr><th>name</th><th>species</th><th class="num">age</th><th>adopted</th></tr></thead><tbody>' +
+    ex.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td class="num">${r[2]}</td><td>${r[3]}</td></tr>`).join("") +
+    '</tbody></table><div class="model" id="ml-model">model<small>hasn\'t seen any examples yet</small></div></div>' +
+    '<div class="newpet" id="ml-new" hidden>New pet: <b>Pip, cat, age 2</b>, adopted? <b id="ml-ans">?</b></div>';
+  let t = [];
+  b1.onclick = () => {
+    t.forEach(clearTimeout); t = [];
+    const trs = $$("tbody tr", box), model = $("#ml-model");
+    model.classList.remove("on"); b2.disabled = true; $("#ml-new").hidden = true;
+    trs.forEach(tr => tr.querySelectorAll("td").forEach(td => td.classList.remove("hl")));
+    trs.forEach((tr, i) => t.push(setTimeout(() => {
+      tr.querySelectorAll("td").forEach(td => td.classList.add("hl"));
+      out.textContent = `looking at ${ex[i][0]}...`;
+    }, i * 350)));
+    t.push(setTimeout(() => {
+      model.classList.add("on");
+      model.innerHTML = 'model<small>pattern found: pets aged 3 or younger got adopted</small>';
+      out.textContent = "done, the model has learned from 8 examples";
+      b2.disabled = false;
+    }, ex.length * 350 + 200));
+  };
+  b2.onclick = () => {
+    $("#ml-new").hidden = false; $("#ml-ans").textContent = "probably yes";
+    out.textContent = "Pip is young, so the model guesses Pip will be adopted";
+  };
+})();
+
+/* ---------- intro 2: one typo bends the line ---------- */
+(function(){
+  const svg = $("#v-typo"), out = $("#r-typo"), btn = $("#b-typo");
+  const good = [[1,6],[2,9],[3,11],[4,14],[5,15],[6,19],[7,20],[8,24],[9,25],[10,28]];
+  const L = 52, R = 624, T = 14, B = 290;
+  const X = v => L + v / 11 * (R - L), Y = v => B - v / 32 * (B - T);
+  for (let t = 0; t <= 30; t += 10){
+    svg.append(S("line", {x1:L, x2:R, y1:Y(t), y2:Y(t), stroke:"#d9dce1"}));
+    svg.append(S("text", {x:L - 8, y:Y(t) + 4, "text-anchor":"end"}, t));
+  }
+  for (let t = 0; t <= 10; t += 2){
+    svg.append(S("line", {x1:X(t), x2:X(t), y1:B, y2:B + 5, stroke:"#111"}));
+    svg.append(S("text", {x:X(t), y:B + 20, "text-anchor":"middle"}, t));
+  }
+  svg.append(S("line", {x1:L, x2:R, y1:B, y2:B, stroke:"#111"}));
+  svg.append(S("text", {x:(L + R) / 2, y:B + 42, "text-anchor":"middle"}, "age (years)"));
+  svg.append(S("text", {x:14, y:(T + B) / 2, "text-anchor":"middle", transform:`rotate(-90 14 ${(T + B) / 2})`}, "weight (kg)"));
+  const line = S("line", {stroke:"#1a56db", "stroke-width":3});
+  svg.append(line);
+  const dots = good.map(([a,w]) => { const c = S("circle", {cx:X(a), cy:Y(w), r:7, fill:"#111", "fill-opacity":.85}); svg.append(c); return c; });
+  const tag = S("text", {"text-anchor":"end", "font-weight":700, style:"fill:#c5221f"}, "typo: 2.8 instead of 28");
+  tag.setAttribute("opacity", 0); svg.append(tag);
+  function fit(pts){
+    const mx = mean(pts.map(p => p[0])), my = mean(pts.map(p => p[1]));
+    let num = 0, den = 0; pts.forEach(([x,y]) => { num += (x - mx) * (y - my); den += (x - mx) ** 2; });
+    const m = num / den; return [m, my - m * mx];
+  }
+  let curLine = fit(good), typo = false, raf = 0;
+  function setLine([m,b]){
+    line.setAttribute("x1", X(0)); line.setAttribute("y1", Y(b));
+    line.setAttribute("x2", X(11)); line.setAttribute("y2", Y(m * 11 + b));
+  }
+  setLine(curLine);
+  btn.onclick = () => {
+    typo = !typo;
+    const pts = good.map(p => p.slice()); if (typo) pts[9][1] = 2.8;
+    const target = fit(pts), from = curLine.slice(), t0 = performance.now();
+    dots[9].setAttribute("cy", Y(pts[9][1])); dots[9].setAttribute("fill", typo ? "#c5221f" : "#111");
+    tag.setAttribute("x", X(10) - 12); tag.setAttribute("y", Y(2.8) - 12); tag.setAttribute("opacity", typo ? 1 : 0);
+    cancelAnimationFrame(raf);
+    const step = now => {
+      const k = Math.min(1, (now - t0) / 700), e = 1 - (1 - k) ** 3;
+      curLine = [from[0] + (target[0] - from[0]) * e, from[1] + (target[1] - from[1]) * e];
+      setLine(curLine);
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    const pred = target[0] * 10 + target[1];
+    out.textContent = typo ? `one bad value, and the model now guesses a 10 year old dog weighs ${pred.toFixed(0)} kg` : `the model guesses a 10 year old dog weighs ${pred.toFixed(0)} kg`;
+    btn.textContent = typo ? "Fix the typo" : "Add the typo";
+  };
+  out.textContent = `the model guesses a 10 year old dog weighs ${(curLine[0] * 10 + curLine[1]).toFixed(0)} kg`;
+})();
+
+/* ---------- intro 3: spot the problems ---------- */
+(function(){
+  const box = $("#v-spot"), out = $("#r-spot"), cnt = $("#n-spot");
+  const cols = ["name","species","age","weight","price"];
+  const rows = [["Max","Dog","3","24.5","$150"],["Luna","cat","2","4.1","$80"],["Bella","Dog","5","","$120"],["Rocky","DOG","6","28.0","$100"],["Daisy","cat","200","4.4","$70"],["Max","Dog","3","24.5","$150"]];
+  const problems = {
+    "2-weight": "Bella's weight is missing",
+    "3-species": "DOG is spelled differently from Dog, so a computer thinks it's a different species",
+    "4-age": "no cat lives to 200, that has to be a mistake",
+    "dup": "row 5 is an exact copy of row 0, so Max gets counted twice",
+    "price": "the dollar signs turn prices into text, so you can't do math with them",
+  };
+  const found = new Set();
+  box.innerHTML = '<table class="tbl">' + "<thead><tr><th></th>" + cols.map(c => `<th>${c}</th>`).join("") + "</tr></thead><tbody>" +
+    rows.map((r,i) => `<tr><td class="ix">${i}</td>` + r.map((v,k) => `<td class="click" data-r="${i}" data-c="${cols[k]}">${esc(v)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+  const keyOf = td => {
+    const r = +td.dataset.r, c = td.dataset.c;
+    if (problems[`${r}-${c}`]) return `${r}-${c}`;
+    if (c === "price") return "price";
+    if (r === 5) return "dup";
+    return null;
+  };
+  function mark(k){
+    found.add(k);
+    $$("td.click", box).forEach(td => { if (keyOf(td) === k) td.classList.add("found"); });
+    cnt.textContent = `${found.size} of 5 found`;
+  }
+  box.addEventListener("click", e => {
+    const td = e.target.closest("td.click"); if (!td) return;
+    const k = keyOf(td);
+    if (k){ mark(k); out.textContent = problems[k]; }
+    else { out.textContent = "that one looks fine"; td.classList.add("ok-flash"); setTimeout(() => td.classList.remove("ok-flash"), 500); }
+  });
+  $("#b-spot").onclick = () => { Object.keys(problems).forEach(mark); out.textContent = "every one of these shows up in pets.csv, and you'll fix them all"; };
+  cnt.textContent = "0 of 5 found";
+})();
+
+/* ---------- intro 4: data sources ---------- */
+(function(){
+  const box = $("#v-src"), btn = $("#b-src");
+  const src = [
+    ["A school", ["student","grade","test_score"], [["Ava","9","88"],["Ben","10","74"],["Cal","9","91"]]],
+    ["A shop", ["item","price","sold"], [["pencil","1.20","340"],["notebook","3.50","120"],["eraser","0.80","95"]]],
+    ["A weather station", ["date","temp_c","rain_mm"], [["2026-03-01","12","0"],["2026-03-02","9","4"],["2026-03-03","11","1"]]],
+    ["A game", ["player","level","score"], [["nova","12","5400"],["kit","8","3100"],["jax","15","7250"]]],
+  ];
+  let asCsv = false;
+  function draw(){
+    box.innerHTML = src.map(([t, c, r]) => `<div class="src"><h3>${t}</h3>` + (asCsv
+      ? `<pre>${[c, ...r].map(x => esc(x.join(","))).map(l => l.replace(/,/g, '<span class="comma">,</span>')).join("\n")}</pre>`
+      : '<table class="tbl sm"><thead><tr>' + c.map(x => `<th>${x}</th>`).join("") + "</tr></thead><tbody>" + r.map(row => "<tr>" + row.map(v => `<td>${esc(v)}</td>`).join("") + "</tr>").join("") + "</tbody></table>") + "</div>").join("");
+    btn.textContent = asCsv ? "Show them as tables" : "Save them as CSV";
+  }
+  btn.onclick = () => { asCsv = !asCsv; draw(); };
+  draw();
+})();
+
+/* ---------- 1: csv as text ---------- */
+(function(){
+  const box = $("#v-csv"), btn = $("#b-csv");
+  const lines = PETS.trim().split("\n").slice(0, 8);
+  let asTable = false;
+  function draw(){
+    if (!asTable){
+      box.innerHTML = '<pre class="raw">' + lines.map(l => esc(l).replace(/,/g, '<span class="comma">,</span>')).join("\n") + "</pre>";
+    } else {
+      const cols = lines[0].split(","), rows = lines.slice(1).map(l => l.split(","));
+      box.innerHTML = '<table class="tbl grow"><thead><tr>' + cols.map(c => `<th>${esc(c)}</th>`).join("") +
+        "</tr></thead><tbody>" + rows.map((r,i) => `<tr style="animation-delay:${i*90}ms">` + r.map(v => `<td>${esc(v)}</td>`).join("") + "</tr>").join("") + "</tbody></table>";
+    }
+    btn.textContent = asTable ? "Show as text" : "Show as a table";
+  }
+  btn.onclick = () => { asTable = !asTable; draw(); };
+  draw();
+})();
+
+/* ---------- 2: rows and columns ---------- */
+(function(){
+  const box = $("#v-rc"), out = $("#r-rc"), n = 8;
+  box.innerHTML = '<table class="tbl">' + head(COLS) + "<tbody>" +
+    ROWS.slice(0, n).map((r,i) => `<tr><td class="ix">${i}</td>` + COLS.map(c => cell(c, r[c]).replace("<td", `<td data-r="${i}" data-c="${c}"`)).join("") + "</tr>").join("") + "</tbody></table>";
+  function pick(td){
+    $$("td,th", box).forEach(x => x.classList.remove("hl","hot"));
+    if (!td || !td.dataset.c) return;
+    const r = td.dataset.r, c = td.dataset.c;
+    $$(`td[data-r="${r}"]`, box).forEach(x => x.classList.add("hl"));
+    $$(`td[data-c="${c}"]`, box).forEach(x => x.classList.add("hl"));
+    $$("th", box)[COLS.indexOf(c) + 1].classList.add("hl");
+    td.classList.add("hot");
+    out.textContent = `row ${r} (${ROWS[r].name}), column ${c}, value ${fmt(c, ROWS[r][c])}`;
+  }
+  box.addEventListener("mouseover", e => pick(e.target.closest("td")));
+  box.addEventListener("click", e => pick(e.target.closest("td")));
+})();
+
+/* ---------- 4: head and shape ---------- */
+(function(){
+  const grid = $("#v-mini"), out = $("#r-mini"), rowsLab = $("#sh-rows");
+  let h = "";
+  for (let c = 0; c < 6; c++) h += '<span class="h"></span>';
+  for (let r = 0; r < 20; r++) for (let c = 0; c < 6; c++) h += `<span data-r="${r}"></span>`;
+  grid.innerHTML = h;
+  function set(m){
+    $$("button[data-m]").forEach(b => b.classList.toggle("on", b.dataset.m === m));
+    $$("span[data-r]", grid).forEach(s => s.classList.toggle("on", m === "shape" || +s.dataset.r < 5));
+    rowsLab.hidden = m !== "shape";
+    out.textContent = m === "head" ? "the first 5 rows, row 0 to row 4" : "(20, 6) means 20 rows and 6 columns";
+  }
+  $$("button[data-m]").forEach(b => b.onclick = () => set(b.dataset.m));
+  set("head");
+})();
+
+/* ---------- 5: types ---------- */
+(function(){
+  const info = { name:["object","text"], species:["object","text"], age:["float64","number"], weight:["float64","number"], adopted:["object","text"], price:["object","text"] };
+  let h = '<b>column</b><b>type</b><b>filled in</b><b></b>';
+  COLS.forEach(c => {
+    const filled = ROWS.filter(r => r[c] != null).length;
+    const [dt, kind] = info[c];
+    const cls = c === "price" ? "bad" : kind === "number" ? "num" : "";
+    const lab = c === "price" ? `${dt}, text but should be a number` : `${dt}, ${kind}`;
+    h += `<span class="c">${c}</span><span class="badge ${cls}">${lab}</span><span class="fill"><i style="width:${filled/20*100}%"></i></span><span class="readout ${filled < 20 ? "nan" : ""}">${filled} / 20</span>`;
+  });
+  $("#v-types").innerHTML = h;
+})();
+
+/* ---------- 6: picking columns ---------- */
+(function(){
+  const picks = $("#p-cols"), code = $("#c-cols"), box = $("#v-cols");
+  let sel = ["name","age"];
+  picks.innerHTML = COLS.map(c => `<button data-c="${c}">${c}</button>`).join("");
+  function draw(){
+    $$("button", picks).forEach(b => b.classList.toggle("on", sel.includes(b.dataset.c)));
+    const ordered = COLS.filter(c => sel.includes(c));
+    if (!ordered.length){ code.textContent = "pick at least one column"; box.innerHTML = ""; return; }
+    if (ordered.length === 1){
+      const c = ordered[0];
+      code.textContent = `df["${c}"]`;
+      box.innerHTML = '<table class="tbl"><tbody>' + ROWS.slice(0,6).map((r,i) => `<tr><td class="ix">${i}</td>${cell(c, r[c])}</tr>`).join("") + `</tbody></table><p class="note">Series named ${c}</p>`;
+    } else {
+      code.textContent = `df[[${ordered.map(c => `"${c}"`).join(", ")}]]`;
+      box.innerHTML = '<table class="tbl">' + head(ordered) + "<tbody>" + ROWS.slice(0,6).map((r,i) => `<tr><td class="ix">${i}</td>` + ordered.map(c => cell(c, r[c])).join("") + "</tr>").join("") + "</tbody></table>";
+    }
+  }
+  picks.onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const c = b.dataset.c;
+    sel = sel.includes(c) ? sel.filter(x => x !== c) : [...sel, c];
+    draw();
+  };
+  draw();
+})();
+
+/* ---------- 7: filtering ---------- */
+(function(){
+  const box = $("#v-filter"), sl = $("#s-filter"), code = $("#c-filter"), cnt = $("#n-filter");
+  function draw(){
+    const n = +sl.value; let k = 0;
+    code.textContent = `df[df["age"] > ${n}]`;
+    box.innerHTML = '<table class="tbl sm"><thead><tr><th></th><th>name</th><th class="num">age</th><th>age &gt; ' + n + "</th></tr></thead><tbody>" +
+      ROWS.map((r,i) => {
+        const t = r.age != null && r.age > n; if (t) k++;
+        return `<tr class="${t ? "" : "fade"}"><td class="ix">${i}</td><td>${esc(r.name)}</td>${cell("age", r.age)}<td class="${t ? "t" : "f"}">${t ? "True" : "False"}</td></tr>`;
+      }).join("") + "</tbody></table>";
+    cnt.textContent = `${k} of 20 rows kept`;
+  }
+  sl.addEventListener("input", draw); draw();
+})();
+
+/* ---------- 8: describe ---------- */
+(function(){
+  const svg = $("#v-desc"), tbox = $("#t-desc");
+  const w = ROWS.map(r => r.weight).filter(v => v != null).sort((a,b) => a - b);
+  const m = mean(w), sd = Math.sqrt(w.reduce((s,x) => s + (x - m) ** 2, 0) / (w.length - 1));
+  const stats = [["count", w.length], ["mean", m], ["std", sd], ["min", w[0]], ["25%", quant(w,.25)], ["50%", quant(w,.5)], ["75%", quant(w,.75)], ["max", w[w.length-1]]];
+  const X = v => 30 + v / 40 * 590, base = 172;
+  for (let t = 0; t <= 40; t += 5){
+    svg.append(S("line", {x1:X(t), x2:X(t), y1:base, y2:base+5, stroke:"#111"}));
+    svg.append(S("text", {x:X(t), y:base+20, "text-anchor":"middle"}, t));
+  }
+  svg.append(S("line", {x1:X(0), x2:X(40), y1:base, y2:base, stroke:"#111"}));
+  const marks = { min:[w[0],0], "25%":[quant(w,.25),1], "50%":[quant(w,.5),2], mean:[m,0], "75%":[quant(w,.75),0], max:[w[w.length-1],0] };
+  const lines = {};
+  for (const k in marks){
+    const [v, row] = marks[k], isMean = k === "mean";
+    const g = S("g", {opacity:.85});
+    g.append(S("line", {x1:X(v), x2:X(v), y1:18 + row*16 + 4, y2:base, stroke: isMean ? "#1a56db" : "#5f6368", "stroke-width": isMean ? 2.5 : 1.5, "stroke-dasharray": isMean ? "" : "4 3"}));
+    const t = S("text", {x:X(v), y:14 + row*16, "text-anchor":"middle", "font-weight":700}, k);
+    if (isMean) t.setAttribute("style", "fill:#1a56db");
+    g.append(t); svg.append(g); lines[k] = g;
+  }
+  const stack = {};
+  w.forEach(v => { const b = Math.round(v); stack[b] = (stack[b] || 0) + 1;
+    svg.append(S("circle", {cx:X(v), cy:base - 9 - (stack[b]-1)*15, r:6.5, fill:"#111", "fill-opacity":.8})); });
+  tbox.innerHTML = '<table class="tbl"><tbody>' + stats.map(([k,v]) => `<tr data-k="${k}"><td>${k}</td><td class="num">${k === "count" ? v : v.toFixed(2)}</td></tr>`).join("") + "</tbody></table>";
+  tbox.addEventListener("mouseover", e => {
+    const tr = e.target.closest("tr"); const k = tr && tr.dataset.k;
+    $$("tr", tbox).forEach(x => x.querySelectorAll("td").forEach(td => td.classList.toggle("hl", x === tr)));
+    for (const key in lines) lines[key].setAttribute("opacity", !marks[k] ? .85 : key === k ? 1 : .15);
+  });
+  tbox.addEventListener("mouseleave", () => { for (const key in lines) lines[key].setAttribute("opacity", .85); $$("td", tbox).forEach(td => td.classList.remove("hl")); });
+})();
+
+/* ---------- 9: mean vs median ---------- */
+(function(){
+  const svg = $("#v-mm"), out = $("#r-mm");
+  const start = [2,5,8,11,14,18,22];
+  let vals = start.slice();
+  const X = v => 30 + v / 50 * 580, Xi = x => (x - 30) / 580 * 50, base = 120;
+  for (let t = 0; t <= 50; t += 10){
+    svg.append(S("line", {x1:X(t), x2:X(t), y1:base+16, y2:base+21, stroke:"#111"}));
+    svg.append(S("text", {x:X(t), y:base+36, "text-anchor":"middle"}, t));
+  }
+  svg.append(S("line", {x1:X(0), x2:X(50), y1:base+16, y2:base+16, stroke:"#111"}));
+  const meanL = S("line", {y1:30, y2:base+16, stroke:"#1a56db", "stroke-width":3});
+  const medL = S("line", {y1:30, y2:base+16, stroke:"#111", "stroke-width":3, "stroke-dasharray":"6 4"});
+  const meanT = S("text", {y:22, "text-anchor":"middle", "font-weight":700, style:"fill:#1a56db"}, "mean");
+  const medT = S("text", {y:50, "text-anchor":"middle", "font-weight":700}, "median");
+  svg.append(meanL, medL, meanT, medT);
+  const dots = vals.map((v,i) => {
+    const c = S("circle", {cy:base, r:9, fill:"#111", "fill-opacity":.85, style:"cursor:grab"});
+    svg.append(c);
+    c.addEventListener("pointerdown", e => {
+      c.setPointerCapture(e.pointerId);
+      const move = ev => {
+        const pt = svg.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+        const p = pt.matrixTransform(svg.getScreenCTM().inverse());
+        vals[i] = Math.round(Math.max(0, Math.min(50, Xi(p.x))));
+        draw();
+      };
+      const up = () => { c.removeEventListener("pointermove", move); c.removeEventListener("pointerup", up); };
+      c.addEventListener("pointermove", move); c.addEventListener("pointerup", up);
+    });
+    return c;
+  });
+  function draw(){
+    dots.forEach((d,i) => d.setAttribute("cx", X(vals[i])));
+    const s = vals.slice().sort((a,b) => a - b), mu = mean(vals), md = s[3];
+    [meanL, meanT].forEach(e => { e.setAttribute(e === meanT ? "x" : "x1", X(mu)); if (e === meanL) e.setAttribute("x2", X(mu)); });
+    [medL, medT].forEach(e => { e.setAttribute(e === medT ? "x" : "x1", X(md)); if (e === medL) e.setAttribute("x2", X(md)); });
+    out.textContent = `values: ${s.join(", ")}    mean = ${mu.toFixed(1)}    median = ${md}`;
+  }
+  $("#b-mm").onclick = () => { vals = start.slice(); draw(); };
+  draw();
+})();
+
+/* ---------- bars helper (10, 17) ---------- */
+function counts(list){
+  const m = new Map(); list.forEach(v => m.set(v, (m.get(v) || 0) + 1));
+  return [...m.entries()].sort((a,b) => b[1] - a[1]);
+}
+function renderBars(box, entries, max, startZero){
+  box.innerHTML = entries.map(([k,n]) => `<span class="lab">"${esc(k)}"</span><div class="track"><div class="bar" data-k="${esc(k)}" style="width:${startZero ? 0 : n/max*100}%"></div></div><span class="n" data-k="${esc(k)}">${startZero ? 0 : n}</span>`).join("");
+}
+
+/* ---------- 10: value_counts ---------- */
+(function(){
+  const box = $("#v-vc"), out = $("#r-vc"), btn = $("#b-vc");
+  const species = ROWS.map(r => r.species), final = counts(species), max = final[0][1];
+  renderBars(box, final, max, false);
+  let timer = null;
+  btn.onclick = () => {
+    clearInterval(timer);
+    renderBars(box, final, max, true);
+    const c = {}; let i = 0;
+    timer = setInterval(() => {
+      if (i >= species.length){ clearInterval(timer); out.textContent = "done, 20 rows counted"; return; }
+      const k = species[i]; c[k] = (c[k] || 0) + 1;
+      const bar = $$(".bar", box).find(b => b.dataset.k === k), n = $$(".n", box).find(b => b.dataset.k === k);
+      bar.style.width = c[k] / max * 100 + "%"; n.textContent = c[k];
+      out.textContent = `row ${i}: ${ROWS[i].name} is "${k}"`;
+      i++;
+    }, 260);
+  };
+})();
+
+/* ---------- 11: histogram ---------- */
+(function(){
+  const svg = $("#v-hist"), sl = $("#s-hist"), lab = $("#n-hist");
+  const w = ROWS.map(r => r.weight).filter(v => v != null);
+  const lo = Math.min(...w), hi = Math.max(...w);
+  const L = 44, R = 624, T = 14, B = 276;
+  const X = v => L + (v - lo) / (hi - lo) * (R - L);
+  function draw(){
+    const b = +sl.value, width = (hi - lo) / b, cnt = new Array(b).fill(0);
+    w.forEach(v => { cnt[Math.min(b - 1, Math.floor((v - lo) / width))]++; });
+    const top = Math.max(...cnt), ymax = Math.max(top, 2), Y = v => B - v / ymax * (B - T);
+    svg.innerHTML = "";
+    const ystep = ymax > 10 ? 2 : 1;
+    for (let t = 0; t <= ymax; t += ystep){
+      svg.append(S("line", {x1:L, x2:R, y1:Y(t), y2:Y(t), stroke:"#d9dce1"}));
+      svg.append(S("text", {x:L - 8, y:Y(t) + 4, "text-anchor":"end"}, t));
+    }
+    cnt.forEach((n,i) => {
+      const x0 = X(lo + i * width), x1 = X(lo + (i + 1) * width);
+      if (n) svg.append(S("rect", {x:x0 + 1, y:Y(n), width:Math.max(1, x1 - x0 - 2), height:B - Y(n), fill:"#111"}));
+    });
+    for (let t = 0; t <= 35; t += 5) if (t >= lo && t <= hi){
+      svg.append(S("line", {x1:X(t), x2:X(t), y1:B, y2:B + 5, stroke:"#111"}));
+      svg.append(S("text", {x:X(t), y:B + 20, "text-anchor":"middle"}, t));
+    }
+    svg.append(S("line", {x1:L, x2:R, y1:B, y2:B, stroke:"#111"}));
+    svg.append(S("text", {x:(L + R) / 2, y:B + 40, "text-anchor":"middle"}, "weight (kg)"));
+    svg.append(S("text", {x:12, y:(T + B) / 2, "text-anchor":"middle", transform:`rotate(-90 12 ${(T + B) / 2})`}, "number of pets"));
+    lab.textContent = `${b} ranges, each ${width.toFixed(1)} kg wide`;
+  }
+  sl.addEventListener("input", draw); draw();
+})();
+
+/* ---------- scatter helper (12, 19) ---------- */
+function makeScatter(svg, out){
+  const pts = ROWS.map((r,i) => ({...r, i})).filter(r => r.age != null && r.weight != null);
+  const L = 52, R = 624, T = 14, B = 290;
+  const axes = S("g"); svg.append(axes);
+  const Y = v => B - v / 40 * (B - T);
+  let X;
+  const dots = pts.map(p => {
+    const c = S("circle", {r:7, cx:0, cy:0, fill:"#1a56db", "fill-opacity":.8, style:"transition:transform .8s ease, opacity .5s; cursor:pointer"});
+    c.addEventListener("mouseenter", () => { out.textContent = `${p.name}: age ${p.age.toFixed(1)}, weight ${p.weight.toFixed(1)} kg`; c.setAttribute("fill", "#111"); });
+    c.addEventListener("mouseleave", () => c.setAttribute("fill", "#1a56db"));
+    c.addEventListener("click", () => { out.textContent = `${p.name}: age ${p.age.toFixed(1)}, weight ${p.weight.toFixed(1)} kg`; });
+    svg.append(c); return c;
+  });
+  function draw(keep){
+    const vis = pts.filter(keep), maxA = Math.max(...vis.map(p => p.age));
+    const step = niceStep(maxA), xmax = Math.ceil(maxA * 1.05 / step) * step;
+    X = v => L + v / xmax * (R - L);
+    axes.innerHTML = "";
+    for (let t = 0; t <= 40; t += 10){
+      axes.append(S("line", {x1:L, x2:R, y1:Y(t), y2:Y(t), stroke:"#d9dce1"}));
+      axes.append(S("text", {x:L - 8, y:Y(t) + 4, "text-anchor":"end"}, t));
+    }
+    for (let t = 0; t <= xmax + 1e-9; t += step){
+      axes.append(S("line", {x1:X(t), x2:X(t), y1:B, y2:B + 5, stroke:"#111"}));
+      axes.append(S("text", {x:X(t), y:B + 20, "text-anchor":"middle"}, t));
+    }
+    axes.append(S("line", {x1:L, x2:R, y1:B, y2:B, stroke:"#111"}));
+    axes.append(S("text", {x:(L + R) / 2, y:B + 42, "text-anchor":"middle"}, "age (years)"));
+    axes.append(S("text", {x:14, y:(T + B) / 2, "text-anchor":"middle", transform:`rotate(-90 14 ${(T + B) / 2})`}, "weight (kg)"));
+    dots.forEach((d,k) => {
+      const p = pts[k], on = keep(p);
+      if (on) d.style.transform = `translate(${X(p.age)}px, ${Y(p.weight)}px)`;
+      d.style.opacity = on ? 1 : 0;
+      d.style.pointerEvents = on ? "auto" : "none";
+    });
+  }
+  return { draw };
+}
+makeScatter($("#v-sc1"), $("#r-sc1")).draw(() => true);
+(function(){
+  const sc = makeScatter($("#v-sc2"), $("#r-sc2")), btn = $("#b-imp");
+  let removed = false;
+  sc.draw(() => true);
+  btn.onclick = () => {
+    removed = !removed;
+    sc.draw(p => !removed || p.age < 30);
+    btn.textContent = removed ? "Put Daisy back" : "Remove impossible ages";
+    $("#r-sc2").textContent = removed ? "Daisy (age 200) is gone, now you can see the real pattern" : " ";
+  };
+})();
+
+/* ---------- 13: missing ---------- */
+(function(){
+  const box = $("#v-na");
+  const sums = COLS.map(c => ROWS.filter(r => r[c] == null).length);
+  box.innerHTML = '<table class="tbl sm">' + head(COLS) + "<tbody>" +
+    ROWS.map((r,i) => `<tr><td class="ix">${i}</td>` + COLS.map(c => cell(c, r[c])).join("") + "</tr>").join("") +
+    '</tbody><tfoot><tr><td class="ix">sum</td>' + sums.map((n,k) => `<td class="${NUMC.has(COLS[k]) ? "num" : ""} ${n ? "nan" : ""}">${n}</td>`).join("") + "</tr></tfoot></table>";
+})();
+
+/* ---------- 14: dropna ---------- */
+(function(){
+  const box = $("#v-drop"), out = $("#r-drop");
+  let timers = [];
+  function draw(){
+    timers.forEach(clearTimeout); timers = [];
+    box.innerHTML = '<table class="tbl sm">' + head(COLS) + "<tbody>" +
+      ROWS.map((r,i) => `<tr data-na="${COLS.some(c => r[c] == null) ? 1 : 0}"><td class="ix">${i}</td>` + COLS.map(c => cell(c, r[c])).join("") + "</tr>").join("") + "</tbody></table>";
+    out.textContent = "20 rows";
+  }
+  $("#b-drop").onclick = () => {
+    draw();
+    const bad = $$('tr[data-na="1"]', box);
+    bad.forEach(tr => tr.classList.add("warn"));
+    timers.push(setTimeout(() => bad.forEach(tr => tr.classList.add("gone")), 900));
+    timers.push(setTimeout(() => { bad.forEach(tr => tr.hidden = true); out.textContent = `${20 - bad.length} rows, ${bad.length} dropped`; }, 1400));
+  };
+  $("#b-drop-r").onclick = draw;
+  draw();
+})();
+
+/* ---------- 15: fillna ---------- */
+(function(){
+  const box = $("#v-fill"), out = $("#r-fill"), code = $("#c-fill");
+  const ages = ROWS.map(r => r.age).filter(v => v != null).sort((a,b) => a - b);
+  const vals = { mean: mean(ages), median: quant(ages, .5) };
+  function draw(mode){
+    $$("button[data-f]").forEach(b => b.classList.toggle("on", b.dataset.f === mode));
+    box.innerHTML = ROWS.map(r => {
+      const miss = r.age == null, filled = miss && mode !== "none";
+      const v = filled ? vals[mode] : r.age;
+      return `<div class="chip ${miss ? (filled ? "filled" : "miss") : ""}"><small>${esc(r.name)}</small><b>${fmt("age", v)}</b></div>`;
+    }).join("");
+    if (mode === "none"){ out.textContent = "2 ages are missing"; }
+    else { out.textContent = `${mode} age = ${vals[mode].toFixed(1)}, so both gaps get ${vals[mode].toFixed(1)}`; code.textContent = `df["age"] = df["age"].fillna(df["age"].${mode}())`; }
+  }
+  $$("button[data-f]").forEach(b => b.onclick = () => draw(b.dataset.f));
+  draw("none");
+})();
+
+/* ---------- 16: duplicates ---------- */
+(function(){
+  const box = $("#v-dup"), out = $("#r-dup"), cols = ["name","species","age","weight"];
+  const key = r => COLS.map(c => r[c]).join("|");
+  const seen = new Set(), dupIx = new Set(), firstIx = new Set();
+  ROWS.forEach((r,i) => { const k = key(r); if (seen.has(k)) dupIx.add(i); seen.add(k); });
+  ROWS.forEach((r,i) => { if (!dupIx.has(i) && [...dupIx].some(j => key(ROWS[j]) === key(r))) firstIx.add(i); });
+  let t = [];
+  function draw(){
+    t.forEach(clearTimeout); t = [];
+    box.innerHTML = '<table class="tbl sm">' + head(cols) + "<tbody>" +
+      ROWS.map((r,i) => `<tr class="${dupIx.has(i) || firstIx.has(i) ? "dup" : ""}" data-d="${dupIx.has(i) ? 1 : 0}"><td class="ix">${i}</td>` + cols.map(c => cell(c, r[c])).join("") + "</tr>").join("") + "</tbody></table>";
+    out.textContent = `20 rows, duplicated().sum() is ${dupIx.size}`;
+  }
+  $("#b-dup").onclick = () => {
+    draw();
+    const d = $$('tr[data-d="1"]', box);
+    d.forEach(tr => tr.classList.add("gone"));
+    t.push(setTimeout(() => { d.forEach(tr => tr.hidden = true); out.textContent = `${20 - d.length} rows, row ${[...dupIx].join(", ")} removed, row ${[...firstIx].join(", ")} kept`; }, 600));
+  };
+  $("#b-dup-r").onclick = draw;
+  draw();
+})();
+
+/* ---------- 17: messy text ---------- */
+(function(){
+  const tbox = $("#t-txt"), box = $("#v-txt"), btn = $("#b-txt");
+  const raw = ROWS.map(r => r.species), clean = raw.map(s => s.toLowerCase().trim());
+  const rc = counts(raw), cc = counts(clean), max = Math.max(rc[0][1], cc[0][1]);
+  const uniq = [...new Set(raw)];
+  tbox.innerHTML = '<table class="tbl"><thead><tr><th>original</th><th>.str.lower()</th><th>.str.strip()</th></tr></thead><tbody>' +
+    uniq.map(s => { const a = s.toLowerCase(), b = a.trim();
+      return `<tr><td>"${esc(s)}"</td><td class="${a !== s ? "newv" : ""}">"${esc(a)}"</td><td class="${b !== a ? "newv" : ""}">"${esc(b)}"</td></tr>`; }).join("") + "</tbody></table>";
+  let isClean = false;
+  function draw(){
+    const e = isClean ? cc : rc;
+    renderBars(box, e, max, true);
+    requestAnimationFrame(() => requestAnimationFrame(() => $$(".bar", box).forEach((b,i) => b.style.width = e[i][1] / max * 100 + "%")));
+    $$(".n", box).forEach((n,i) => n.textContent = e[i][1]);
+    btn.textContent = isClean ? "Show the messy column" : "Clean the column";
+  }
+  btn.onclick = () => { isClean = !isClean; draw(); };
+  draw();
+})();
+
+/* ---------- 18: price stepper ---------- */
+(function(){
+  const box = $("#v-pr"), out = $("#r-pr"), out2 = $("#r-pr2");
+  const rows = ROWS.slice(0, 10);
+  const all = ROWS.map(r => r.priceNum).filter(v => v != null);
+  const steps = [
+    { lab:"original, type object (text)", f: r => r.price == null ? null : `"${r.price}"`, num:false },
+    { lab:'after .str.replace("$", ""), still text', f: r => r.price == null ? null : `"${r.price.replace("$","")}"`, num:false },
+    { lab:"after .astype(float), now numbers", f: r => r.priceNum == null ? null : r.priceNum.toFixed(1), num:true },
+  ];
+  let k = 0;
+  function draw(){
+    const s = steps[k];
+    box.innerHTML = `<table class="tbl"><thead><tr><th></th><th class="${s.num ? "num" : ""}">price</th></tr></thead><tbody>` +
+      rows.map((r,i) => { const v = s.f(r); return `<tr><td class="ix">${i}</td><td class="${s.num ? "num" : ""} ${v == null ? "nan" : k ? "newv" : ""}">${v == null ? "NaN" : esc(v)}</td></tr>`; }).join("") + "</tbody></table>";
+    out.textContent = `step ${k + 1} of 3: ${s.lab}`;
+    out2.textContent = k === 2 ? `df["price"].mean() now works: ${(mean(all)).toFixed(2)}` : " ";
+    $("#b-pr-back").disabled = k === 0; $("#b-pr").disabled = k === 2;
+  }
+  $("#b-pr").onclick = () => { k = Math.min(2, k + 1); draw(); };
+  $("#b-pr-back").onclick = () => { k = Math.max(0, k - 1); draw(); };
+  draw();
+})();
+
+/* ---------- 20: drop columns ---------- */
+(function(){
+  const box = $("#v-dc"), btn = $("#b-dc");
+  let dropped = false;
+  function draw(){
+    const cols = dropped ? COLS.filter(c => c !== "name") : COLS;
+    box.innerHTML = '<table class="tbl grow">' + head(cols) + "<tbody>" +
+      ROWS.slice(0, 6).map((r,i) => `<tr style="animation-delay:${i*50}ms"><td class="ix">${i}</td>` + cols.map(c => cell(c, r[c], c === "name" ? "hl" : "")).join("") + "</tr>").join("") + "</tbody></table>";
+    btn.textContent = dropped ? "Bring it back" : "Drop the name column";
+  }
+  btn.onclick = () => { dropped = !dropped; draw(); };
+  draw();
+})();
+
+/* ---------- 21: new column ---------- */
+(function(){
+  const box = $("#v-nc"), btn = $("#b-nc"), rows = ROWS.slice(0, 9);
+  const cols = ["name","priceNum","weight","price_per_kg"], labels = {priceNum:"price"};
+  let t = [];
+  function draw(shown){
+    box.innerHTML = '<table class="tbl">' + head(cols, labels) + "<tbody>" +
+      rows.map((r,i) => {
+        const v = r.priceNum == null || r.weight == null ? null : r.priceNum / r.weight;
+        return `<tr><td class="ix">${i}</td>${cell("name", r.name)}${cell("priceNum", r.priceNum)}${cell("weight", r.weight)}` +
+          (i < shown ? cell("price_per_kg", v, v == null ? "" : "newv") : "<td></td>") + "</tr>";
+      }).join("") + "</tbody></table>";
+  }
+  btn.onclick = () => {
+    t.forEach(clearTimeout); t = [];
+    for (let i = 0; i <= rows.length; i++) t.push(setTimeout(() => draw(i), i * 140));
+  };
+  draw(0);
+})();
+
+/* ---------- 22: get_dummies ---------- */
+(function(){
+  const box = $("#v-gd"), btn = $("#b-gd"), rows = ROWS.slice(0, 8);
+  let on = false;
+  function draw(){
+    if (!on){
+      box.innerHTML = '<table class="tbl"><thead><tr><th></th><th>name</th><th>species</th></tr></thead><tbody>' +
+        rows.map((r,i) => `<tr><td class="ix">${i}</td><td>${esc(r.name)}</td><td>${esc(r.species.toLowerCase().trim())}</td></tr>`).join("") + "</tbody></table>";
+    } else {
+      const cats = ["cat","dog","rabbit"];
+      box.innerHTML = '<table class="tbl grow"><thead><tr><th></th><th>name</th>' + cats.map(c => `<th>species_${c}</th>`).join("") + "</tr></thead><tbody>" +
+        rows.map((r,i) => { const s = r.species.toLowerCase().trim();
+          return `<tr style="animation-delay:${i*60}ms"><td class="ix">${i}</td><td>${esc(r.name)}</td>` + cats.map(c => `<td class="${c === s ? "t" : "f"}">${c === s ? "True" : "False"}</td>`).join("") + "</tr>"; }).join("") + "</tbody></table>";
+    }
+    btn.textContent = on ? "Undo" : "Run get_dummies";
+  }
+  btn.onclick = () => { on = !on; draw(); };
+  draw();
+})();
+
+/* ---------- 23: to_csv ---------- */
+(function(){
+  const box = $("#v-save"), code = $("#c-save");
+  const lines = PETS.trim().split("\n").slice(0, 5);
+  function draw(withIndex){
+    $$("button[data-ix]").forEach(b => b.classList.toggle("on", +b.dataset.ix === +withIndex));
+    code.textContent = withIndex ? 'df.to_csv("pets_clean.csv")' : 'df.to_csv("pets_clean.csv", index=False)';
+    box.innerHTML = withIndex
+      ? lines.map((l,i) => `<span class="comma">${i === 0 ? "" : i - 1},</span>` + esc(l)).join("\n") + "\n\n<span class=\"nan\">an extra unnamed column of row numbers</span>"
+      : lines.map(esc).join("\n");
+  }
+  $$("button[data-ix]").forEach(b => b.onclick = () => draw(b.dataset.ix === "1"));
+  draw(false);
+})();
+
+/* ---------- Python in the browser (Pyodide) ---------- */
+const PY_HELPER = `
+import ast, io, sys, json
+import pandas as pd
+pd.set_option("display.width", 160)
+pd.set_option("display.max_columns", 30)
+pd.set_option("display.max_rows", 60)
+
+def _exec(code, ns):
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        tree = ast.parse(code)
+        last = None
+        if tree.body and isinstance(tree.body[-1], ast.Expr):
+            last = ast.Expression(tree.body.pop().value)
+        exec(compile(tree, "<code>", "exec"), ns)
+        if last is not None:
+            result = eval(compile(last, "<code>", "eval"), ns)
+            if result is not None:
+                print(repr(result) if isinstance(result, str) else result)
+    except Exception as e:
+        print(type(e).__name__ + ": " + str(e))
+    finally:
+        sys.stdout = old
+    return buf.getvalue()
+
+def _run(code):
+    return _exec(code, {"pd": pd})
+
+def _check(code):
+    ns = {"pd": pd}
+    out = _exec(code, ns)
+    df = ns.get("df")
+    checks = []
+    if not isinstance(df, pd.DataFrame):
+        checks.append(["Your cleaned table is saved in df", False])
+    else:
+        checks.append(["No missing values", bool(df.isna().sum().sum() == 0)])
+        checks.append(["No duplicate rows", bool(df.duplicated().sum() == 0)])
+        ok = "genre" in df.columns and set(df["genre"].astype(str)) == {"puzzle", "racing", "sports"}
+        checks.append(["genre only has puzzle, racing and sports", bool(ok)])
+        ok = "price" in df.columns and pd.api.types.is_numeric_dtype(df["price"])
+        checks.append(["price is a number column", bool(ok)])
+        ok = "year" in df.columns and pd.api.types.is_numeric_dtype(df["year"]) and df["year"].max() <= 2026
+        checks.append(["No impossible years", bool(ok)])
+    return json.dumps({"out": out, "checks": checks})
+`;
+
+let pyPromise = null;
+const pystat = $("#pystat");
+function loadPy(){
+  if (pyPromise) return pyPromise;
+  pystat.textContent = "Python: loading"; pystat.classList.remove("ready");
+  pyPromise = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+    s.onload = res;
+    s.onerror = () => rej(new Error("Could not load Python. Check the internet connection and press Run again."));
+    document.head.appendChild(s);
+  }).then(() => loadPyodide())
+    .then(async py => {
+      await py.loadPackage("pandas");
+      py.runPython(PY_HELPER);
+      pystat.textContent = "Python: ready"; pystat.classList.add("ready");
+      return py;
+    })
+    .catch(e => { pyPromise = null; pystat.textContent = "Python: not loaded"; throw e; });
+  return pyPromise;
+}
+function writeFiles(py){
+  py.FS.writeFile("pets.csv", PETS);
+  py.FS.writeFile("games.csv", GAMES);
+}
+
+$$(".runner").forEach(r => {
+  const ta = $("textarea", r), orig = ta.value, isCheck = r.hasAttribute("data-check");
+  const fit = () => { ta.rows = Math.max(ta.value.split("\n").length, isCheck ? 10 : 2); };
+  fit();
+  ta.addEventListener("input", fit);
+  const bar = document.createElement("div"); bar.className = "run-bar";
+  bar.innerHTML = `<button class="primary run">Run</button>${isCheck ? '<button class="chk">Check</button>' : ""}<button class="reset">Reset code</button><span class="hint">Ctrl+Enter runs</span>`;
+  const out = document.createElement("pre"); out.className = "out"; out.hidden = true;
+  const checks = document.createElement("ul"); checks.className = "checks"; checks.hidden = true;
+  r.append(bar, out, checks);
+
+  async function run(check){
+    out.hidden = false; checks.hidden = true;
+    out.textContent = "Running... (the first run loads Python, it can take a few seconds)";
+    try {
+      const py = await loadPy();
+      writeFiles(py);
+      if (check){
+        const res = JSON.parse(py.globals.get("_check")(ta.value));
+        out.textContent = res.out || "(no output)";
+        checks.hidden = false;
+        checks.innerHTML = res.checks.map(([t, ok]) => `<li class="${ok ? "ok" : "no"}">${esc(t)}</li>`).join("") +
+          (res.checks.every(c => c[1]) ? '<li class="ok"><b>All clean, nice work</b></li>' : "");
+      } else {
+        out.textContent = py.globals.get("_run")(ta.value) || "(no output)";
+      }
+    } catch (e) { out.textContent = e.message || String(e); }
+  }
+  $(".run", bar).onclick = () => run(false);
+  if (isCheck) $(".chk", bar).onclick = () => run(true);
+  $(".reset", bar).onclick = () => { ta.value = orig; fit(); out.hidden = true; checks.hidden = true; };
+  ta.addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); run(false); }
+    if (e.key === "Tab" && !e.shiftKey){
+      e.preventDefault();
+      const s = ta.selectionStart; ta.setRangeText("    ", s, ta.selectionEnd, "end");
+    }
+  });
+});
+
+window.addEventListener("load", () => setTimeout(() => loadPy().catch(() => {}), 400));
+</script>
+</body>
+</html>
