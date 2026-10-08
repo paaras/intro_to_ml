@@ -1,0 +1,1458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Linear and Logistic Regression</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#111111; --muted:#5f6368; --line:#d9dce1; --soft:#f3f4f6;
+  --accent:#1a56db; --accent-soft:#e1eafd;
+  --bad:#c5221f; --bad-soft:#fce8e6; --good:#137333; --good-soft:#e6f4ea;
+  --mono: ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:18px;line-height:1.5}
+.deck{height:100%;display:flex;flex-direction:column}
+#slides{flex:1;min-height:0}
+.slide{display:none;height:100%;overflow-y:auto;box-sizing:border-box;padding:36px clamp(16px,5vw,64px) 40px}
+.slide.active{display:block}
+.inner{max-width:1200px;margin:0 auto}
+h1{font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;margin:0 0 28px;text-wrap:balance}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:44px;align-items:start}
+.cols > *{min-width:0}
+@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.txt{font-size:1.15rem;line-height:1.6;max-width:62ch;margin:0 0 22px}
+.txt p{margin:0 0 .9em}
+.txt p:last-child{margin-bottom:0}
+.txt ol,.txt ul{margin:0 0 .9em;padding-left:1.3em}
+.txt li{margin:0 0 .35em}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.08em .35em;border-radius:4px}
+pre.code{font-family:var(--mono);font-size:1rem;background:var(--soft);padding:14px 16px;border-radius:6px;margin:0 0 22px;overflow-x:auto;white-space:pre}
+.note{color:var(--muted);font-size:1rem;margin:0 0 16px}
+button{font:inherit;font-size:.95rem;padding:7px 14px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);border-radius:6px;cursor:pointer}
+button:hover{background:var(--soft)}
+button:disabled{opacity:.4;cursor:default}
+button.on,button.primary{background:var(--fg);color:var(--bg)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.readout{font-family:var(--mono);font-size:1rem}
+.viz{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto}
+svg text{fill:var(--fg);font-family:var(--sans);font-size:13px}
+input[type=range]{width:200px;accent-color:var(--fg)}
+.slider{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin:8px 0;max-width:460px}
+.slider label{font-family:var(--mono);min-width:6ch}
+.slider input{width:100%}
+.slider .readout{min-width:6ch;text-align:right}
+
+/* tables */
+.tbl{border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:4px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:pre}
+.tbl th{border-bottom:2px solid var(--fg)}
+.tbl.sm th,.tbl.sm td{padding:2px 10px;font-size:.85rem}
+.tbl .ix{color:var(--muted)}
+.tbl .num{text-align:right}
+td.hl,th.hl{background:var(--accent-soft)}
+td.tg,th.tg{background:var(--good-soft)}
+.grow tr{animation:rowin .35s both}
+@keyframes rowin{from{opacity:0;transform:translateY(-6px)}}
+.tbls{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+.tbls h3{font-size:1rem;margin:0 0 6px}
+
+/* slide 1 game */
+.guess{display:grid;grid-template-columns:auto auto auto 1fr;gap:8px 12px;align-items:center;margin-top:14px}
+.guess .who{font-family:var(--mono)}
+.guess .res{font-size:.95rem}
+.ok{color:var(--good);font-weight:700}
+.no{color:var(--bad);font-weight:700}
+
+/* slide 2 questions */
+.qs{display:grid;gap:10px}
+.q{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;border:1.5px solid var(--line);border-radius:8px;padding:8px 12px}
+.q.right{border-color:var(--good);background:var(--good-soft)}
+.q.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.q small{grid-column:1/-1;color:var(--muted);font-size:.9rem}
+@media (max-width:520px){.q{grid-template-columns:1fr 1fr}.q > span{grid-column:1/-1}}
+
+/* 100 grid */
+.g100{display:grid;grid-template-columns:repeat(20,1fr);gap:4px;max-width:520px}
+.g100 i{aspect-ratio:1;border-radius:50%;background:var(--line);border:2px solid transparent;transition:background .3s,border-color .3s}
+.g100 i.sick{background:var(--bad)}
+.g100 i.flag{border-color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:.9rem;color:var(--muted);margin:10px 0}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:50%;display:inline-block;box-sizing:border-box}
+
+/* confusion matrix */
+.cm{border-collapse:collapse;font-variant-numeric:tabular-nums}
+.cm th{font-weight:600;font-size:.9rem;padding:6px 10px;color:var(--muted);text-align:center}
+.cm th.rowh{text-align:right}
+.cm td{border:2px solid var(--fg);width:150px;height:84px;text-align:center;vertical-align:middle;padding:6px;transition:background .25s,opacity .25s}
+.cm td b{display:block;font-size:1.8rem;line-height:1.1}
+.cm td small{display:block;font-size:.85rem;color:var(--muted)}
+.cm td.click{cursor:pointer}
+.cm td.sel{background:var(--accent-soft)}
+.cm td.dim{opacity:.35}
+.cm td.mis b{color:var(--bad)}
+@media (max-width:520px){.cm td{width:auto;height:70px}.cm td b{font-size:1.4rem}}
+.calc{font-family:var(--mono);font-size:1rem;margin:12px 0 0;line-height:1.8}
+.calc div{padding:2px 6px;border-radius:4px;cursor:default}
+.calc div:hover{background:var(--soft)}
+
+/* bars */
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center;max-width:520px}
+.bars .lab{font-family:var(--mono);white-space:pre;text-align:right}
+.bars .track{height:24px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bars .bar{height:100%;background:var(--fg);width:0;transition:width .25s}
+.bars .bar.b{background:var(--accent)}
+.bars .n{font-variant-numeric:tabular-nums;min-width:4ch;font-weight:700;font-family:var(--mono)}
+
+/* stat boxes */
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.stat{border:1.5px solid var(--line);border-radius:8px;padding:8px 12px}
+.stat small{display:block;color:var(--muted);font-size:.85rem}
+.stat b{font-family:var(--mono);font-size:1.3rem}
+
+/* code runner */
+.runner{border:1.5px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 18px;background:var(--bg)}
+.runner textarea{display:block;width:100%;box-sizing:border-box;border:0;resize:vertical;font-family:var(--mono);font-size:1rem;line-height:1.5;padding:12px 14px;background:var(--soft);color:var(--fg);white-space:pre;overflow-x:auto;tab-size:4}
+.run-bar{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.run-bar .hint{color:var(--muted);font-size:.85rem;margin-left:auto}
+.out{margin:0;padding:12px 14px;font-family:var(--mono);font-size:.86rem;line-height:1.45;border-top:1px solid var(--line);max-height:360px;overflow:auto;white-space:pre}
+
+/* nav */
+.bar{display:flex;align-items:center;gap:12px;padding:10px clamp(16px,5vw,64px) calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg)}
+#count{font-variant-numeric:tabular-nums;color:var(--muted);min-width:5ch;text-align:center}
+#pystat{color:var(--muted);font-size:.85rem;margin-right:auto}
+#pystat.ready{color:var(--good)}
+@media (max-width:700px){
+  #pystat,#count{display:none}
+  .bar{justify-content:space-between}
+}
+@media (max-width:700px){svg text{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="deck">
+<main id="slides">
+
+<!-- 1 -->
+<section class="slide"><div class="inner">
+<h1>Supervised learning</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Supervised learning means learning from examples where the right answer is already known. Each example has some inputs and the answer that goes with them, and the model's job is to learn how to get from the inputs to the answer.</p>
+      <p>The inputs are called features and the answer is called the target, or sometimes the label. Once the model has learned from enough examples, you give it new inputs without an answer and it predicts one.</p>
+      <p>It's called supervised because the answers act like a teacher. The model can check its guesses against them while it learns. Last week's pets were a supervised problem too, since we knew which ones had been adopted.</p>
+      <p>Try being the model. Look at the examples, then guess the three new students.</p>
+    </div>
+  </div>
+  <div>
+    <div class="viz" id="v-sup"></div>
+    <div class="guess" id="v-guess"></div>
+    <p id="r-sup" style="margin-top:14px">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 2 -->
+<section class="slide"><div class="inner">
+<h1>Regression and classification</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Supervised problems come in two kinds, depending on what the target looks like.</p>
+      <p>If the target is a number that can be anything on a scale, like a price or a temperature, it's a regression problem.</p>
+      <p>If the target is one of a few fixed groups, like pass or fail, or cat, dog or rabbit, it's a classification problem.</p>
+      <p>The quickest test is to ask whether an answer can be "a bit more" than another one. A price of 210 is a bit more than 200, so that's regression. A cat isn't a bit more than a dog, so that's classification.</p>
+    </div>
+  </div>
+  <div>
+    <p class="note">What kind of answer does each question need?</p>
+    <div class="qs" id="v-qs"></div>
+    <p class="readout" id="r-qs">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 3 -->
+<section class="slide"><div class="inner">
+<h1>Features and target in code</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>For the next part we'll use houses.csv, a small file with the size of each house in square metres, its age in years, and the price it sold for in thousands of dollars.</p>
+      <p>scikit-learn wants the features and the target as two separate things. By habit, the features are called <code>X</code> and the target is called <code>y</code>.</p>
+      <p><code>X</code> uses double brackets because it's a table, even when it only has one column. Models expect their features as a table, since most of the time there's more than one. <code>y</code> uses single brackets because it's one column.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">df = pd.read_csv("houses.csv")
+X = df[["size"]]
+y = df["price"]
+print(X.shape)
+print(y.shape)</textarea></div>
+  </div>
+  <div>
+    <p class="note">Pick which column is the target</p>
+    <div class="ctrls" id="p-tg"></div>
+    <pre class="code" id="c-tg"></pre>
+    <div class="viz" id="v-tg"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 4 -->
+<section class="slide"><div class="inner">
+<h1>Plot the data before modelling</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Before training anything, plot each feature against the target. It tells you whether there's a pattern for a model to find at all.</p>
+      <p>Size against price shows a clear pattern. The dots rise from left to right in a fairly straight band, so bigger houses cost more, by a roughly steady amount per square metre.</p>
+      <p>Switch to age. The pattern is weaker and goes the other way, older houses tend to be a bit cheaper, but the dots are much more spread out.</p>
+    </div>
+    <pre class="code" id="c-sc">df.plot.scatter(x="size", y="price")</pre>
+  </div>
+  <div>
+    <div class="ctrls"><button data-x="size" class="on">size</button><button data-x="age">age</button></div>
+    <div class="viz"><svg id="v-sc" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-sc">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 5 -->
+<section class="slide"><div class="inner">
+<h1>Linear regression draws a straight line</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Linear regression predicts the target with a straight line. For one feature the line is</p>
+    </div>
+    <pre class="code">price = m * size + b</pre>
+    <div class="txt">
+      <p><code>m</code> is the slope. It says how much the price goes up for each extra square metre.</p>
+      <p><code>b</code> is the intercept. It's where the line starts, the price the line gives for a size of 0.</p>
+      <p>To predict the price of a house, find its size on the bottom axis, go up to the line and read off the price. Move the sliders until the line runs through the middle of the dots.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s5m">m</label><input type="range" id="s5m" min="0" max="4" step="0.05" value="1"><span class="readout" id="n5m"></span></div>
+    <div class="slider"><label for="s5b">b</label><input type="range" id="s5b" min="-100" max="250" step="5" value="150"><span class="readout" id="n5b"></span></div>
+    <div class="viz"><svg id="v-5" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-5">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 6 -->
+<section class="slide"><div class="inner">
+<h1>Measuring how wrong a line is</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>To pick the best line we need a way to score a line. We start with the error for each house:</p>
+    </div>
+    <pre class="code">error = actual price - predicted price</pre>
+    <div class="txt">
+      <p>On the plot, each error is the red gap between a dot and the line. Dots above the line have a positive error, dots below have a negative one.</p>
+      <p>Adding the errors up seems like an obvious score, but it doesn't work. Positive and negative errors cancel out, so a line that misses badly in both directions can still add up to about 0. Try to find a bad line with a total near 0.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s6m">m</label><input type="range" id="s6m" min="0" max="4" step="0.05" value="1"><span class="readout" id="n6m"></span></div>
+    <div class="slider"><label for="s6b">b</label><input type="range" id="s6b" min="-100" max="250" step="5" value="150"><span class="readout" id="n6b"></span></div>
+    <div class="viz"><svg id="v-6" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-6">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 7 -->
+<section class="slide"><div class="inner">
+<h1>Mean squared error</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The fix is to square every error before adding them up. A square is never negative, so nothing cancels out.</p>
+      <p>Then we divide by the number of houses to get the average. This is the mean squared error, or MSE. The lower it is, the better the line.</p>
+    </div>
+    <pre class="code">MSE = average of (error * error)</pre>
+    <div class="txt">
+      <p>Squaring has a second effect. An error of 10 becomes 100, but an error of 40 becomes 1600. Big misses count much more than small ones, so the best line tries hard to avoid them. The red squares on the plot show this, each one is an error squared.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s7m">m</label><input type="range" id="s7m" min="0" max="4" step="0.05" value="1"><span class="readout" id="n7m"></span></div>
+    <div class="slider"><label for="s7b">b</label><input type="range" id="s7b" min="-100" max="250" step="5" value="150"><span class="readout" id="n7b"></span></div>
+    <div class="viz"><svg id="v-7" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-7">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 8 -->
+<section class="slide"><div class="inner">
+<h1>Fitting finds the line with the lowest MSE</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Training a linear regression model, also called fitting it, means finding the values of <code>m</code> and <code>b</code> that give the lowest possible MSE on the training data.</p>
+      <p>You've been doing this by hand with the sliders. The computer does the same job with some maths that lands on the exact best answer straight away, so there's no guessing involved.</p>
+      <p>Get your MSE as low as you can, then press the button to see how close you got.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s8m">m</label><input type="range" id="s8m" min="0" max="4" step="0.05" value="1"><span class="readout" id="n8m"></span></div>
+    <div class="slider"><label for="s8b">b</label><input type="range" id="s8b" min="-100" max="250" step="5" value="150"><span class="readout" id="n8b"></span></div>
+    <div class="viz"><svg id="v-8" viewBox="0 0 640 340"></svg></div>
+    <div class="ctrls"><button id="b-8" class="primary">Fit the best line</button><span class="readout" id="r-8"></span></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 9 -->
+<section class="slide"><div class="inner">
+<h1>Training data and test data</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A model always looks good on the data it learned from. What we actually care about is how well it does on houses it has never seen.</p>
+      <p>So before training, we hide some of the rows. The model learns only from the rest, the training data. Then we check its predictions on the hidden rows, the test data.</p>
+      <p>It's like a student studying past exam papers. Doing well on papers they've already seen proves very little, the real test is a paper they haven't seen before.</p>
+      <p>A common choice is to keep 20% of the rows for testing. Each time you split, the rows are picked at random.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s9">test</label><input type="range" id="s9" min="10" max="50" step="5" value="20"><span class="readout" id="n9"></span></div>
+    <div class="ctrls"><button id="b-9">New random split</button></div>
+    <div class="legend"><span><i class="dot" style="background:#111"></i>training rows, the model learns from these</span><span><i class="dot" style="border:2.5px solid #1a56db"></i>test rows, hidden while it learns</span></div>
+    <div class="viz"><svg id="v-9" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-9">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 10 -->
+<section class="slide"><div class="inner">
+<h1>Linear regression in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p><code>train_test_split</code> splits <code>X</code> and <code>y</code> into four pieces. <code>random_state=0</code> makes it pick the same rows every time you run it, so your results don't change.</p>
+      <p><code>LinearRegression()</code> creates an empty model and <code>fit</code> trains it on the training rows. After that, <code>coef_</code> holds the slope <code>m</code> and <code>intercept_</code> holds <code>b</code>.</p>
+      <p><code>predict</code> uses the line to predict a price for each test house. Compare the predictions with <code>y_test</code> to see how close it got.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+
+df = pd.read_csv("houses.csv")
+X = df[["size"]]
+y = df["price"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=0)
+
+model = LinearRegression()
+model.fit(X_train, y_train)
+
+print(model.coef_, model.intercept_)
+print(model.predict(X_test))
+print(y_test.values)</textarea></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-10" class="primary">Split the data</button></div>
+    <div class="tbls" id="v-10"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 11 -->
+<section class="slide"><div class="inner">
+<h1>Measuring a regression model</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>MSE is good for fitting, but hard to read, because it's in squared units. These three are easier to make sense of:</p>
+      <ul>
+        <li><b>MAE</b>, mean absolute error, is the average size of a miss, ignoring whether it's too high or too low. It's in the same units as the target, so an MAE of 18 means the predictions are off by about $18,000 on average.</li>
+        <li><b>RMSE</b> is the square root of MSE. It's also in the target's units, but like MSE it counts big misses more, so it's always at least as big as MAE.</li>
+        <li><b>R²</b> compares the model to the laziest possible guess, predicting the average price for every house. 1 is perfect, 0 is no better than the lazy guess, and below 0 is worse.</li>
+      </ul>
+    </div>
+<div class="runner"><textarea spellcheck="false">from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+df = pd.read_csv("houses.csv")
+X = df[["size"]]
+y = df["price"]
+model = LinearRegression()
+model.fit(X, y)
+pred = model.predict(X)
+
+print(mean_absolute_error(y, pred))
+print(mean_squared_error(y, pred) ** 0.5)
+print(r2_score(y, pred))</textarea></div>
+    <p class="note">To keep the numbers matching the plot, this box trains and scores on all 20 houses. In real work you score on the test data.</p>
+  </div>
+  <div>
+    <div class="ctrls"><button data-mode="avg">Always guess the average</button><button data-mode="fit" class="on">Fitted line</button></div>
+    <div class="stats"><div class="stat"><small>MAE</small><b id="m-mae"></b></div><div class="stat"><small>RMSE</small><b id="m-rmse"></b></div><div class="stat"><small>R²</small><b id="m-r2"></b></div></div>
+    <div class="viz"><svg id="v-11" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-11">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 12 -->
+<section class="slide"><div class="inner">
+<h1>Using more than one feature</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>With two features, the model learns one slope for each feature, plus the intercept:</p>
+    </div>
+    <pre class="code">price = m1 * size + m2 * age + b</pre>
+    <div class="txt">
+      <p>Each slope says how much that feature changes the price when the other one stays the same. Here, each extra square metre adds about $1,900, and each extra year of age takes off about $1,600.</p>
+      <p>The code is the same as before, you just put more columns in <code>X</code>. Adding age takes R² from 0.93 to 0.99, because age explains a lot of what size couldn't.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">from sklearn.linear_model import LinearRegression
+
+df = pd.read_csv("houses.csv")
+X = df[["size", "age"]]
+y = df["price"]
+
+model = LinearRegression()
+model.fit(X, y)
+print(model.coef_, model.intercept_)
+model.score(X, y)</textarea></div>
+    <p class="note"><code>model.score</code> gives R² for a regression model.</p>
+  </div>
+  <div>
+    <p class="note">Describe a house and see what the model predicts</p>
+    <div class="slider"><label for="s12s">size</label><input type="range" id="s12s" min="50" max="200" step="5" value="120"><span class="readout" id="n12s"></span></div>
+    <div class="slider"><label for="s12a">age</label><input type="range" id="s12a" min="0" max="50" step="1" value="10"><span class="readout" id="n12a"></span></div>
+    <pre class="code" id="c-12"></pre>
+    <div class="bars" id="v-12"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 13 -->
+<section class="slide"><div class="inner">
+<h1>Predicting a category</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Now for classification. exams.csv has 40 students, the hours each one studied, and whether they passed. Passed is stored as 1 for yes and 0 for no.</p>
+      <p>Every dot sits on either 0 or 1, since you can't half pass. Press the button to try fitting a straight line through them anyway.</p>
+      <p>The line keeps going forever in both directions. For a lot of students it predicts numbers below 0 or above 1, which don't mean anything as an answer to "did they pass?".</p>
+      <p>What we'd like instead is something that always stays between 0 and 1, so we can read it as the chance of passing.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-13" class="primary">Fit a straight line</button></div>
+    <div class="viz"><svg id="v-13" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-13">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 14 -->
+<section class="slide"><div class="inner">
+<h1>The sigmoid function</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The sigmoid function takes any number and squashes it to somewhere between 0 and 1.</p>
+    </div>
+    <pre class="code">sigmoid(z) = 1 / (1 + e^-z)</pre>
+    <div class="txt">
+      <p>You don't need to remember the formula, just its shape. Big positive numbers come out close to 1, big negative numbers come out close to 0, and 0 comes out as exactly 0.5.</p>
+      <p>However far you drag the input, the output never goes past 0 or 1. That makes it perfect for turning any number into a probability.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s14">z</label><input type="range" id="s14" min="-8" max="8" step="0.1" value="1.5"><span class="readout" id="n14"></span></div>
+    <div class="viz"><svg id="v-14" viewBox="0 0 640 320"></svg></div>
+    <p class="readout" id="r-14">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 15 -->
+<section class="slide"><div class="inner">
+<h1>Logistic regression</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Logistic regression takes the straight line from linear regression and passes it through the sigmoid:</p>
+    </div>
+    <pre class="code">z = m * hours + b
+chance of passing = sigmoid(z)</pre>
+    <div class="txt">
+      <p>The line can still give any number, but the sigmoid turns it into a chance between 0 and 1, which bends the line into an S shape.</p>
+      <p>Moving <code>m</code> changes how steep the S is. Moving <code>b</code> slides it left or right. Fitting works like before: the computer finds the <code>m</code> and <code>b</code> whose curve matches the dots best.</p>
+      <p>Despite the name, logistic regression is used for classification. The name comes from the line it uses inside.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s15m">m</label><input type="range" id="s15m" min="0" max="3" step="0.05" value="1.5"><span class="readout" id="n15m"></span></div>
+    <div class="slider"><label for="s15b">b</label><input type="range" id="s15b" min="-15" max="2" step="0.1" value="-3"><span class="readout" id="n15b"></span></div>
+    <div class="ctrls"><button id="b-15">Use the fitted values</button></div>
+    <div class="viz"><svg id="v-15" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-15">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 16 -->
+<section class="slide"><div class="inner">
+<h1>From a chance to a decision</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The model gives a chance, but often we need a yes or no answer. To get one, we pick a cutoff called the threshold. If the chance is at or above the threshold the prediction is 1, otherwise it's 0.</p>
+      <p>The usual threshold is 0.5, so anyone more likely to pass than fail gets predicted as a pass.</p>
+      <p>Moving the threshold moves the point on the hours axis where predictions flip from fail to pass. A higher threshold means the model needs to be more sure before it says pass.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s16">threshold</label><input type="range" id="s16" min="0.05" max="0.95" step="0.05" value="0.5"><span class="readout" id="n16"></span></div>
+    <div class="legend"><span><i class="dot" style="background:#1a56db"></i>predicted pass</span><span><i class="dot" style="border:2.5px solid #5f6368"></i>predicted fail</span></div>
+    <div class="viz"><svg id="v-16" viewBox="0 0 640 340"></svg></div>
+    <p class="readout" id="r-16">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 17 -->
+<section class="slide"><div class="inner">
+<h1>Logistic regression in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The steps are the same as for linear regression, you just swap in <code>LogisticRegression</code>.</p>
+      <p><code>predict</code> gives the yes or no answer for each student, using a threshold of 0.5.</p>
+      <p><code>predict_proba</code> gives the chances behind those answers. It has two columns: the first is the chance of 0 (fail) and the second is the chance of 1 (pass). The two always add up to 1.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
+df = pd.read_csv("exams.csv")
+X = df[["hours"]]
+y = df["passed"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+print(model.predict(X_test))
+model.predict_proba(X_test)</textarea></div>
+  </div>
+  <div>
+    <p class="note">Pick a number of hours to see what the trained model gives back</p>
+    <div class="slider"><label for="s17">hours</label><input type="range" id="s17" min="0" max="10" step="0.5" value="4"><span class="readout" id="n17"></span></div>
+    <pre class="code" id="c-17"></pre>
+    <div class="bars" id="v-17"></div>
+    <p class="readout" id="r-17">&nbsp;</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 18 -->
+<section class="slide"><div class="inner">
+<h1>Accuracy and its trap</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Accuracy is the share of predictions that were right. It's the first score most people reach for, and often it's fine.</p>
+      <p>But picture a test for a disease where only 5 people in 100 are sick. A "model" that says healthy to everyone, without looking at anything, is right 95 times out of 100. That's 95% accuracy, and it never finds a single sick person.</p>
+      <p>Now compare it to a real test that finds 4 of the 5 sick people, but also wrongly flags 6 healthy ones. Its accuracy is lower, yet it's the only one of the two that's actually useful.</p>
+      <p>When one group is much rarer than the other, accuracy on its own can't tell you whether the model is any good.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button data-g="none" class="on">Nobody tested</button><button data-g="lazy">Always says healthy</button><button data-g="real">Real test</button></div>
+    <div class="legend"><span><i class="dot" style="background:#c5221f"></i>sick</span><span><i class="dot" style="background:#d9dce1"></i>healthy</span><span><i class="dot" style="border:2.5px solid #1a56db"></i>flagged as sick by the model</span></div>
+    <div class="g100" id="v-18"></div>
+    <div class="stats" style="grid-template-columns:repeat(2,minmax(0,1fr))"><div class="stat"><small>accuracy</small><b id="m18a">&nbsp;</b></div><div class="stat"><small>sick people found</small><b id="m18f">&nbsp;</b></div></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 19 -->
+<section class="slide"><div class="inner">
+<h1>The confusion matrix</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A confusion matrix counts every combination of what really happened and what the model predicted. With two classes there are four boxes:</p>
+      <ul>
+        <li><b>True positive</b>: passed, and we predicted pass.</li>
+        <li><b>True negative</b>: failed, and we predicted fail.</li>
+        <li><b>False positive</b>: failed, but we predicted pass.</li>
+        <li><b>False negative</b>: passed, but we predicted fail.</li>
+      </ul>
+      <p>Positive means the class we're looking for, which is 1. True or false says whether the prediction was right. The two red boxes are the mistakes.</p>
+      <p>Tap a box to find those students on the plot, and move the threshold to see the counts change.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s19">threshold</label><input type="range" id="s19" min="0.05" max="0.95" step="0.05" value="0.5"><span class="readout" id="n19"></span></div>
+    <div class="viz" id="v-19cm"></div>
+    <div class="viz"><svg id="v-19" viewBox="0 0 640 340"></svg></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 20 -->
+<section class="slide"><div class="inner">
+<h1>Precision and recall</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Two scores focus on the positive class, and each one answers a different question.</p>
+      <p><b>Precision</b>: of everyone we predicted would pass, how many actually did? It goes down when there are lots of false positives.</p>
+      <p><b>Recall</b>: of everyone who actually passed, how many did we predict? It goes down when there are lots of false negatives.</p>
+      <p>Which one matters more depends on which mistake costs more. A spam filter needs high precision, because sending a real email to spam is worse than letting one spam email through. A disease test needs high recall, because missing a sick person is worse than a false alarm that a second test can clear up.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button data-pr="precision" class="on">Precision</button><button data-pr="recall">Recall</button><button data-pr="accuracy">Accuracy</button></div>
+    <div class="viz" id="v-20"></div>
+    <div class="calc" id="r-20"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 21 -->
+<section class="slide"><div class="inner">
+<h1>The threshold tradeoff</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The threshold lets you trade precision for recall.</p>
+      <p>Lower it and the model says pass more easily. It catches more of the students who really passed, so recall goes up, but it also says pass to more who failed, so precision goes down.</p>
+      <p>Raise it and the opposite happens. The model only says pass when it's very sure, so those predictions are usually right, but it misses more of the real passes.</p>
+      <p>There's no threshold that's best for every problem. You pick it based on which mistake you'd rather make.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s21">threshold</label><input type="range" id="s21" min="0.05" max="0.95" step="0.05" value="0.5"><span class="readout" id="n21"></span></div>
+    <div class="bars" id="v-21b"></div>
+    <div class="viz" style="margin-top:14px"><svg id="v-21" viewBox="0 0 640 300"></svg></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 22 -->
+<section class="slide"><div class="inner">
+<h1>Classification metrics in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Each metric takes the real answers first and the predictions second. Getting them the wrong way round swaps precision and recall, so it's worth double checking.</p>
+      <p>These are scored on the 10 test students. The rows of <code>confusion_matrix</code> are what really happened (0 then 1) and the columns are what was predicted (0 then 1), the same layout as the box on the right.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score
+
+df = pd.read_csv("exams.csv")
+X = df[["hours"]]
+y = df["passed"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+
+model = LogisticRegression()
+model.fit(X_train, y_train)
+pred = model.predict(X_test)
+
+print(confusion_matrix(y_test, pred))
+print(accuracy_score(y_test, pred))
+print(precision_score(y_test, pred))
+print(recall_score(y_test, pred))</textarea></div>
+  </div>
+  <div>
+    <p class="note">Hover a line to see which boxes it uses</p>
+    <div class="viz" id="v-22"></div>
+    <div class="calc" id="r-22"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 23 -->
+<section class="slide"><div class="inner">
+<h1>The whole recipe</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Almost every supervised model you build in scikit-learn follows the same five steps:</p>
+      <ol>
+        <li>Load the data and pick <code>X</code> and <code>y</code>.</li>
+        <li>Split into training and test data.</li>
+        <li>Create the model.</li>
+        <li>Fit it on the training data.</li>
+        <li>Predict on the test data and score the predictions.</li>
+      </ol>
+      <p>To change the kind of model, you change step 3 and the metric in step 5. Everything else stays the same.</p>
+      <p>Try turning this into a linear regression on houses.csv. You'll need to change the file, the columns, the model and the metric.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+
+df = pd.read_csv("exams.csv")
+X = df[["hours"]]
+y = df["passed"]
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+pred = model.predict(X_test)
+accuracy_score(y_test, pred)</textarea></div>
+  </div>
+</div>
+</div></section>
+
+</main>
+<nav class="bar">
+  <span id="pystat">Python: loading</span>
+  <button id="prev">&larr; Back</button>
+  <span id="count">1 / 23</span>
+  <button id="next" class="primary">Next &rarr;</button>
+</nav>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const HOUSES_CSV = `size,age,price
+50,5,165
+60,30,155
+65,12,185
+70,40,125
+80,8,230
+85,25,205
+90,3,235
+95,35,215
+100,18,245
+110,45,220
+115,10,285
+120,28,275
+130,6,310
+135,38,275
+140,22,310
+150,15,355
+160,33,340
+170,4,400
+180,26,375
+200,12,445
+`;
+const EXAMS_CSV = `hours,passed
+0.5,0
+0.5,0
+1.0,0
+1.0,0
+1.5,0
+1.5,0
+2.0,0
+2.0,0
+2.5,0
+2.5,1
+3.0,0
+3.0,0
+3.5,1
+3.5,0
+4.0,0
+4.0,1
+4.5,0
+4.5,0
+5.0,1
+5.0,1
+5.5,1
+5.5,1
+6.0,1
+6.0,1
+6.5,0
+6.5,0
+7.0,1
+7.0,1
+7.5,1
+7.5,1
+8.0,1
+8.0,0
+8.5,1
+8.5,1
+9.0,1
+9.0,1
+9.5,1
+9.5,1
+10.0,1
+10.0,1
+`;
+const parse = csv => { const [h, ...ls] = csv.trim().split("\n"); const c = h.split(","); return ls.map(l => { const v = l.split(","), o = {}; c.forEach((k,i) => o[k] = +v[i]); return o; }); };
+const HS = parse(HOUSES_CSV), EX = parse(EXAMS_CSV);
+
+/* values from scikit-learn on this data */
+const LIN = { m: 1.94849848, b: 42.93554995 };                       // price ~ size, all rows
+const LIN2 = { size: 1.93452385, age: -1.59854586, b: 77.71595296 }; // price ~ size + age
+const LOG = { m: 0.68025188, b: -3.20734936 };                      // passed ~ hours, all rows
+const LOGT = { m: 0.64760512, b: -3.2189965 };                      // passed ~ hours, training rows
+const TEST_IX = [18, 1, 19, 8];                                     // houses test rows, random_state=0
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const FG = "#111111", BLUE = "#1a56db", RED = "#c5221f", MUTED = "#5f6368", LINE = "#d9dce1";
+const SVGNS = "http://www.w3.org/2000/svg";
+function S(tag, attrs = {}, text){
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text != null) e.textContent = text;
+  return e;
+}
+const mean = a => a.reduce((s,x) => s + x, 0) / a.length;
+const sig = z => 1 / (1 + Math.exp(-z));
+const fmt = (x, d = 1) => Number(x).toFixed(d);
+let clipN = 0;
+
+/* axes + clipped drawing area, returns scales */
+function plot(svg, o){
+  svg.innerHTML = "";
+  const H = +svg.getAttribute("viewBox").split(" ")[3];
+  const L = 68, R = 624, T = 16, B = H - 50;
+  const X = v => L + (v - o.x0) / (o.x1 - o.x0) * (R - L);
+  const Y = v => B - (v - o.y0) / (o.y1 - o.y0) * (B - T);
+  const ax = S("g"); svg.append(ax);
+  o.yt.forEach(t => {
+    ax.append(S("line", {x1:L, x2:R, y1:Y(t), y2:Y(t), stroke:LINE}));
+    ax.append(S("text", {x:L - 8, y:Y(t) + 4, "text-anchor":"end"}, o.yf ? o.yf(t) : t));
+  });
+  o.xt.forEach(t => {
+    ax.append(S("line", {x1:X(t), x2:X(t), y1:B, y2:B + 5, stroke:FG}));
+    ax.append(S("text", {x:X(t), y:B + 20, "text-anchor":"middle"}, o.xf ? o.xf(t) : t));
+  });
+  ax.append(S("line", {x1:L, x2:R, y1:B, y2:B, stroke:FG}));
+  ax.append(S("text", {x:(L + R) / 2, y:B + 42, "text-anchor":"middle"}, o.xlab));
+  ax.append(S("text", {x:14, y:(T + B) / 2, "text-anchor":"middle", transform:`rotate(-90 14 ${(T + B) / 2})`}, o.ylab));
+  const id = "clip" + (clipN++);
+  const defs = S("defs"), cp = S("clipPath", {id});
+  cp.append(S("rect", {x:L, y:T - 8, width:R - L, height:B - T + 8}));
+  defs.append(cp); svg.append(defs);
+  const clip = S("g", {"clip-path":`url(#${id})`}); svg.append(clip);
+  const top = S("g"); svg.append(top);
+  return { X, Y, L, R, T, B, clip, top, o };
+}
+function animate(from, to, ms, cb){
+  const t0 = performance.now();
+  const step = now => {
+    const k = Math.min(1, (now - t0) / ms), e = 1 - (1 - k) ** 3;
+    cb(from.map((f,i) => f + (to[i] - f) * e));
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+function fitLine(pts){
+  const mx = mean(pts.map(p => p[0])), my = mean(pts.map(p => p[1]));
+  let num = 0, den = 0; pts.forEach(([x,y]) => { num += (x - mx) * (y - my); den += (x - mx) ** 2; });
+  const m = num / den; return { m, b: my - m * mx };
+}
+function bindSlider(id, fmtFn, cb){
+  const s = $("#" + id), n = $("#n" + id.slice(1));
+  const upd = () => { n.textContent = fmtFn(+s.value); cb(+s.value); };
+  s.addEventListener("input", upd);
+  return { el: s, upd };
+}
+
+/* ---------- slide navigation ---------- */
+const slides = $$(".slide");
+let cur = 0;
+function show(i){
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle("active", k === cur));
+  $("#count").textContent = `${cur + 1} / ${slides.length}`;
+  $("#prev").disabled = cur === 0;
+  $("#next").disabled = cur === slides.length - 1;
+  slides[cur].scrollTop = 0;
+  try { history.replaceState(null, "", "#" + (cur + 1)); } catch (e) {}
+}
+$("#prev").onclick = () => show(cur - 1);
+$("#next").onclick = () => show(cur + 1);
+document.addEventListener("keydown", e => {
+  const t = e.target.tagName;
+  if (t === "TEXTAREA" || t === "INPUT") return;
+  if (["ArrowRight","PageDown"].includes(e.key) || (e.key === " " && t !== "BUTTON")) { e.preventDefault(); show(cur + 1); }
+  if (["ArrowLeft","PageUp"].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+});
+show((parseInt(location.hash.slice(1)) || 1) - 1);
+
+/* ---------- 1: be the model ---------- */
+(function(){
+  const ex = [[1,"fail"],[2,"fail"],[3,"fail"],[3.5,"fail"],[5,"pass"],[6,"pass"],[7.5,"pass"],[9,"pass"]];
+  const nw = [["Ana",8,"pass"],["Ben",1.5,"fail"],["Cara",4.5,"pass"]];
+  $("#v-sup").innerHTML = '<table class="tbl sm"><thead><tr><th class="hl">hours studied</th><th class="tg">result</th></tr></thead><tbody>' +
+    ex.map(r => `<tr><td class="num hl">${r[0]}</td><td class="tg">${r[1]}</td></tr>`).join("") +
+    '</tbody></table><p class="note" style="margin-top:8px">The blue column is the feature, the green one is the target.</p>';
+  const g = $("#v-guess"), out = $("#r-sup");
+  g.innerHTML = nw.map((r,i) => `<span class="who">${r[0]}, ${r[1]} hours</span><button data-i="${i}" data-v="pass">pass</button><button data-i="${i}" data-v="fail">fail</button><span class="res" id="g${i}"></span>`).join("");
+  const done = new Set();
+  g.onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const i = +b.dataset.i, r = nw[i], ok = b.dataset.v === r[2];
+    $$(`button[data-i="${i}"]`, g).forEach(x => x.classList.toggle("on", x === b));
+    $("#g" + i).innerHTML = ok ? `<span class="ok">right</span>, ${r[0]} passed` : `<span class="no">not this time</span>, ${r[0]} ${r[2] === "pass" ? "passed" : "failed"}`;
+    done.add(i);
+    if (done.size === 3) out.textContent = "You learned the rule from the examples, more hours means a pass is more likely. Cara was the hard one, she sits between the last fail and the first pass, and models find those cases hard too.";
+  };
+})();
+
+/* ---------- 2: regression or classification ---------- */
+(function(){
+  const qs = [
+    ["How much will this house sell for?", "r", "a price can be any amount"],
+    ["Is this email spam?", "c", "two groups, spam or not spam"],
+    ["How many minutes late will this train be?", "r", "minutes can be any amount, 4 is a bit more than 3"],
+    ["Is the animal in this photo a cat, dog or rabbit?", "c", "three fixed groups"],
+    ["Will this student pass the exam?", "c", "two groups, pass or fail"],
+    ["What will the temperature be tomorrow?", "r", "a temperature can be anywhere on a scale"],
+  ];
+  const box = $("#v-qs"), out = $("#r-qs"), right = new Set();
+  box.innerHTML = qs.map((q,i) => `<div class="q" id="q${i}"><span>${q[0]}</span><button data-i="${i}" data-a="r">regression</button><button data-i="${i}" data-a="c">classification</button><small hidden></small></div>`).join("");
+  box.onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const i = +b.dataset.i, q = qs[i], ok = b.dataset.a === q[1], d = $("#q" + i);
+    d.classList.toggle("right", ok); d.classList.toggle("wrong", !ok);
+    const sm = $("small", d); sm.hidden = false;
+    sm.textContent = (ok ? "Yes, " : "Not quite, it's ") + (ok ? "" : (q[1] === "r" ? "regression, " : "classification, ")) + q[2] + ".";
+    if (ok) right.add(i); else right.delete(i);
+    out.textContent = `${right.size} of ${qs.length} right`;
+  };
+})();
+
+/* ---------- 3: X and y ---------- */
+(function(){
+  const cols = ["size","age","price"], picks = $("#p-tg"), code = $("#c-tg"), box = $("#v-tg");
+  let tg = "price";
+  picks.innerHTML = cols.map(c => `<button data-c="${c}">${c}</button>`).join("");
+  function draw(){
+    $$("button", picks).forEach(b => b.classList.toggle("on", b.dataset.c === tg));
+    const fs = cols.filter(c => c !== tg);
+    code.textContent = `X = df[[${fs.map(c => `"${c}"`).join(", ")}]]\ny = df["${tg}"]`;
+    box.innerHTML = '<table class="tbl"><thead><tr><th></th>' + cols.map(c => `<th class="num ${c === tg ? "tg" : "hl"}">${c}</th>`).join("") + "</tr></thead><tbody>" +
+      HS.slice(0, 6).map((r,i) => `<tr><td class="ix">${i}</td>` + cols.map(c => `<td class="num ${c === tg ? "tg" : "hl"}">${r[c]}</td>`).join("") + "</tr>").join("") +
+      '</tbody></table><p class="note" style="margin-top:8px">Blue columns go into X, the green column is y.' + (tg !== "price" ? " Any column can be the target, it depends on what you want to predict." : "") + "</p>";
+  }
+  picks.onclick = e => { const b = e.target.closest("button"); if (b){ tg = b.dataset.c; draw(); } };
+  draw();
+})();
+
+/* ---------- 4: scatter, size or age ---------- */
+(function(){
+  const svg = $("#v-sc"), out = $("#r-sc"), code = $("#c-sc");
+  function draw(xc){
+    $$("button[data-x]").forEach(b => b.classList.toggle("on", b.dataset.x === xc));
+    code.textContent = `df.plot.scatter(x="${xc}", y="price")`;
+    const P = xc === "size"
+      ? plot(svg, {x0:40, x1:210, y0:100, y1:470, xt:[50,100,150,200], yt:[100,200,300,400], xlab:"size (square metres)", ylab:"price ($1000s)"})
+      : plot(svg, {x0:0, x1:50, y0:100, y1:470, xt:[0,10,20,30,40,50], yt:[100,200,300,400], xlab:"age (years)", ylab:"price ($1000s)"});
+    HS.forEach((h,i) => {
+      const c = S("circle", {cx:P.X(h[xc]), cy:P.Y(h.price), r:7, fill:BLUE, "fill-opacity":.85, style:"cursor:pointer"});
+      const say = () => { out.textContent = `row ${i}: ${h.size} m², ${h.age} years old, sold for $${h.price},000`; c.setAttribute("fill", FG); };
+      c.addEventListener("mouseenter", say); c.addEventListener("click", say);
+      c.addEventListener("mouseleave", () => c.setAttribute("fill", BLUE));
+      P.top.append(c);
+    });
+    out.innerHTML = "&nbsp;";
+  }
+  $$("button[data-x]").forEach(b => b.onclick = () => draw(b.dataset.x));
+  draw("size");
+})();
+
+/* ---------- house plot with a line, errors and squares (5 to 8, 11) ---------- */
+function housePlot(svg){
+  const P = plot(svg, {x0:40, x1:210, y0:100, y1:470, xt:[50,100,150,200], yt:[100,200,300,400], xlab:"size (square metres)", ylab:"price ($1000s)"});
+  const sq = S("g"), res = S("g"), line = S("line", {stroke:BLUE, "stroke-width":3});
+  P.clip.append(sq, res, line);
+  HS.forEach(h => P.top.append(S("circle", {cx:P.X(h.size), cy:P.Y(h.price), r:6, fill:FG})));
+  function set(m, b, mode = 0){
+    line.setAttribute("x1", P.X(40)); line.setAttribute("y1", P.Y(m * 40 + b));
+    line.setAttribute("x2", P.X(210)); line.setAttribute("y2", P.Y(m * 210 + b));
+    res.innerHTML = ""; sq.innerHTML = "";
+    const errs = HS.map(h => h.price - (m * h.size + b));
+    if (mode >= 1) HS.forEach((h,i) => {
+      const x = P.X(h.size), y1 = P.Y(h.price), y2 = P.Y(m * h.size + b);
+      res.append(S("line", {x1:x, x2:x, y1, y2, stroke:RED, "stroke-width":2}));
+      if (mode >= 2){
+        const s = Math.abs(y1 - y2);
+        sq.append(S("rect", {x, y:Math.min(y1, y2), width:s, height:s, fill:RED, "fill-opacity":.12, stroke:RED, "stroke-opacity":.35}));
+      }
+    });
+    return {
+      sum: errs.reduce((a,e) => a + e, 0),
+      mse: mean(errs.map(e => e * e)),
+      mae: mean(errs.map(Math.abs)),
+    };
+  }
+  return { P, set };
+}
+function lineSlide(n, mode, report){
+  const hp = housePlot($("#v-" + n));
+  let m = 1, b = 150;
+  const draw = () => report(hp.set(m, b, mode), m, b);
+  const sm = bindSlider(`s${n}m`, v => fmt(v, 2), v => { m = v; draw(); });
+  const sb = bindSlider(`s${n}b`, v => fmt(v, 0), v => { b = v; draw(); });
+  sm.upd(); sb.upd();
+  return { hp, get: () => [m, b], setMB(nm, nb){ m = nm; b = nb; sm.el.value = nm; sb.el.value = nb; $(`#n${n}m`).textContent = fmt(nm, 2); $(`#n${n}b`).textContent = fmt(nb, 0); draw(); } };
+}
+
+/* 5 */
+lineSlide(5, 0, (s, m, b) => {
+  $("#r-5").textContent = `a 120 m² house: ${fmt(m,2)} * 120 + ${fmt(b,0)} = ${fmt(m * 120 + b, 0)}, so about $${fmt(m * 120 + b, 0)},000`;
+});
+/* 6 */
+lineSlide(6, 1, s => {
+  $("#r-6").textContent = `total of all errors = ${fmt(s.sum, 0)}`;
+});
+/* 7 */
+lineSlide(7, 2, s => {
+  $("#r-7").textContent = `MSE = ${fmt(s.mse, 0)}`;
+});
+/* 8 */
+(function(){
+  const best = mean(HS.map(h => (h.price - (LIN.m * h.size + LIN.b)) ** 2));
+  const ls = lineSlide(8, 2, s => { $("#r-8").textContent = `your MSE = ${fmt(s.mse, 0)}`; });
+  $("#b-8").onclick = () => {
+    const [m0, b0] = ls.get();
+    animate([m0, b0], [LIN.m, LIN.b], 900, ([m, b]) => {
+      ls.hp.set(m, b, 2);
+      $("#n8m").textContent = fmt(m, 2); $("#n8b").textContent = fmt(b, 0);
+    });
+    $("#s8m").value = LIN.m; $("#s8b").value = LIN.b;
+    setTimeout(() => { $("#r-8").textContent = `best MSE = ${fmt(best, 0)} with m = ${fmt(LIN.m, 2)} and b = ${fmt(LIN.b, 1)}`; }, 950);
+  };
+})();
+
+/* ---------- 9: train / test ---------- */
+(function(){
+  const svg = $("#v-9"), out = $("#r-9");
+  const P = plot(svg, {x0:40, x1:210, y0:100, y1:470, xt:[50,100,150,200], yt:[100,200,300,400], xlab:"size (square metres)", ylab:"price ($1000s)"});
+  const line = S("line", {stroke:FG, "stroke-width":2.5}); P.clip.append(line);
+  const dots = HS.map(h => { const c = S("circle", {cx:P.X(h.size), cy:P.Y(h.price), r:6.5, style:"transition:fill .3s,stroke .3s"}); P.top.append(c); return c; });
+  let order = HS.map((_,i) => i);
+  const shuffle = () => { for (let i = order.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; } };
+  function draw(){
+    const pct = +$("#s9").value, nTest = Math.round(HS.length * pct / 100);
+    $("#n9").textContent = `${pct}%`;
+    const test = new Set(order.slice(0, nTest));
+    dots.forEach((d,i) => {
+      const t = test.has(i);
+      d.setAttribute("fill", t ? "#ffffff" : FG); d.setAttribute("stroke", t ? BLUE : FG); d.setAttribute("stroke-width", t ? 3 : 1);
+    });
+    const tr = HS.filter((_,i) => !test.has(i)), te = HS.filter((_,i) => test.has(i));
+    const f = fitLine(tr.map(h => [h.size, h.price]));
+    line.setAttribute("x1", P.X(40)); line.setAttribute("y1", P.Y(f.m * 40 + f.b));
+    line.setAttribute("x2", P.X(210)); line.setAttribute("y2", P.Y(f.m * 210 + f.b));
+    const mae = rows => mean(rows.map(h => Math.abs(h.price - (f.m * h.size + f.b))));
+    out.textContent = `${tr.length} training rows, ${te.length} test rows\naverage miss on training rows: ${fmt(mae(tr), 1)}\naverage miss on test rows: ${fmt(mae(te), 1)}`;
+    out.style.whiteSpace = "pre";
+  }
+  $("#s9").addEventListener("input", draw);
+  $("#b-9").onclick = () => { shuffle(); draw(); };
+  shuffle(); draw();
+})();
+
+/* ---------- 10: four pieces ---------- */
+(function(){
+  const box = $("#v-10"), btn = $("#b-10");
+  let split = false;
+  const tbl = (title, rows, withIx = true) => `<div><h3>${title}</h3><table class="tbl sm grow"><thead><tr><th></th><th class="num hl">size</th><th class="num tg">price</th></tr></thead><tbody>` +
+    rows.map(([i,h],k) => `<tr style="animation-delay:${k*30}ms"><td class="ix">${i}</td><td class="num hl">${h.size}</td><td class="num tg">${h.price}</td></tr>`).join("") + "</tbody></table></div>";
+  function draw(){
+    const all = HS.map((h,i) => [i,h]);
+    if (!split){
+      box.innerHTML = tbl("X and y, 20 rows", all) + '<p class="note" style="flex-basis:100%">Blue is X, green is y</p>';
+    } else {
+      const te = TEST_IX.map(i => [i, HS[i]]), tr = all.filter(([i]) => !TEST_IX.includes(i));
+      box.innerHTML = tbl("X_train and y_train, 16 rows", tr) + tbl("X_test and y_test, 4 rows", te) +
+        '<p class="note" style="flex-basis:100%">The model only ever sees the left table while it learns. The test rows are picked at random, so they come out of order.</p>';
+    }
+    btn.textContent = split ? "Put them back together" : "Split the data";
+  }
+  btn.onclick = () => { split = !split; draw(); };
+  draw();
+})();
+
+/* ---------- 11: regression metrics ---------- */
+(function(){
+  const hp = housePlot($("#v-11"));
+  const avg = mean(HS.map(h => h.price));
+  const msAvg = mean(HS.map(h => (h.price - avg) ** 2));
+  function draw(mode){
+    $$("button[data-mode]").forEach(b => b.classList.toggle("on", b.dataset.mode === mode));
+    const [m, b] = mode === "avg" ? [0, avg] : [LIN.m, LIN.b];
+    const s = hp.set(m, b, 1);
+    $("#m-mae").textContent = fmt(s.mae, 1);
+    $("#m-rmse").textContent = fmt(Math.sqrt(s.mse), 1);
+    $("#m-r2").textContent = fmt(1 - s.mse / msAvg, 2);
+    $("#r-11").textContent = mode === "avg" ? `every house is predicted at the average price, ${fmt(avg, 0)}` : `the fitted line, price = ${fmt(LIN.m, 2)} * size + ${fmt(LIN.b, 1)}`;
+  }
+  $$("button[data-mode]").forEach(b => b.onclick = () => draw(b.dataset.mode));
+  draw("fit");
+})();
+
+/* ---------- 12: two features ---------- */
+(function(){
+  let size = 120, age = 10;
+  function draw(){
+    const a = LIN2.size * size, c = LIN2.age * age, p = a + c + LIN2.b;
+    $("#c-12").textContent = `price = ${fmt(LIN2.size,2)} * ${size} + (${fmt(LIN2.age,2)}) * ${age} + ${fmt(LIN2.b,1)}\n      = ${fmt(p,0)}, about $${fmt(p,0)},000`;
+    const max = 420;
+    $("#v-12").innerHTML = [["from size", a, ""], ["from age", c, "b"], ["intercept b", LIN2.b, ""]].map(([l,v,k]) =>
+      `<span class="lab">${l}</span><div class="track"><div class="bar ${k}" style="width:${Math.abs(v) / max * 100}%"></div></div><span class="n">${v < 0 ? "" : "+"}${fmt(v,0)}</span>`).join("");
+  }
+  bindSlider("s12s", v => `${v} m²`, v => { size = v; draw(); }).upd();
+  bindSlider("s12a", v => `${v} yrs`, v => { age = v; draw(); }).upd();
+})();
+
+/* ---------- exam plot helper (13, 15, 16, 19) ---------- */
+function examPlot(svg, y0 = -0.1, y1 = 1.1){
+  const yt = y0 < -0.2 ? [-0.5, 0, 0.5, 1, 1.5] : [0, 0.5, 1];
+  const P = plot(svg, {x0:0, x1:10.5, y0, y1, xt:[0,2,4,6,8,10], yt, xlab:"hours studied", ylab: y0 < -0.2 ? "passed" : "chance of passing"});
+  const dots = EX.map((e,i) => {
+    const c = S("circle", {cx:P.X(e.hours) + (i % 2 ? 5 : -5), cy:P.Y(e.passed), r:6.5, fill:FG, "fill-opacity":.85, style:"transition:fill .25s,stroke .25s,opacity .25s"});
+    P.top.append(c); return c;
+  });
+  return { P, dots };
+}
+function curvePath(P, m, b){
+  let d = "";
+  for (let i = 0; i <= 120; i++){ const h = i / 120 * 10.5; d += (i ? "L" : "M") + P.X(h).toFixed(1) + "," + P.Y(sig(m * h + b)).toFixed(1); }
+  return d;
+}
+
+/* ---------- 13: a line on 0/1 data ---------- */
+(function(){
+  const { P } = examPlot($("#v-13"), -0.6, 1.6), btn = $("#b-13"), out = $("#r-13");
+  const bad = S("g", {opacity:0, style:"transition:opacity .5s"});
+  bad.append(S("rect", {x:P.L, y:P.T - 8, width:P.R - P.L, height:P.Y(1) - P.T + 8, fill:RED, "fill-opacity":.08}));
+  bad.append(S("rect", {x:P.L, y:P.Y(0), width:P.R - P.L, height:P.B - P.Y(0), fill:RED, "fill-opacity":.08}));
+  bad.append(S("text", {x:P.R - 8, y:P.Y(1.45), "text-anchor":"end", style:"fill:#c5221f", "font-weight":700}, "above 1, more than certain?"));
+  bad.append(S("text", {x:P.R - 8, y:P.Y(-0.45), "text-anchor":"end", style:"fill:#c5221f", "font-weight":700}, "below 0, less than impossible?"));
+  P.clip.prepend(bad);
+  const f = fitLine(EX.map(e => [e.hours, e.passed]));
+  const line = S("line", {x1:P.X(0), y1:P.Y(f.b), x2:P.X(0), y2:P.Y(f.b), stroke:BLUE, "stroke-width":3});
+  P.clip.append(line);
+  let on = false;
+  btn.onclick = () => {
+    on = !on;
+    if (on){
+      animate([0], [1], 700, ([k]) => { const h = 10.5 * k; line.setAttribute("x2", P.X(h)); line.setAttribute("y2", P.Y(f.m * h + f.b)); });
+      // extend to both sides of the plot
+      line.setAttribute("x1", P.X(0)); line.setAttribute("y1", P.Y(f.b));
+      bad.setAttribute("opacity", 1);
+      out.textContent = `0 hours gives ${fmt(f.b, 2)} and 10 hours gives ${fmt(f.m * 10 + f.b, 2)}, neither is a real answer`;
+    } else {
+      line.setAttribute("x2", P.X(0)); line.setAttribute("y2", P.Y(f.b));
+      bad.setAttribute("opacity", 0); out.innerHTML = "&nbsp;";
+    }
+    btn.textContent = on ? "Remove the line" : "Fit a straight line";
+  };
+})();
+
+/* ---------- 14: sigmoid ---------- */
+(function(){
+  const svg = $("#v-14");
+  const P = plot(svg, {x0:-8, x1:8, y0:-0.05, y1:1.05, xt:[-8,-6,-4,-2,0,2,4,6,8], yt:[0,0.5,1], xlab:"input z", ylab:"sigmoid(z)"});
+  let d = ""; for (let i = 0; i <= 160; i++){ const z = -8 + i / 10; d += (i ? "L" : "M") + P.X(z).toFixed(1) + "," + P.Y(sig(z)).toFixed(1); }
+  P.clip.append(S("path", {d, fill:"none", stroke:FG, "stroke-width":3}));
+  const g1 = S("line", {stroke:BLUE, "stroke-dasharray":"5 4", "stroke-width":2}), g2 = S("line", {stroke:BLUE, "stroke-dasharray":"5 4", "stroke-width":2});
+  const dot = S("circle", {r:8, fill:BLUE});
+  P.top.append(g1, g2, dot);
+  bindSlider("s14", v => fmt(v, 1), z => {
+    const x = P.X(z), y = P.Y(sig(z));
+    dot.setAttribute("cx", x); dot.setAttribute("cy", y);
+    g1.setAttribute("x1", x); g1.setAttribute("x2", x); g1.setAttribute("y1", P.B); g1.setAttribute("y2", y);
+    g2.setAttribute("x1", P.L); g2.setAttribute("x2", x); g2.setAttribute("y1", y); g2.setAttribute("y2", y);
+    $("#r-14").textContent = `sigmoid(${fmt(z,1)}) = ${fmt(sig(z), 3)}`;
+  }).upd();
+})();
+
+/* ---------- 15: S curve with sliders ---------- */
+(function(){
+  const { P } = examPlot($("#v-15"));
+  const path = S("path", {fill:"none", stroke:BLUE, "stroke-width":3}); P.clip.append(path);
+  let m = 1.5, b = -3;
+  const draw = () => {
+    path.setAttribute("d", curvePath(P, m, b));
+    $("#r-15").textContent = `5 hours: z = ${fmt(m,2)} * 5 + (${fmt(b,1)}) = ${fmt(m * 5 + b, 2)}, chance of passing = ${fmt(sig(m * 5 + b) * 100, 0)}%`;
+  };
+  const sm = bindSlider("s15m", v => fmt(v, 2), v => { m = v; draw(); });
+  const sb = bindSlider("s15b", v => fmt(v, 1), v => { b = v; draw(); });
+  sm.upd(); sb.upd();
+  $("#b-15").onclick = () => {
+    animate([m, b], [LOG.m, LOG.b], 800, ([a, c]) => { m = a; b = c; $("#n15m").textContent = fmt(m, 2); $("#n15b").textContent = fmt(b, 1); draw(); });
+    $("#s15m").value = LOG.m; $("#s15b").value = LOG.b;
+  };
+})();
+
+/* ---------- shared: predictions at a threshold ---------- */
+const PROB = EX.map(e => sig(LOG.m * e.hours + LOG.b));
+function cmAt(t){
+  const c = { tn:0, fp:0, fn:0, tp:0 }, kind = [];
+  EX.forEach((e,i) => {
+    const p = PROB[i] >= t ? 1 : 0, k = e.passed ? (p ? "tp" : "fn") : (p ? "fp" : "tn");
+    c[k]++; kind.push(k);
+  });
+  const prec = c.tp + c.fp ? c.tp / (c.tp + c.fp) : null;
+  const rec = c.tp + c.fn ? c.tp / (c.tp + c.fn) : null;
+  return { ...c, kind, prec, rec, acc: (c.tp + c.tn) / EX.length };
+}
+const CELL = {
+  tn: ["true negative", "failed, predicted fail"],
+  fp: ["false positive", "failed, predicted pass"],
+  fn: ["false negative", "passed, predicted fail"],
+  tp: ["true positive", "passed, predicted pass"],
+};
+function cmTable(c, opts = {}){
+  const td = k => `<td data-k="${k}" class="${opts.click ? "click" : ""} ${k === "fp" || k === "fn" ? "mis" : ""}"><b>${c[k]}</b><small>${CELL[k][0]}</small></td>`;
+  return `<table class="cm"><tr><th></th><th>predicted 0 (fail)</th><th>predicted 1 (pass)</th></tr>` +
+    `<tr><th class="rowh">actually 0 (fail)</th>${td("tn")}${td("fp")}</tr>` +
+    `<tr><th class="rowh">actually 1 (pass)</th>${td("fn")}${td("tp")}</tr></table>`;
+}
+
+/* ---------- 16: threshold ---------- */
+(function(){
+  const { P, dots } = examPlot($("#v-16"));
+  P.clip.append(S("path", {d:curvePath(P, LOG.m, LOG.b), fill:"none", stroke:FG, "stroke-width":2.5}));
+  const hl = S("line", {x1:P.L, x2:P.R, stroke:BLUE, "stroke-dasharray":"6 4", "stroke-width":2});
+  const vl = S("line", {y1:P.T, y2:P.B, stroke:BLUE, "stroke-width":2});
+  const shade = S("rect", {y:P.T - 8, height:P.B - P.T + 8, fill:BLUE, "fill-opacity":.07});
+  P.clip.prepend(shade); P.clip.append(hl, vl);
+  bindSlider("s16", v => fmt(v, 2), t => {
+    const cut = (Math.log(t / (1 - t)) - LOG.b) / LOG.m;
+    hl.setAttribute("y1", P.Y(t)); hl.setAttribute("y2", P.Y(t));
+    vl.setAttribute("x1", P.X(cut)); vl.setAttribute("x2", P.X(cut));
+    shade.setAttribute("x", P.X(cut)); shade.setAttribute("width", Math.max(0, P.R - P.X(cut)));
+    let n = 0;
+    dots.forEach((d,i) => {
+      const p = PROB[i] >= t; if (p) n++;
+      d.setAttribute("fill", p ? BLUE : "#ffffff"); d.setAttribute("stroke", p ? BLUE : MUTED); d.setAttribute("stroke-width", p ? 1 : 2.5);
+      d.setAttribute("fill-opacity", 1);
+    });
+    $("#r-16").textContent = `students who studied ${fmt(cut, 1)} hours or more are predicted to pass (${n} of 40)`;
+  }).upd();
+})();
+
+/* ---------- 17: predict and predict_proba ---------- */
+(function(){
+  bindSlider("s17", v => fmt(v, 1), h => {
+    const p1 = sig(LOGT.m * h + LOGT.b), p0 = 1 - p1;
+    $("#c-17").textContent = `model.predict_proba([[${fmt(h,1)}]])  ->  [[${fmt(p0,2)}, ${fmt(p1,2)}]]\nmodel.predict([[${fmt(h,1)}]])        ->  [${p1 >= 0.5 ? 1 : 0}]`;
+    $("#v-17").innerHTML = `<span class="lab">chance of 0, fail</span><div class="track"><div class="bar" style="width:${p0 * 100}%"></div></div><span class="n">${fmt(p0,2)}</span>` +
+      `<span class="lab">chance of 1, pass</span><div class="track"><div class="bar b" style="width:${p1 * 100}%"></div></div><span class="n">${fmt(p1,2)}</span>`;
+    $("#r-17").textContent = p1 >= 0.5 ? "pass is 0.5 or more, so predict gives 1" : "pass is below 0.5, so predict gives 0";
+  }).upd();
+})();
+
+/* ---------- 18: accuracy trap ---------- */
+(function(){
+  const box = $("#v-18");
+  const sick = new Set([7, 23, 48, 66, 91]), found = [7, 23, 48, 66], falseAlarm = [12, 30, 41, 57, 74, 85];
+  box.innerHTML = Array.from({length:100}, (_,i) => `<i class="${sick.has(i) ? "sick" : ""}"></i>`).join("");
+  const cells = $$("i", box);
+  function draw(g){
+    $$("button[data-g]").forEach(b => b.classList.toggle("on", b.dataset.g === g));
+    const flag = new Set(g === "real" ? [...found, ...falseAlarm] : []);
+    cells.forEach((c,i) => c.classList.toggle("flag", flag.has(i)));
+    if (g === "none"){ $("#m18a").innerHTML = "&nbsp;"; $("#m18f").innerHTML = "&nbsp;"; return; }
+    let right = 0; cells.forEach((_,i) => { if (sick.has(i) === flag.has(i)) right++; });
+    $("#m18a").textContent = right + "%";
+    $("#m18f").textContent = `${[...sick].filter(i => flag.has(i)).length} of 5`;
+  }
+  $$("button[data-g]").forEach(b => b.onclick = () => draw(b.dataset.g));
+  draw("none");
+})();
+
+/* ---------- 19: confusion matrix ---------- */
+(function(){
+  const { P, dots } = examPlot($("#v-19"));
+  P.clip.append(S("path", {d:curvePath(P, LOG.m, LOG.b), fill:"none", stroke:FG, "stroke-width":2.5}));
+  const hl = S("line", {x1:P.L, x2:P.R, stroke:BLUE, "stroke-dasharray":"6 4", "stroke-width":2}); P.clip.append(hl);
+  const box = $("#v-19cm");
+  let sel = null, t = 0.5;
+  const STY = { tp:[BLUE, BLUE, 1], tn:["#ffffff", MUTED, 2.5], fp:[RED, RED, 1], fn:["#ffffff", RED, 2.5] };
+  function draw(){
+    const c = cmAt(t);
+    box.innerHTML = cmTable(c, { click:true }) + '<div class="legend"><span><i class="dot" style="background:#1a56db"></i>true positive</span><span><i class="dot" style="border:2.5px solid #5f6368"></i>true negative</span><span><i class="dot" style="background:#c5221f"></i>false positive</span><span><i class="dot" style="border:2.5px solid #c5221f"></i>false negative</span></div>';
+    $$("td[data-k]", box).forEach(td => { td.classList.toggle("sel", td.dataset.k === sel); td.classList.toggle("dim", sel && td.dataset.k !== sel); });
+    hl.setAttribute("y1", P.Y(t)); hl.setAttribute("y2", P.Y(t));
+    dots.forEach((d,i) => {
+      const [f, s, w] = STY[c.kind[i]];
+      d.setAttribute("fill", f); d.setAttribute("stroke", s); d.setAttribute("stroke-width", w); d.setAttribute("fill-opacity", 1);
+      d.style.opacity = !sel || c.kind[i] === sel ? 1 : 0.12;
+    });
+  }
+  box.onclick = e => { const td = e.target.closest("td[data-k]"); if (!td) return; sel = sel === td.dataset.k ? null : td.dataset.k; draw(); };
+  bindSlider("s19", v => fmt(v, 2), v => { t = v; draw(); }).upd();
+})();
+
+/* ---------- 20: precision and recall ---------- */
+(function(){
+  const c = cmAt(0.5), box = $("#v-20"), out = $("#r-20");
+  box.innerHTML = cmTable(c);
+  const use = { precision:["tp","fp"], recall:["tp","fn"], accuracy:["tp","tn","fp","fn"] };
+  function draw(k){
+    $$("button[data-pr]").forEach(b => b.classList.toggle("on", b.dataset.pr === k));
+    $$("td[data-k]", box).forEach(td => { const on = use[k].includes(td.dataset.k); td.classList.toggle("sel", on); td.classList.toggle("dim", !on); });
+    if (k === "precision") out.innerHTML = `precision = TP / (TP + FP)<br>          = ${c.tp} / (${c.tp} + ${c.fp}) = ${fmt(c.prec, 2)}<br><span class="note">predicted pass: ${c.tp + c.fp} students, and ${c.tp} of them really passed</span>`;
+    if (k === "recall") out.innerHTML = `recall = TP / (TP + FN)<br>       = ${c.tp} / (${c.tp} + ${c.fn}) = ${fmt(c.rec, 2)}<br><span class="note">really passed: ${c.tp + c.fn} students, and we predicted ${c.tp} of them</span>`;
+    if (k === "accuracy") out.innerHTML = `accuracy = (TP + TN) / everyone<br>         = (${c.tp} + ${c.tn}) / 40 = ${fmt(c.acc, 2)}<br><span class="note">every box counts, so it can't tell the two kinds of mistake apart</span>`;
+    out.style.whiteSpace = "pre-wrap";
+  }
+  $$("button[data-pr]").forEach(b => b.onclick = () => draw(b.dataset.pr));
+  draw("precision");
+})();
+
+/* ---------- 21: tradeoff ---------- */
+(function(){
+  const svg = $("#v-21"), bars = $("#v-21b");
+  const P = plot(svg, {x0:0, x1:1, y0:0, y1:1.05, xt:[0,0.2,0.4,0.6,0.8,1], yt:[0,0.5,1], xlab:"threshold", ylab:"score"});
+  let dp = "", dr = "";
+  for (let i = 1; i <= 99; i++){
+    const t = i / 100, c = cmAt(t);
+    if (c.prec != null) dp += (dp ? "L" : "M") + P.X(t).toFixed(1) + "," + P.Y(c.prec).toFixed(1);
+    dr += (dr ? "L" : "M") + P.X(t).toFixed(1) + "," + P.Y(c.rec).toFixed(1);
+  }
+  P.clip.append(S("path", {d:dp, fill:"none", stroke:BLUE, "stroke-width":3}));
+  P.clip.append(S("path", {d:dr, fill:"none", stroke:FG, "stroke-width":3, "stroke-dasharray":"7 5"}));
+  P.top.append(S("text", {x:P.X(0.04), y:P.Y(0.4), style:"fill:#1a56db", "font-weight":700}, "precision"));
+  P.top.append(S("text", {x:P.X(0.04), y:P.Y(1) - 8, "font-weight":700}, "recall"));
+  const vl = S("line", {y1:P.T, y2:P.B, stroke:RED, "stroke-width":2}); P.top.append(vl);
+  bindSlider("s21", v => fmt(v, 2), t => {
+    const c = cmAt(t);
+    vl.setAttribute("x1", P.X(t)); vl.setAttribute("x2", P.X(t));
+    bars.innerHTML = [["precision", c.prec, "b"], ["recall", c.rec, ""]].map(([l,v,k]) =>
+      `<span class="lab">${l}</span><div class="track"><div class="bar ${k}" style="width:${(v || 0) * 100}%"></div></div><span class="n">${v == null ? "n/a" : fmt(v, 2)}</span>`).join("") +
+      `<span class="lab"></span><span class="note" style="grid-column:2/4;margin:0">predicted pass: ${c.tp + c.fp}, false positives: ${c.fp}, false negatives: ${c.fn}</span>`;
+  }).upd();
+})();
+
+/* ---------- 22: metrics from the code ---------- */
+(function(){
+  const c = { tn:3, fp:1, fn:1, tp:5 }, box = $("#v-22"), out = $("#r-22");
+  box.innerHTML = cmTable(c) + '<p class="note" style="margin-top:8px">confusion_matrix prints this as [[3 1] [1 5]]</p>';
+  const lines = [
+    ["accuracy  = (5 + 3) / 10 = 0.80", ["tp","tn","fp","fn"]],
+    ["precision = 5 / (5 + 1)  = 0.83", ["tp","fp"]],
+    ["recall    = 5 / (5 + 1)  = 0.83", ["tp","fn"]],
+  ];
+  out.innerHTML = lines.map((l,i) => `<div data-i="${i}">${l[0].replace(/ /g, "&nbsp;")}</div>`).join("");
+  const tds = $$("td[data-k]", box);
+  out.addEventListener("mouseover", e => {
+    const d = e.target.closest("div[data-i]"); if (!d) return;
+    const u = lines[+d.dataset.i][1];
+    tds.forEach(td => { td.classList.toggle("sel", u.includes(td.dataset.k)); td.classList.toggle("dim", !u.includes(td.dataset.k)); });
+  });
+  out.addEventListener("mouseleave", () => tds.forEach(td => td.classList.remove("sel", "dim")));
+})();
+
+/* ---------- Python in the browser (Pyodide) ---------- */
+const PY_HELPER = `
+import ast, io, sys, warnings
+import pandas as pd
+warnings.filterwarnings("ignore")
+pd.set_option("display.width", 160)
+pd.set_option("display.max_columns", 30)
+pd.set_option("display.max_rows", 60)
+
+def _run(code):
+    ns = {"pd": pd}
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        tree = ast.parse(code)
+        last = None
+        if tree.body and isinstance(tree.body[-1], ast.Expr):
+            last = ast.Expression(tree.body.pop().value)
+        exec(compile(tree, "<code>", "exec"), ns)
+        if last is not None:
+            result = eval(compile(last, "<code>", "eval"), ns)
+            if result is not None:
+                print(repr(result) if isinstance(result, str) else result)
+    except Exception as e:
+        print(type(e).__name__ + ": " + str(e))
+    finally:
+        sys.stdout = old
+    return buf.getvalue()
+`;
+
+let pyPromise = null;
+const pystat = $("#pystat");
+function loadPy(){
+  if (pyPromise) return pyPromise;
+  pystat.textContent = "Python: loading"; pystat.classList.remove("ready");
+  pyPromise = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+    s.onload = res;
+    s.onerror = () => rej(new Error("Could not load Python. Check the internet connection and press Run again."));
+    document.head.appendChild(s);
+  }).then(() => loadPyodide())
+    .then(async py => {
+      await py.loadPackage(["pandas", "scikit-learn"]);
+      py.runPython(PY_HELPER);
+      pystat.textContent = "Python: ready"; pystat.classList.add("ready");
+      return py;
+    })
+    .catch(e => { pyPromise = null; pystat.textContent = "Python: not loaded"; throw e; });
+  return pyPromise;
+}
+function writeFiles(py){
+  py.FS.writeFile("houses.csv", HOUSES_CSV);
+  py.FS.writeFile("exams.csv", EXAMS_CSV);
+}
+
+$$(".runner").forEach(r => {
+  const ta = $("textarea", r), orig = ta.value;
+  const fit = () => { ta.rows = Math.max(ta.value.split("\n").length, 2); };
+  fit();
+  ta.addEventListener("input", fit);
+  const bar = document.createElement("div"); bar.className = "run-bar";
+  bar.innerHTML = `<button class="primary run">Run</button><button class="reset">Reset code</button><span class="hint">Ctrl+Enter runs</span>`;
+  const out = document.createElement("pre"); out.className = "out"; out.hidden = true;
+  r.append(bar, out);
+  async function run(){
+    out.hidden = false;
+    out.textContent = "Running... (the first run loads Python, it can take a few seconds)";
+    try {
+      const py = await loadPy();
+      writeFiles(py);
+      out.textContent = py.globals.get("_run")(ta.value) || "(no output)";
+    } catch (e) { out.textContent = e.message || String(e); }
+  }
+  $(".run", bar).onclick = run;
+  $(".reset", bar).onclick = () => { ta.value = orig; fit(); out.hidden = true; };
+  ta.addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); run(); }
+    if (e.key === "Tab" && !e.shiftKey){
+      e.preventDefault();
+      const s = ta.selectionStart; ta.setRangeText("    ", s, ta.selectionEnd, "end");
+    }
+  });
+});
+
+window.addEventListener("load", () => setTimeout(() => loadPy().catch(() => {}), 400));
+</script>
+</body>
+</html>
