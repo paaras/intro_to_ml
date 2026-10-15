@@ -25,7 +25,8 @@ h1{font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;margin:0 0 28px;text-wrap:
 .kicker{font-size:.85rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
 .cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:44px;align-items:start}
 .cols > *{min-width:0}
-@media (max-width:900px){.cols{grid-template-columns:minmax(0,1fr)}}
+.cols.cols-recap{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+@media (max-width:900px){.cols,.cols.cols-recap{grid-template-columns:minmax(0,1fr)}}
 .txt{font-size:1.15rem;line-height:1.6;max-width:62ch;margin:0 0 22px}
 .txt p{margin:0 0 .9em}
 .txt p:last-child{margin-bottom:0}
@@ -674,7 +675,7 @@ print(cross_val_score(model, X, y, cv=5, scoring="roc_auc").mean())</textarea></
 <!-- 24 -->
 <section class="slide"><div class="inner">
 <h1>Recap</h1>
-<div class="cols" style="grid-template-columns:minmax(0,4fr) minmax(0,6fr)">
+<div class="cols cols-recap">
   <div>
     <div class="recap">
       <div><b>k-nearest neighbors</b><span>Goes with the majority of the k nearest points. Set <code>n_neighbors</code>, and scale your features.</span></div>
