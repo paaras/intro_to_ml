@@ -1,0 +1,1858 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Neural Networks</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#111111; --muted:#5f6368; --line:#d9dce1; --soft:#f3f4f6;
+  --accent:#1a56db; --accent-soft:#e1eafd;
+  --bad:#c5221f; --bad-soft:#fce8e6; --good:#137333; --good-soft:#e6f4ea;
+  --orange:#e8590c; --orange-soft:#fde3d2; --lemon:#b88a00; --lemon-soft:#f8eec2;
+  --mono: ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:18px;line-height:1.5}
+.deck{height:100%;display:flex;flex-direction:column}
+#slides{flex:1;min-height:0}
+.slide{display:none;height:100%;overflow-y:auto;box-sizing:border-box;padding:36px clamp(16px,5vw,64px) 40px}
+.slide.active{display:block}
+.inner{max-width:1200px;margin:0 auto}
+h1{font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;margin:0 0 28px;text-wrap:balance}
+.kicker{font-size:.85rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:44px;align-items:start}
+.cols > *{min-width:0}
+.cols.cols-recap{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+@media (max-width:900px){.cols,.cols.cols-recap{grid-template-columns:minmax(0,1fr)}}
+.txt{font-size:1.15rem;line-height:1.6;max-width:62ch;margin:0 0 22px}
+.txt p{margin:0 0 .9em}
+.txt p:last-child{margin-bottom:0}
+.txt ol,.txt ul{margin:0 0 .9em;padding-left:1.3em}
+.txt li{margin:0 0 .35em}
+.big{font-size:1.25rem;font-weight:600;line-height:1.45;border-left:4px solid var(--fg);padding:2px 0 2px 14px;margin:0 0 22px;max-width:52ch}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.08em .35em;border-radius:4px}
+pre.code{font-family:var(--mono);font-size:1rem;background:var(--soft);padding:14px 16px;border-radius:6px;margin:0 0 22px;overflow-x:auto;white-space:pre}
+.note{color:var(--muted);font-size:1rem;margin:0 0 16px}
+button{font:inherit;font-size:.95rem;padding:7px 14px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);border-radius:6px;cursor:pointer}
+button:hover{background:var(--soft)}
+button:disabled{opacity:.4;cursor:default}
+button.on,button.primary{background:var(--fg);color:var(--bg)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.readout{font-family:var(--mono);font-size:1rem}
+.say{font-size:1.05rem;line-height:1.55;min-height:3.1em;margin:12px 0 0}
+.viz{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto}
+svg text{fill:var(--fg);font-family:var(--sans);font-size:13px}
+svg.click{cursor:crosshair}
+input[type=range]{width:200px;accent-color:var(--fg)}
+.slider{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin:8px 0;max-width:460px}
+.slider label{font-family:var(--mono);min-width:6ch}
+.slider input{width:100%}
+.slider .readout{min-width:6ch;text-align:right}
+.ok{color:var(--good);font-weight:700}
+.no{color:var(--bad);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:.92rem;color:var(--muted);margin:6px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{display:inline-block}
+
+/* tables */
+.tbl{border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:4px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:pre}
+.tbl th{border-bottom:2px solid var(--fg)}
+.tbl.sm th,.tbl.sm td{padding:2px 10px;font-size:.85rem}
+.tbl .num{text-align:right}
+
+/* bars */
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center;max-width:520px;margin:10px 0}
+.bars .lab{font-family:var(--mono);white-space:pre;text-align:right}
+.bars .track{height:22px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bars .fill{height:100%;background:var(--fg);width:0;transition:width .25s}
+.bars .fill.b{background:var(--accent)}
+.bars .n{font-variant-numeric:tabular-nums;min-width:4ch;font-weight:700;font-family:var(--mono)}
+
+/* split sides (slide: picking a question) */
+.sides{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.side{border:1.5px solid var(--line);border-radius:8px;padding:8px 12px;font-size:.95rem}
+.side b{font-family:var(--mono)}
+.side small{display:block;color:var(--muted)}
+
+/* folds */
+.folds{display:grid;gap:6px;margin:6px 0 4px}
+.fold-row{display:grid;grid-template-columns:5.5em repeat(5,1fr) 4.5em;gap:5px;align-items:center;font-size:.9rem;transition:opacity .25s}
+.fold-row.later{opacity:.35}
+.fold-row .rl{color:var(--muted)}
+.fold-row .sc{font-family:var(--mono);font-weight:700;text-align:right}
+.blk{height:28px;border-radius:5px;background:var(--soft);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:.78rem;color:var(--muted)}
+.blk.tr{background:var(--soft)}
+.blk.te{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
+
+/* recap */
+.recap{display:grid;gap:12px}
+.recap div{border:1.5px solid var(--line);border-radius:8px;padding:10px 14px}
+.recap b{display:block;font-size:1.05rem}
+.recap span{color:var(--muted);font-size:.98rem}
+.recap code{font-size:.85em}
+
+/* code runner */
+.runner{border:1.5px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 18px;background:var(--bg)}
+.runner textarea{display:block;width:100%;box-sizing:border-box;border:0;resize:vertical;font-family:var(--mono);font-size:1rem;line-height:1.5;padding:12px 14px;background:var(--soft);color:var(--fg);white-space:pre;overflow-x:auto;tab-size:4}
+.run-bar{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.run-bar .hint{color:var(--muted);font-size:.85rem;margin-left:auto}
+.out{margin:0;padding:12px 14px;font-family:var(--mono);font-size:.86rem;line-height:1.45;border-top:1px solid var(--line);max-height:360px;overflow:auto;white-space:pre}
+
+/* nav */
+.bar{display:flex;align-items:center;gap:12px;padding:10px clamp(16px,5vw,64px) calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg)}
+#count{font-variant-numeric:tabular-nums;color:var(--muted);min-width:5ch;text-align:center}
+#pystat{color:var(--muted);font-size:.85rem;margin-right:auto}
+#pystat.ready{color:var(--good)}
+@media (max-width:700px){
+  #pystat,#count{display:none}
+  .bar{justify-content:space-between}
+}
+@media (max-width:700px){svg text{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* sorting cards (birds and planes, when to use a network) */
+.sort{display:grid;gap:8px;margin:4px 0 10px}
+.sort .card{border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
+.sort .card .q{font-size:1rem;line-height:1.4}
+.sort .card .pick{display:flex;gap:6px}
+.sort .card .pick button{font-size:.85rem;padding:4px 10px}
+.sort .card .why{grid-column:1 / -1;font-size:.92rem;color:var(--muted);display:none}
+.sort .card.done .why{display:block}
+.sort .card.right{border-color:var(--good);background:var(--good-soft)}
+.sort .card.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.sort .card .why b{color:var(--fg)}
+@media (max-width:520px){.sort .card{grid-template-columns:1fr}}
+
+/* toggles that show on/off state */
+button.tog{min-width:9ch}
+button.tog.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* formula readout */
+.calc{font-family:var(--mono);font-size:.95rem;background:var(--soft);border-radius:6px;padding:10px 14px;margin:10px 0 0;white-space:pre-wrap;line-height:1.55}
+
+/* dog photos */
+.photos{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 0}
+.photo{border-radius:8px;padding:8px 6px;text-align:center;font-size:.85rem;line-height:1.35;border:2px solid transparent}
+.photo.snow{background:#e8f0fa}
+.photo.grass{background:#e4efdc}
+.photo .bg{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.photo .who{font-weight:700;font-size:.98rem}
+.photo.miss{border-color:var(--bad)}
+.photo.hit{border-color:var(--good)}
+@media (max-width:520px){.photos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* small stat row */
+.stats{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--mono);font-size:.98rem;margin:8px 0 0}
+.stats b{font-weight:700}
+
+/* logic gate plot with its truth table */
+.gate-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center}
+@media (max-width:600px){.gate-row{grid-template-columns:minmax(0,1fr)}}
+
+/* touch: no double-tap zoom, no sideways swiping of the page, pinch zoom still works */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overscroll-behavior:none}
+.deck{height:100vh;height:100dvh}
+.slide{touch-action:pan-y pinch-zoom;overscroll-behavior:contain}
+.viz,.runner textarea,.out,.tbl-wrap,#t-16{touch-action:pan-x pan-y pinch-zoom}
+button,input,textarea,label{touch-action:manipulation}
+button{min-height:40px}
+@media (pointer:coarse){button{min-height:44px}input[type=range]{min-height:32px}}
+
+/* screen reader only text */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* small screens */
+@media (max-width:420px){
+  .slider{grid-template-columns:auto minmax(0,1fr) auto;gap:8px}
+  .slider label{min-width:0}
+  .bars{grid-template-columns:auto minmax(0,1fr) auto}
+  h1{font-size:1.5rem}
+  .txt{font-size:1.05rem}
+}
+/* short screens, like a phone on its side */
+@media (max-height:520px){
+  .viz svg{max-height:78vh;margin:0 auto}
+  .slide{padding-top:18px}
+}
+</style>
+</head>
+<body>
+<div class="deck">
+<main id="slides">
+
+<!-- 1 -->
+<section class="slide"><div class="inner">
+<h1>Neural networks</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Every model so far has had its own idea of what a boundary should look like. Linear and logistic regression draw straight lines, KNN follows the nearest points, and decision trees draw boxes.</p>
+      <p>A neural network is built from lots of small pieces that each do something very simple. Together, they can learn almost any shape.</p>
+      <p>The network on the right starts out knowing nothing about spirals. Press Train to learn the shape.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-1" class="primary">Train</button><button id="b-1r">Start over</button></div>
+    <div class="legend sl"></div>
+    <div class="viz"><svg id="v-1" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-1"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 2 -->
+<section class="slide"><div class="inner">
+<h1>A neuron in your brain</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Your brain has about 86 billion nerve cells called <b>neurons</b>, each connected to thousands of others.</p>
+      <p>A neuron collects signals from the neurons it's connected to. Some connections are strong and some are weak, so some signals count for more than others.</p>
+      <p>If the signals add up to enough, the neuron <b>fires</b>. It sends its own signal along its <b>axon</b>, a long branch that reaches the next neurons.</p>
+      <p>If they don't add up to enough, it stays quiet. A neuron is either firing or it isn't.</p>
+      <p>When you learn something, some of these connections get stronger and others get weaker.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-2"><button class="tog" data-i="0">Signal A</button><button class="tog" data-i="1">Signal B</button><button class="tog" data-i="2">Signal C</button></div>
+    <div class="viz"><svg id="v-2" viewBox="0 0 640 340"></svg></div>
+    <p class="say" id="r-2"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 3 -->
+<section class="slide"><div class="inner">
+<h1>Birds and planes</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The first flying machines copied birds, flapping wings and all, and none of them worked.</p>
+      <p>Planes only flew once engineers kept the useful part, a curved wing that creates lift, and designed the rest their own way. Now a plane can carry 300 people across an ocean, while a bird can land on a branch and fly all day on a few seeds.</p>
+      <p>Neural networks are like planes. They borrow a single idea from the brain: simple units joined by connections that get stronger or weaker. The rest is math, and real neurons are much more complicated.</p>
+      <p>For each of these, guess whether a brain or a neural network does it better.</p>
+    </div>
+  </div>
+  <div>
+    <div class="sort" id="v-4"></div>
+    <p class="say" id="r-4"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 4 -->
+<section class="slide"><div class="inner">
+<h1>An artificial neuron</h1>
+<div class="cols">
+  <div>
+    <p class="big">A neuron multiplies each input by a weight, adds them up with a bias, and passes the total through an activation function</p>
+    <div class="txt">
+      <p>An artificial neuron uses the same idea with numbers.</p>
+      <p>Each input is multiplied by a <b>weight</b>, which says how strong that connection is. A big weight means the input counts a lot. A negative weight pushes the other way.</p>
+      <p>The neuron adds these up, plus an extra number called the <b>bias</b>. We call the total z.</p>
+      <p>Then z goes through an <b>activation function</b>, which decides what the neuron sends on. This neuron sends 1 if z is above 0, and 0 if it isn't.</p>
+      <p>Flip the inputs and move the weights to see how z and the output change.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-3"><button class="tog on" data-i="0">x&#8321;</button><button class="tog on" data-i="1">x&#8322;</button><button class="tog" data-i="2">x&#8323;</button></div>
+    <div class="slider"><label for="s3a">w&#8321;</label><input type="range" id="s3a" min="-4" max="4" step="0.5" value="3"><span class="readout" id="n3a"></span></div>
+    <div class="slider"><label for="s3b">w&#8322;</label><input type="range" id="s3b" min="-4" max="4" step="0.5" value="-2"><span class="readout" id="n3b"></span></div>
+    <div class="slider"><label for="s3c">w&#8323;</label><input type="range" id="s3c" min="-4" max="4" step="0.5" value="1"><span class="readout" id="n3c"></span></div>
+    <div class="slider"><label for="s3d">bias</label><input type="range" id="s3d" min="-4" max="4" step="0.5" value="-1.5"><span class="readout" id="n3d"></span></div>
+    <div class="viz"><svg id="v-3" viewBox="0 0 640 270"></svg></div>
+    <div class="calc" id="r-3"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 5 -->
+<section class="slide"><div class="inner">
+<h1>You already know a neuron</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A neuron with a single input and no activation function works out z = w&middot;x + b.</p>
+      <p>That's y = mx + b, the same line as linear regression. The weight is the slope and the bias is the intercept.</p>
+      <p>With a sigmoid as the activation function, the line gets squashed into an S between 0 and 1. That's logistic regression, shown here on hours studied and whether each student passed an exam.</p>
+      <p>So you've already used single neurons. What's new is connecting lots of them together.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-5" class="tog">Add a sigmoid</button><button id="b-5f">Use the fitted values</button></div>
+    <div class="slider"><label for="s5w">w</label><input type="range" id="s5w" min="-0.5" max="2" step="0.01" value="0.15"><span class="readout" id="n5w"></span></div>
+    <div class="slider"><label for="s5b">b</label><input type="range" id="s5b" min="-10" max="2" step="0.05" value="-0.25"><span class="readout" id="n5b"></span></div>
+    <div class="viz"><svg id="v-5" viewBox="0 0 640 330"></svg></div>
+    <p class="say" id="r-5"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 6 -->
+<section class="slide"><div class="inner">
+<h1>Activation functions</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The activation function takes a neuron's total z and decides what to send on. These are the three you'll see most.</p>
+      <p><b>Step</b> is the closest to a real neuron, since it's either on or off. But it's flat almost everywhere, so a small change to a weight usually changes nothing. That makes it very hard to learn with.</p>
+      <p><b>Sigmoid</b> is a smooth version of the step. A small change in z always makes a small change in the output.</p>
+      <p><b>ReLU</b> keeps positive numbers and turns negative numbers into 0. It's simple and fast, so it's the most common choice inside networks. It's also the default in scikit-learn.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-6"><button data-f="step" class="on">step</button><button data-f="sigmoid">sigmoid</button><button data-f="relu">ReLU</button></div>
+    <div class="slider"><label for="s6">z</label><input type="range" id="s6" min="-5" max="5" step="0.05" value="1.2"><span class="readout" id="n6"></span></div>
+    <div class="viz"><svg id="v-6" viewBox="0 0 640 330"></svg></div>
+    <p class="say" id="r-6"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 7 -->
+<section class="slide"><div class="inner">
+<h1>Truth tables</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A logic gate takes inputs that are each 0 or 1, and gives back a 0 or 1.</p>
+      <p>Its <b>truth table</b> lists the output for every combination of inputs. With two inputs there are only four rows.</p>
+      <p><b>AND</b> outputs 1 only when both inputs are 1.</p>
+      <p><b>OR</b> outputs 1 when either input is 1.</p>
+      <p><b>XOR</b>, short for exclusive or, outputs 1 when the two inputs are different.</p>
+      <p>Next we'll try to get neurons to produce these patterns.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-tt"><button data-g="and" class="on">AND</button><button data-g="or">OR</button><button data-g="xor">XOR</button></div>
+    <div class="ctrls" id="p-tti"><button class="tog" data-i="0"></button><button class="tog" data-i="1"></button></div>
+    <div id="t-tt"></div>
+    <p class="say" id="r-tt"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 8 -->
+<section class="slide"><div class="inner">
+<h1>A neuron that does AND</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Let's see if a single neuron can do AND.</p>
+      <p>Each dot is a row of the truth table. The filled dots are the rows that should output 1.</p>
+      <p>The neuron fires on the shaded side of the line, where w&#8321;x&#8321; + w&#8322;x&#8322; + b is above 0. The weights turn the line, and the bias slides it.</p>
+      <p>Find weights that get all four rows right, then switch to OR. It's the same neuron with different weights.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-7"><button data-g="and" class="on">AND</button><button data-g="or">OR</button><button id="b-7">Show answer</button></div>
+    <div class="slider"><label for="s7a">w&#8321;</label><input type="range" id="s7a" min="-2" max="2" step="0.1" value="1"><span class="readout" id="n7a"></span></div>
+    <div class="slider"><label for="s7b">w&#8322;</label><input type="range" id="s7b" min="-2" max="2" step="0.1" value="1"><span class="readout" id="n7b"></span></div>
+    <div class="slider"><label for="s7c">b</label><input type="range" id="s7c" min="-3" max="3" step="0.1" value="0"><span class="readout" id="n7c"></span></div>
+    <div class="gate-row">
+      <div class="viz"><svg id="v-7" viewBox="0 0 640 520"></svg></div>
+      <div id="t-7"></div>
+    </div>
+    <p class="say" id="r-7"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 9 -->
+<section class="slide"><div class="inner">
+<h1>Something a single neuron can't do</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>XOR is different. The two dots that should be 1 are in opposite corners.</p>
+      <p>No straight line can separate them from the other two, so no weights will get all four rows right.</p>
+      <p>In 1969, a famous book by Marvin Minsky and Seymour Papert pointed out limits like this, and interest in neural networks dropped off for years. The fix turned out to be using more than a single neuron.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-8" class="primary">Try 10,000 random weights</button></div>
+    <div class="slider"><label for="s8a">w&#8321;</label><input type="range" id="s8a" min="-2" max="2" step="0.1" value="1"><span class="readout" id="n8a"></span></div>
+    <div class="slider"><label for="s8b">w&#8322;</label><input type="range" id="s8b" min="-2" max="2" step="0.1" value="1"><span class="readout" id="n8b"></span></div>
+    <div class="slider"><label for="s8c">b</label><input type="range" id="s8c" min="-3" max="3" step="0.1" value="-0.5"><span class="readout" id="n8c"></span></div>
+    <div class="gate-row">
+      <div class="viz"><svg id="v-8" viewBox="0 0 640 520"></svg></div>
+      <div id="t-8"></div>
+    </div>
+    <p class="say" id="r-8"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 10 -->
+<section class="slide"><div class="inner">
+<h1>Layers</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The neurons in a network are arranged in layers.</p>
+      <p>The <b>input layer</b> is the features. The <b>hidden layers</b> do the work in the middle. The <b>output layer</b> gives the prediction.</p>
+      <p>Every neuron connects to every neuron in the next layer. Each connection has a weight, and each neuron has a bias. Together these are the network's <b>parameters</b>, and they're what it learns.</p>
+      <p>Making a prediction means passing the inputs through the network layer by layer. This is called a <b>forward pass</b>.</p>
+      <p>A network with lots of hidden layers is called deep, which is where deep learning gets its name. The parameters add up fast. A network that reads 28 by 28 pixel images of handwritten digits, with two hidden layers of 128 neurons, has 118,282 of them.</p>
+    </div>
+  </div>
+  <div>
+    <div id="p-10">
+      <div class="ctrls" style="margin:6px 0"><span class="readout" style="min-width:19ch">inputs</span><button data-k="in" data-d="-1">&minus;</button><span class="readout" id="c-in" style="min-width:2ch;text-align:center"></span><button data-k="in" data-d="1">+</button></div>
+      <div class="ctrls" style="margin:6px 0"><span class="readout" style="min-width:19ch">hidden layers</span><button data-k="hl" data-d="-1">&minus;</button><span class="readout" id="c-hl" style="min-width:2ch;text-align:center"></span><button data-k="hl" data-d="1">+</button></div>
+      <div class="ctrls" style="margin:6px 0"><span class="readout" style="min-width:19ch">neurons per layer</span><button data-k="nl" data-d="-1">&minus;</button><span class="readout" id="c-nl" style="min-width:2ch;text-align:center"></span><button data-k="nl" data-d="1">+</button></div>
+    </div>
+    <div class="viz"><svg id="v-10" viewBox="0 0 640 340"></svg></div>
+    <div class="calc" id="r-10"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 11 -->
+<section class="slide"><div class="inner">
+<h1>Nonlinearity</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Real data is rarely a straight line. These dots show how busy a caf&eacute; is through the day, with a rush at breakfast and a bigger rush at lunch.</p>
+      <p>Without activation functions, a network can only draw a straight line, however many layers it has. That's just linear regression, which you could solve with a formula.</p>
+      <p>The activation function is what lets a network bend to fit curves like this. This is called <b>nonlinearity</b>, and it's what makes neural networks so powerful.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-12"><button data-a="linear" class="on">without activation</button><button data-a="relu">with ReLU</button></div>
+    <div class="viz"><svg id="v-12" viewBox="0 0 640 340"></svg></div>
+    <p class="say" id="r-12"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 12 -->
+<section class="slide"><div class="inner">
+<h1>The network finds its own features</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>This is the position of 90 phones around a wifi router. The blue phones connected, and the others were too far away. To separate them with an SVM, you'd have to add x&sup2; + y&sup2; by hand or use a kernel.</p>
+      <p>A network does this on its own. Each hidden neuron draws a line, shown dashed, and the output neuron combines the lines into a shape.</p>
+      <p>A single hidden neuron gives a line. Two give a strip, three give a triangle, and four or more get close to a circle.</p>
+      <p>Nobody told the network about the distance from the router. It found its own features in the data, which is the biggest strength of neural networks.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-13"><span class="readout">hidden neurons</span><button data-h="1">1</button><button data-h="2">2</button><button data-h="3" class="on">3</button><button data-h="4">4</button><button data-h="8">8</button></div>
+    <div class="legend wl"></div>
+    <div class="viz"><svg id="v-13" viewBox="0 0 640 470"></svg></div>
+    <p class="say" id="r-13"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 13 -->
+<section class="slide"><div class="inner">
+<h1>Learning means walking downhill</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A network starts with random weights, which give terrible predictions. Then it improves them a little at a time.</p>
+      <p>To do that, it needs to measure how wrong it is. This is called the <b>loss</b>, and lower is better, like the mean squared error from linear regression.</p>
+      <p>Linear regression had a formula that jumps straight to the best line. Networks don't, so they have to search.</p>
+      <p>Picture the loss as a hill, with the network standing on it in thick fog. It can't see the bottom, but it can feel which way the ground slopes. So it takes a step downhill and repeats.</p>
+      <p>This is called <b>gradient descent</b>, and the slope is called the <b>gradient</b>. This network has a single weight, so you can see the whole hill. Click the curve to start somewhere else.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-14" class="primary">Take a step</button><button id="b-14r">Start over</button></div>
+    <div class="viz"><svg id="v-14" class="click" viewBox="0 0 640 360"></svg></div>
+    <p class="say" id="r-14"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 14 -->
+<section class="slide"><div class="inner">
+<h1>How big a step?</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Each step moves the weight by the slope times a number called the <b>learning rate</b>.</p>
+      <p>Steep ground gives big steps and flat ground gives small steps, so the steps shrink near the bottom.</p>
+      <p>If the learning rate is too small, training takes forever. If it's too big, each step overshoots the bottom, and the loss bounces around or shoots off.</p>
+      <p>Try a few learning rates and see where 20 steps get you. Finding a good value usually takes some trial and error.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s15">learning rate</label><input type="range" id="s15" min="0.1" max="4.4" step="0.1" value="0.1"><span class="readout" id="n15"></span></div>
+    <div class="ctrls" id="p-15"><button data-v="0.1">too small</button><button data-v="1.4">about right</button><button data-v="3.6">too big</button><button data-v="4.2">way too big</button></div>
+    <div class="viz"><svg id="v-15" viewBox="0 0 640 360"></svg></div>
+    <p class="say" id="r-15"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 15 -->
+<section class="slide"><div class="inner">
+<h1>Which way should each weight move?</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A real network has thousands of weights, so its hill has thousands of directions.</p>
+      <p>For each weight it asks: if this weight goes up a little, does the loss go up or down, and by how much? That answer is the weight's slope.</p>
+      <p>Blue means increasing the weight lowers the loss, and red means it raises it. Thicker means a bigger effect. Each step moves every weight a little downhill at the same time.</p>
+      <p>Checking each weight separately would be slow, so networks use <b>backpropagation</b> to get every slope in a single pass. It starts from the error at the output and works backwards, figuring out how much each connection added to the mistake.</p>
+      <p>This network sees a single example and should output 1. Take a few steps and watch the loss go down.</p>
+    </div>
+    <p class="note">This is also why the step function is hard to learn with. Nudging a weight almost never changes a step neuron's output, so every slope is 0 and nothing points downhill.</p>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-16" class="primary">Take a step</button><button id="b-16r">Start over</button></div>
+    <div class="viz"><svg id="v-16" viewBox="0 0 640 270"></svg></div>
+    <div id="t-16" style="overflow-x:auto"></div>
+    <p class="say" id="r-16"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 16 -->
+<section class="slide"><div class="inner">
+<h1>Stochastic gradient descent</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>To get the exact slope, a network has to look at every training example. With a million examples, each step takes a million predictions.</p>
+      <p><b>Stochastic gradient descent</b>, or SGD, works out each slope from a small random <b>batch</b> of examples instead. The slope is a little off each time, so the path wobbles. But the steps are cheap, so it can take many more of them.</p>
+      <p>Here a neuron with two weights is fitting a line to 200 points. The loss is lowest in the middle of the rings.</p>
+      <p>Both methods get 2,000 examples. Plain gradient descent spends them on 10 careful steps, while SGD with batches of 10 spends them on 200 quick steps.</p>
+      <p>A full pass through the training data is called an <b>epoch</b>, and networks usually train for many epochs</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-17" class="primary">Look at 2,000 examples</button><button id="b-17r">Start over</button></div>
+    <div class="legend" id="lg-17"></div>
+    <div class="viz"><svg id="v-17" viewBox="0 0 640 380"></svg></div>
+    <p class="say" id="r-17"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 17 -->
+<section class="slide"><div class="inner">
+<h1>Neural networks overfit too</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Learning almost any shape is also a risk. With enough neurons, a network can bend around every training point, including the odd few that don't fit the pattern.</p>
+      <p>Here a big network, with two hidden layers of 32 neurons, is learning to tell lemons from oranges by their width and height. It trains on the filled fruits and is tested on the hollow ones. Drag the slider to move through training.</p>
+      <p>At first both losses go down. Then the test loss starts climbing while the training loss keeps falling. The network has stopped learning the pattern and started memorizing.</p>
+      <p>A common fix is <b>early stopping</b>. You hold back some training data, check its loss as you train, and stop once it stops improving. A smaller network or more data also help.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-18"><button data-n="big" class="on">big network</button><button data-n="small">small network</button></div>
+    <div class="slider"><label for="s18">training step</label><input type="range" id="s18" min="0" max="200" step="1" value="200"><span class="readout" id="n18"></span></div>
+    <div class="legend fl2"></div>
+    <div class="viz"><svg id="v-18" viewBox="0 0 640 330"></svg></div>
+    <div class="viz"><svg id="v-18l" viewBox="0 0 640 170"></svg></div>
+    <p class="say" id="r-18"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 18 -->
+<section class="slide"><div class="inner">
+<h1>Learning from a useless feature</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>A network learns whatever helps on the training data, with no idea which patterns make sense. If a useless feature happens to line up with the answer, the network will use it.</p>
+      <p>In a well-known experiment, researchers trained a model to tell wolves from huskies using photos where the wolves were almost always in snow. The model learned to look for snow, not wolves.</p>
+      <p>Here each photo has the dog's weight, its snout length and whether there's snow. In this collection, 90% of the wolves are in snow. Try training with and without the snow feature.</p>
+      <p>No score will warn you about this. You have to think about whether each feature makes sense, like dropping a name column before training.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-19"><button data-s="1" class="on">train with snow</button><button data-s="0">train without snow</button></div>
+    <div class="bars" id="r-19b"></div>
+    <p class="say" id="r-19"></p>
+    <p class="note" style="margin:10px 0 0">Some of the new photos, with what the network guessed</p>
+    <div class="photos" id="v-19"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 19 -->
+<section class="slide"><div class="inner">
+<h1>When to use a neural network</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Neural networks do best with lots of data and patterns too complicated to describe by hand, like faces, speech or text. They find their own features, so you don't have to.</p>
+      <p>They also have downsides. They need a lot of data and computing power, and they have more settings to tune.</p>
+      <p>They're also very hard to explain. A decision tree can print its questions, but a network is thousands of numbers.</p>
+      <p>For a small table of data, a simpler model often does just as well. Decide whether a neural network is a good fit for each of these.</p>
+    </div>
+  </div>
+  <div>
+    <div class="sort" id="v-20"></div>
+    <p class="say" id="r-20"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 20 -->
+<section class="slide"><div class="inner">
+<h1>Neural networks in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>scikit-learn's neural network is called <code>MLPClassifier</code>. MLP stands for multi-layer perceptron, an older name for this kind of network.</p>
+      <p>We'll use the wifi data from earlier. It has the position of 90 phones and whether each one connected to the router.</p>
+      <p><code>hidden_layer_sizes</code> sets the hidden layers. <code>(8,)</code> means a single hidden layer with 8 neurons, and <code>(16, 16)</code> means two hidden layers with 16 each.</p>
+      <p><code>max_iter</code> is the most epochs it will train for. The default is 200, which often isn't enough. Try changing 2000 to 200 and see what happens to the score.</p>
+      <p>The starting weights are random, so <code>random_state</code> keeps the results the same each run. Like KNN and SVMs, networks also need scaled features.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+df = pd.read_csv("wifi.csv")
+X = df[["x", "y"]]
+y = df["connected"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=1)
+
+model = make_pipeline(
+    StandardScaler(),
+    MLPClassifier(hidden_layer_sizes=(8,), max_iter=2000, random_state=0),
+)
+model.fit(X_train, y_train)
+print(model.score(X_test, y_test))</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 21 -->
+<section class="slide"><div class="inner">
+<h1>The F1 score</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p><b>Precision</b> is the share of predicted positives that were right.</p>
+      <p><b>Recall</b> is the share of real positives that were found.</p>
+      <p>It's handy to combine them into a single score, but a plain average doesn't work well. Say 20 out of 100 patients are sick. A model that flags just a single patient as sick, and gets it right, has 100% precision but only 5% recall. The average is 52.5%, even though the model misses almost every sick patient.</p>
+      <p>The <b>F1 score</b> is a different kind of average that gets pulled down by whichever is lower:</p>
+    </div>
+    <pre class="code">F1 = 2 &times; precision &times; recall / (precision + recall)</pre>
+    <div class="txt">
+      <p>It's only high when both are high, so it's a good score when the positive class is rare.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-22"><button data-p="1" data-r="0.05">flag a single patient</button><button data-p="0.2" data-r="1">flag every patient</button><button data-p="0.9" data-r="0.85">a good model</button></div>
+    <div class="slider"><label for="s22p">precision</label><input type="range" id="s22p" min="0" max="1" step="0.01" value="1"><span class="readout" id="n22p"></span></div>
+    <div class="slider"><label for="s22r">recall</label><input type="range" id="s22r" min="0" max="1" step="0.01" value="0.05"><span class="readout" id="n22r"></span></div>
+    <div class="bars" id="r-22b"></div>
+    <div class="viz"><svg id="v-22" viewBox="0 0 640 230"></svg></div>
+    <p class="say" id="r-22"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 22 -->
+<section class="slide"><div class="inner">
+<h1>F1 in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p><code>f1_score</code> works like <code>accuracy_score</code>. You give it the real answers first and the predictions second.</p>
+      <p>This trains logistic regression and a network on the wifi data, and prints the accuracy and F1 score of each.</p>
+      <p>Logistic regression can only draw a straight line, so it predicts that no phone connects. Its accuracy is still about 70%, because most phones didn't connect.</p>
+      <p>Its F1 score of 0 shows the problem right away.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, f1_score
+
+df = pd.read_csv("wifi.csv")
+X = df[["x", "y"]]
+y = df["connected"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=1)
+
+logistic = make_pipeline(StandardScaler(), LogisticRegression())
+logistic.fit(X_train, y_train)
+pred = logistic.predict(X_test)
+print("logistic", accuracy_score(y_test, pred), f1_score(y_test, pred))
+
+network = make_pipeline(
+    StandardScaler(),
+    MLPClassifier(hidden_layer_sizes=(8,), max_iter=2000, random_state=0),
+)
+network.fit(X_train, y_train)
+pred = network.predict(X_test)
+print("network", accuracy_score(y_test, pred), f1_score(y_test, pred))</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 23 -->
+<section class="slide"><div class="inner">
+<h1>Recap</h1>
+<div class="cols cols-recap">
+  <div>
+    <div class="recap">
+      <div><b>Neuron</b><span>Multiplies each input by a weight, adds a bias, and passes the total through an activation function</span></div>
+      <div><b>Layers</b><span>Hidden layers combine simple neurons into complicated shapes, so the network finds its own features</span></div>
+      <div><b>Activation functions</b><span>Without them any network is just a straight line. ReLU is the usual choice.</span></div>
+      <div><b>Gradient descent</b><span>Starts with random weights and keeps stepping downhill on the loss. Backpropagation finds the slopes, and SGD uses small batches to go faster.</span></div>
+      <div><b>The usual risks</b><span>Networks can overfit and will use any feature that helps, so check test scores and think about your features</span></div>
+      <div><b>F1 score</b><span>Combines precision and recall, and is only high when both are</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="txt">
+      <p>This trains networks of different sizes on spiral.csv, the data from the first slide. Try other sizes, or swap in a decision tree to compare.</p>
+    </div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
+
+df = pd.read_csv("spiral.csv")
+X = df[["x", "y"]]
+y = df["label"]
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+
+for sizes in [(4,), (16,), (16, 16), (32, 32)]:
+    model = make_pipeline(
+        StandardScaler(),
+        MLPClassifier(hidden_layer_sizes=sizes, max_iter=3000, random_state=0),
+    )
+    model.fit(X_train, y_train)
+    print(sizes, model.score(X_test, y_test))</textarea></div>
+  </div>
+</div>
+</div></section>
+
+</main>
+<nav class="bar" aria-label="Slides">
+  <span id="pystat">Python: loading</span>
+  <button id="prev" aria-label="Previous slide">&larr; Back</button>
+  <span id="count" aria-hidden="true">1 / 23</span>
+  <button id="next" class="primary" aria-label="Next slide">Next &rarr;</button>
+</nav>
+<p id="sr-status" class="sr-only" aria-live="polite"></p>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const D = {"dogs":[[33.2,23.7,1.0,1.0],[21.1,24.0,0.0,0.0],[15.1,19.7,0.0,0.0],[38.2,23.4,1.0,1.0],[26.5,19.6,1.0,1.0],[29.9,18.6,0.0,0.0],[25.8,16.0,0.0,0.0],[32.0,26.5,1.0,1.0],[20.1,19.1,0.0,0.0],[33.7,24.8,1.0,1.0],[33.5,19.6,1.0,1.0],[26.3,22.6,1.0,1.0],[20.2,20.8,0.0,0.0],[38.4,24.3,1.0,1.0],[40.1,21.9,1.0,1.0],[30.6,22.4,1.0,0.0],[31.6,18.4,1.0,1.0],[32.5,18.6,1.0,1.0],[34.4,24.2,1.0,1.0],[35.9,22.1,1.0,1.0],[46.4,24.0,1.0,1.0],[25.4,16.3,0.0,0.0],[32.4,21.4,1.0,1.0],[31.8,22.9,1.0,1.0],[22.4,16.1,1.0,1.0],[35.4,21.6,1.0,1.0],[24.7,16.4,0.0,0.0],[20.4,18.0,0.0,0.0],[35.1,21.1,1.0,1.0],[34.1,20.8,1.0,1.0],[21.9,20.9,0.0,0.0],[26.5,18.2,0.0,0.0],[9.2,18.5,0.0,0.0],[36.2,24.2,1.0,1.0],[20.7,13.9,0.0,0.0],[26.2,23.5,0.0,0.0],[28.3,18.1,0.0,0.0],[39.5,25.3,0.0,1.0],[28.6,15.8,0.0,0.0],[37.7,20.5,0.0,0.0],[38.2,18.5,1.0,1.0],[27.2,21.6,0.0,0.0],[25.9,15.8,0.0,0.0],[37.5,19.8,1.0,1.0],[29.3,22.5,0.0,0.0],[25.6,23.1,1.0,1.0],[41.6,19.6,1.0,1.0],[31.4,22.5,1.0,1.0],[23.5,21.6,0.0,0.0],[24.0,19.5,0.0,0.0],[33.3,21.1,1.0,1.0],[33.6,20.4,1.0,1.0],[25.9,21.8,0.0,0.0],[23.5,17.9,1.0,0.0],[38.2,19.5,1.0,1.0],[31.3,20.0,1.0,1.0],[29.3,22.1,0.0,0.0],[36.2,21.8,1.0,1.0],[24.9,20.7,0.0,0.0],[41.6,18.5,1.0,1.0],[26.4,19.3,1.0,0.0],[23.2,18.2,0.0,0.0],[28.6,18.3,0.0,0.0],[44.8,21.5,1.0,1.0],[18.5,20.4,0.0,0.0],[21.8,14.3,0.0,0.0],[19.4,20.6,0.0,0.0],[26.5,23.1,0.0,0.0],[31.6,21.6,1.0,1.0],[35.4,25.2,1.0,1.0],[42.2,20.5,1.0,1.0],[21.6,15.0,0.0,0.0],[23.3,22.7,1.0,0.0],[30.0,21.3,1.0,1.0],[32.0,20.5,0.0,0.0],[36.4,23.1,1.0,1.0],[23.9,15.2,0.0,0.0],[48.1,25.1,1.0,1.0],[29.6,19.4,0.0,0.0],[31.2,22.7,1.0,1.0],[24.4,18.3,0.0,0.0],[36.8,22.2,1.0,1.0],[16.3,15.9,0.0,0.0],[35.1,20.7,1.0,1.0],[26.7,18.5,0.0,0.0],[23.2,17.9,0.0,0.0],[39.7,19.7,1.0,1.0],[42.8,24.9,0.0,1.0],[26.3,15.2,0.0,0.0],[43.0,23.1,1.0,1.0],[18.8,21.4,0.0,0.0],[34.1,21.8,1.0,1.0],[35.5,25.5,1.0,1.0],[34.4,22.4,1.0,1.0],[29.4,19.2,1.0,1.0],[29.9,20.9,1.0,1.0],[17.4,15.9,0.0,0.0],[20.5,19.6,0.0,0.0],[34.1,19.9,0.0,0.0],[32.3,17.7,0.0,0.0],[39.0,23.0,1.0,1.0],[35.6,18.9,0.0,0.0],[26.2,19.2,1.0,1.0],[25.3,17.2,0.0,0.0],[26.2,19.2,0.0,0.0],[27.7,22.3,0.0,0.0],[20.8,18.1,0.0,0.0],[39.1,22.4,1.0,1.0],[31.6,20.9,1.0,1.0],[23.2,13.7,0.0,0.0],[20.3,18.5,0.0,0.0],[48.4,25.3,1.0,1.0],[39.8,24.7,1.0,1.0],[28.1,18.7,0.0,0.0],[29.4,22.6,1.0,1.0],[26.1,14.8,0.0,0.0],[43.1,22.7,1.0,1.0],[32.8,16.9,0.0,0.0],[37.5,20.0,1.0,1.0],[25.5,20.1,0.0,0.0]],"dogs_new":[[29.7,19.3,1.0,1.0],[34.6,21.1,1.0,1.0],[33.1,17.0,1.0,0.0],[36.5,20.8,0.0,1.0],[37.8,24.8,0.0,1.0],[36.1,20.6,1.0,0.0],[19.9,18.5,1.0,0.0],[32.7,21.4,1.0,1.0],[35.9,18.2,0.0,1.0],[31.6,23.3,0.0,1.0],[28.1,19.9,0.0,1.0],[30.4,18.9,1.0,0.0],[41.3,22.7,1.0,1.0],[31.5,24.3,0.0,1.0],[33.2,23.9,0.0,1.0],[22.7,17.1,1.0,0.0],[33.4,18.7,1.0,0.0],[20.5,19.9,0.0,0.0],[41.6,21.2,0.0,1.0],[23.9,19.6,1.0,0.0],[30.1,19.6,0.0,0.0],[34.6,21.1,1.0,1.0],[48.1,20.1,1.0,1.0],[40.4,26.1,1.0,1.0],[27.4,21.0,0.0,0.0],[26.9,21.3,0.0,0.0],[39.0,23.9,1.0,1.0],[23.0,18.6,0.0,0.0],[22.2,17.4,0.0,0.0],[27.0,17.8,1.0,0.0],[29.0,23.5,1.0,1.0],[39.8,19.8,0.0,1.0],[30.9,24.0,1.0,1.0],[41.8,21.7,0.0,1.0],[36.4,23.7,0.0,1.0],[26.6,19.6,1.0,0.0],[21.5,20.9,0.0,0.0],[41.7,20.0,0.0,1.0],[20.0,20.1,0.0,0.0],[27.4,18.6,0.0,0.0],[24.4,22.4,0.0,1.0],[36.2,22.5,0.0,1.0],[38.0,23.8,0.0,1.0],[12.2,19.4,1.0,0.0],[41.9,24.6,1.0,1.0],[30.8,18.4,0.0,0.0],[31.2,17.5,0.0,0.0],[40.4,23.0,1.0,1.0],[26.5,20.1,1.0,0.0],[34.7,19.5,0.0,1.0],[29.8,18.4,0.0,0.0],[40.8,21.1,1.0,1.0],[29.9,19.1,1.0,0.0],[18.7,19.6,0.0,0.0],[36.1,25.1,1.0,1.0],[17.4,18.2,0.0,0.0],[32.1,16.6,0.0,0.0],[36.7,23.2,1.0,1.0],[18.0,18.3,1.0,0.0],[25.5,21.0,1.0,1.0],[30.7,19.5,0.0,0.0],[38.2,23.1,1.0,1.0],[39.5,21.8,0.0,1.0],[21.6,17.8,1.0,0.0],[17.0,16.4,1.0,0.0],[29.2,19.6,0.0,1.0],[36.8,19.5,0.0,0.0],[38.0,21.2,1.0,1.0],[33.7,15.5,1.0,0.0],[38.7,18.8,1.0,1.0],[37.2,22.5,0.0,1.0],[24.2,19.8,0.0,0.0],[42.9,24.9,0.0,1.0],[39.0,16.0,0.0,1.0],[27.9,16.8,1.0,0.0],[45.4,21.0,1.0,1.0],[29.4,18.0,1.0,0.0],[36.3,23.1,0.0,1.0],[44.8,20.8,0.0,1.0],[28.1,18.5,1.0,0.0],[35.5,17.6,1.0,0.0],[22.2,19.0,0.0,0.0],[23.8,16.1,0.0,0.0],[12.9,14.6,1.0,0.0],[24.9,20.3,0.0,0.0],[37.6,21.6,1.0,1.0],[28.2,22.1,1.0,0.0],[30.7,20.5,0.0,0.0],[40.8,21.2,1.0,1.0],[35.7,21.7,0.0,1.0],[26.6,19.3,0.0,0.0],[26.6,21.2,0.0,0.0],[38.5,23.7,1.0,1.0],[25.4,17.8,1.0,1.0],[29.2,19.1,0.0,0.0],[46.4,17.8,0.0,1.0],[22.2,23.1,1.0,0.0],[43.6,22.5,1.0,1.0],[27.7,20.9,1.0,0.0],[32.7,20.5,0.0,0.0]],"exams":[[2.6,0],[3.0,0],[8.1,1],[0.9,0],[6.0,1],[7.3,1],[1.9,0],[0.6,0],[2.7,0],[6.6,1],[5.6,0],[1.5,0],[4.3,0],[6.7,1],[4.2,0],[6.3,0],[9.7,1],[6.8,1],[3.9,0],[1.9,0],[3.5,0],[5.1,1],[8.9,1],[7.8,1],[3.2,1],[9.2,1],[4.7,1],[6.9,1],[1.1,0],[1.0,0],[2.0,0],[8.8,1],[6.8,1],[8.5,1],[6.4,1],[4.1,0],[5.2,0],[5.9,1],[8.6,1],[4.4,0]],"cafe":[[6.5,10.2],[6.83,10.8],[7.17,14.6],[7.5,26.0],[7.83,31.8],[8.17,35.6],[8.5,36.5],[8.83,28.4],[9.17,22.6],[9.5,18.0],[9.83,8.9],[10.17,13.0],[10.5,8.0],[10.83,12.1],[11.17,14.2],[11.5,22.9],[11.83,32.9],[12.17,41.5],[12.5,47.1],[12.83,47.8],[13.17,42.0],[13.5,31.0],[13.83,24.6],[14.17,18.4],[14.5,14.7],[14.83,11.5],[15.17,15.0],[15.5,9.5],[15.83,8.1],[16.17,14.9],[16.5,9.3],[16.83,16.5],[17.17,14.3],[17.5,20.1],[17.83,16.3],[18.17,24.2],[18.5,21.1],[18.83,17.3],[19.17,21.4],[19.5,16.5],[19.83,12.4],[20.17,8.6],[20.5,9.2],[20.83,8.2],[21.17,10.1],[21.5,10.1]],"sgd":[[3.48,6.83],[1.15,4.56],[2.41,4.69],[3.11,7.42],[2.86,6.43],[3.66,8.9],[3.44,7.48],[3.67,8.83],[0.11,0.64],[1.75,3.35],[1.94,6.16],[0.26,2.21],[0.02,1.66],[3.32,8.79],[3.93,7.59],[3.14,8.37],[1.26,2.26],[2.82,7.1],[1.2,3.18],[2.96,7.25],[1.12,4.07],[3.13,7.29],[3.95,7.8],[3.94,10.01],[3.53,9.48],[3.65,9.12],[2.83,7.91],[2.22,3.32],[3.69,8.47],[0.36,1.58],[1.48,1.62],[2.42,5.98],[1.91,4.83],[3.17,5.54],[0.78,1.55],[0.25,1.6],[0.51,2.73],[3.85,9.55],[0.53,0.74],[0.9,1.52],[1.51,3.41],[2.49,5.93],[3.13,6.57],[0.31,1.4],[3.72,9.3],[3.05,7.92],[1.28,3.73],[0.76,1.15],[2.38,5.18],[2.38,6.43],[1.07,4.18],[0.68,3.63],[3.07,5.86],[2.69,5.82],[3.2,5.95],[0.88,-0.77],[2.89,5.48],[0.3,-0.53],[0.03,2.73],[0.72,3.0],[3.13,6.49],[2.16,5.4],[2.47,6.43],[2.37,7.84],[2.54,7.02],[1.29,5.42],[2.88,7.35],[0.06,2.68],[1.51,5.76],[0.22,2.56],[0.5,2.05],[3.62,9.56],[2.41,5.36],[3.16,9.05],[2.42,5.52],[2.29,4.77],[3.18,9.63],[2.49,5.5],[2.04,5.29],[2.23,4.18],[2.28,4.72],[1.37,3.34],[2.67,5.16],[1.63,5.73],[2.62,5.38],[1.94,3.38],[2.99,8.33],[2.77,7.4],[0.16,-1.47],[3.13,6.58],[3.59,9.38],[1.32,2.74],[2.93,6.54],[3.38,7.48],[2.0,2.29],[0.52,0.98],[2.93,7.79],[3.35,9.46],[1.25,3.42],[0.87,2.64],[3.07,7.82],[2.06,5.35],[0.06,1.75],[0.78,1.54],[0.87,2.79],[2.33,6.28],[2.24,6.21],[2.07,3.29],[1.36,4.74],[1.57,4.3],[2.0,5.21],[2.28,3.45],[2.26,5.59],[2.86,4.85],[3.98,5.95],[3.0,7.13],[1.96,4.95],[3.91,8.91],[0.5,2.24],[3.81,8.65],[2.0,6.36],[1.93,5.87],[3.4,9.78],[2.44,8.94],[3.29,8.54],[1.48,4.96],[2.21,7.76],[2.6,5.19],[0.94,2.55],[3.06,7.47],[0.62,0.43],[0.53,3.28],[1.08,5.11],[3.24,6.02],[1.9,3.88],[0.14,2.41],[0.79,4.25],[2.25,3.56],[0.24,2.18],[1.26,3.32],[0.85,0.5],[2.76,6.03],[0.58,1.5],[1.48,4.11],[1.8,4.65],[3.61,7.89],[1.62,4.08],[0.54,1.91],[1.69,5.0],[1.49,5.14],[2.27,6.7],[0.5,0.93],[1.69,3.43],[2.62,5.43],[1.64,5.99],[3.79,9.14],[1.45,2.99],[3.49,6.59],[1.33,2.46],[1.6,4.23],[2.82,5.31],[2.16,5.3],[3.73,10.07],[3.54,7.78],[1.14,4.3],[1.29,1.76],[2.58,6.59],[3.17,7.69],[0.45,0.79],[3.62,9.9],[1.42,3.83],[0.57,1.32],[1.06,2.77],[3.19,8.53],[1.02,1.4],[0.47,2.12],[2.39,4.62],[3.65,8.57],[1.25,2.87],[2.04,5.0],[1.56,5.02],[3.77,8.59],[3.45,8.57],[1.95,5.74],[3.92,9.32],[0.89,3.06],[1.67,4.39],[2.26,6.28],[3.08,8.6],[2.82,8.84],[1.67,6.46],[3.75,7.32],[3.93,9.21],[3.4,8.4],[1.82,6.09],[3.28,8.83],[1.07,1.42],[0.69,2.71],[0.3,-0.45],[3.21,6.84]],"wifi_csv":"x,y,connected\n2.5,7.9,0\n5.5,-5.5,0\n-4.0,7.5,0\n-4.9,-1.1,1\n0.1,1.1,1\n2.4,9.8,0\n-5.7,-6.8,0\n2.3,-9.1,0\n-9.3,0.3,0\n-0.7,8.3,0\n2.6,0.3,1\n-0.1,-5.0,1\n3.8,-6.0,0\n-2.6,-9.9,0\n6.6,-6.9,0\n-4.6,7.6,0\n0.2,6.9,0\n-8.2,0.8,0\n0.2,7.4,0\n-2.8,2.0,1\n-8.8,-2.2,0\n-3.5,-7.0,0\n6.3,-2.4,0\n9.6,1.8,0\n2.1,2.8,1\n3.5,-7.0,0\n-2.0,-8.1,0\n7.5,3.2,0\n-7.4,6.9,0\n1.4,-7.1,0\n7.7,2.8,0\n1.4,-2.5,1\n-0.6,1.0,1\n-9.5,-2.6,0\n9.3,3.2,0\n-1.4,0.5,1\n7.5,-3.1,0\n1.8,3.7,1\n-2.9,0.4,1\n5.3,8.2,0\n6.2,-7.3,0\n-9.7,2.6,0\n4.5,-5.5,0\n-6.0,-2.7,0\n-6.4,-3.1,0\n9.0,1.5,0\n9.0,-1.1,0\n9.6,0.3,0\n0.4,7.9,0\n4.9,1.6,1\n-1.5,7.6,0\n-1.8,8.5,0\n-8.6,-1.4,0\n0.4,9.0,0\n-5.0,6.1,0\n2.6,9.4,0\n-3.3,-2.0,1\n-5.7,8.3,0\n6.8,-7.8,0\n2.1,-0.4,1\n1.9,3.2,1\n-3.9,9.2,0\n-0.7,2.6,1\n2.7,-6.3,0\n-8.8,-1.8,0\n5.3,6.3,0\n4.6,-7.7,0\n8.3,6.0,0\n7.6,0.5,0\n-4.9,-5.0,0\n-9.2,1.8,0\n-6.7,3.6,0\n-9.6,-3.8,0\n8.8,0.8,0\n6.2,3.2,0\n1.5,-9.2,0\n-3.2,-3.6,1\n-7.7,2.5,0\n5.9,-3.7,0\n7.3,5.9,0\n-7.4,5.3,0\n7.7,-6.1,0\n1.5,2.8,1\n2.2,-8.1,0\n3.2,2.6,1\n6.5,6.1,0\n1.3,8.9,0\n-0.9,3.1,1\n-8.0,-2.4,0\n-7.3,3.2,0\n","spiral_csv":"x,y,label\n-0.154,0.246,0\n-0.084,-0.728,1\n-0.107,-0.1,1\n-0.211,-0.937,0\n0.5,-0.652,1\n0.715,-0.349,1\n0.112,0.059,0\n-0.134,0.456,1\n0.044,0.195,0\n-0.484,0.265,1\n0.585,0.277,0\n0.297,-0.119,1\n0.663,-0.456,1\n-0.552,0.214,1\n-0.643,0.472,0\n0.083,0.093,0\n-0.325,-0.156,0\n0.352,0.037,1\n-0.245,-0.357,0\n-0.195,0.731,0\n0.837,-0.262,1\n-0.146,0.469,1\n0.103,-0.487,0\n-0.619,-0.12,1\n0.581,0.179,0\n0.237,-0.122,1\n0.589,-0.537,1\n0.871,-0.064,1\n0.192,-0.203,1\n0.088,-0.51,0\n-0.025,0.235,0\n0.6,-0.107,0\n-0.378,0.359,1\n-0.088,-0.147,1\n-0.211,0.186,0\n0.849,0.315,1\n0.382,0.014,1\n0.088,0.116,0\n-0.848,0.265,0\n-0.1,-0.094,1\n0.325,0.238,1\n0.382,0.552,0\n-0.295,0.101,0\n-0.025,-0.2,1\n-0.275,-0.717,1\n0.543,0.399,0\n0.108,0.114,0\n-0.288,0.714,0\n0.11,-0.211,1\n0.022,0.486,1\n0.084,0.727,0\n0.26,-0.142,1\n0.824,-0.184,1\n-0.329,-0.944,0\n-0.377,0.403,1\n-0.26,0.167,0\n-0.384,-0.054,0\n-0.61,-0.202,1\n-0.105,-0.411,0\n0.55,-0.081,0\n0.338,0.108,1\n-0.423,-0.891,0\n0.704,-0.411,1\n-0.145,0.188,0\n-0.523,0.267,1\n-0.71,-0.576,0\n0.547,-0.144,0\n-0.547,-0.383,1\n0.424,-0.327,0\n-0.85,-0.024,0\n0.176,0.398,1\n-0.789,-0.369,0\n0.257,0.329,1\n-0.085,-0.015,1\n-0.072,0.485,1\n-0.852,-0.274,0\n-0.106,-0.14,1\n0.002,0.229,0\n-0.328,0.041,0\n0.056,0.455,1\n0.877,0.139,1\n0.175,-0.462,0\n0.233,0.408,1\n0.504,0.829,1\n-0.101,-0.122,1\n0.601,0.327,0\n0.087,0.017,0\n0.631,0.1,0\n0.296,0.325,1\n0.306,0.912,1\n-0.009,-0.492,0\n0.079,0.184,0\n0.578,0.708,1\n-0.156,0.751,0\n0.413,0.883,1\n0.509,-0.584,1\n0.311,-0.728,1\n0.352,-0.1,1\n-0.663,-0.664,0\n-0.022,-0.223,1\n-0.605,-0.047,1\n0.784,0.498,1\n0.375,-0.376,0\n0.121,-0.051,0\n-0.579,-0.714,0\n-0.121,-0.156,1\n-0.512,-0.792,0\n0.523,0.473,0\n-0.34,-0.593,1\n-0.078,-0.425,0\n0.198,0.675,0\n0.347,-0.41,0\n0.279,-0.416,0\n-0.843,0.089,0\n0.067,0.192,0\n-0.61,-0.295,1\n-0.21,0.183,0\n0.847,0.041,1\n0.318,0.259,1\n-0.15,0.228,0\n-0.035,0.211,0\n-0.543,0.589,0\n-0.106,-0.027,1\n0.456,-0.297,0\n-0.047,0.005,1\n-0.373,0.652,0\n0.061,0.03,0\n0.037,-0.226,1\n-0.49,-0.4,1\n0.195,0.985,1\n0.101,0.07,0\n0.254,0.647,0\n-0.847,0.162,0\n0.219,-0.198,1\n-0.539,0.137,1\n-0.058,-0.701,1\n-0.613,0.049,1\n-0.767,-0.511,0\n0.112,0.975,1\n0.075,0.159,0\n0.103,-0.235,1\n-0.128,-0.006,1\n-0.299,-0.273,0\n0.592,0.001,0\n0.468,0.494,0\n0.097,-0.002,0\n0.154,-0.225,1\n-0.569,-0.353,1\n-0.037,-0.477,0\n-0.109,-0.082,1\n0.368,0.153,1\n0.158,-0.738,1\n-0.068,0.239,0\n-0.191,-0.37,0\n0.363,0.194,1\n0.508,-0.239,0\n-0.605,0.027,1\n0.349,-0.045,1\n-0.368,-0.231,0\n-0.332,-0.029,0\n-0.027,-0.198,1\n-0.456,0.351,1\n-0.372,-0.081,0\n-0.371,-0.561,1\n0.338,-0.053,1\n0.388,-0.671,1\n-0.389,-0.156,0\n0.068,0.448,1\n-0.173,-0.702,1\n-0.189,0.459,1\n-0.333,-0.007,0\n-0.105,-0.972,0\n-0.753,0.365,0\n-0.613,0.536,0\n0.008,-0.253,1\n-0.26,0.441,1\n0.678,0.688,1\n-0.058,0.718,0\n-0.462,0.647,0\n-0.291,0.1,0\n-0.422,-0.528,1\n-0.72,0.425,0\n0.849,0.256,1\n0.211,-0.729,1\n0.799,0.407,1\n-0.188,-0.434,0\n0.565,0.081,0\n0.136,0.451,1\n-0.864,-0.205,0\n0.095,0.725,0\n-0.839,-0.13,0\n-0.25,-0.324,0\n-0.193,0.181,0\n0.109,0.132,0\n-0.137,-0.022,1\n0.356,0.629,0\n0.735,0.602,1\n0.072,-0.251,1\n0.2,-0.495,0\n0.025,-0.737,1\n","fruits_csv":"width,height,weight,fruit\n7.8,7.0,179,lemon\n5.3,8.4,107,lemon\n7.3,7.8,180,lemon\n6.3,7.6,121,lemon\n5.7,8.0,149,orange\n6.3,7.7,132,lemon\n7.0,6.9,140,orange\n7.3,7.5,182,orange\n7.1,7.8,157,lemon\n6.7,7.2,145,orange\n6.1,7.4,120,lemon\n6.1,7.2,102,lemon\n6.9,7.5,132,orange\n7.6,7.5,176,orange\n6.6,8.2,141,lemon\n8.0,7.6,231,orange\n6.3,7.3,119,lemon\n6.7,8.1,156,lemon\n7.6,7.4,161,orange\n5.5,8.1,109,lemon\n7.7,7.8,182,orange\n8.4,7.3,207,orange\n7.8,6.9,170,orange\n8.0,7.8,224,orange\n6.9,6.5,118,orange\n7.2,7.4,154,orange\n7.3,7.6,180,orange\n6.8,7.7,147,lemon\n6.2,7.7,114,lemon\n7.6,7.3,158,orange\n6.3,7.0,115,orange\n8.3,7.5,230,orange\n7.9,7.2,192,orange\n7.7,7.0,150,orange\n6.0,7.0,98,lemon\n7.0,6.6,135,orange\n5.6,7.9,108,lemon\n5.3,8.1,95,lemon\n7.3,7.4,174,orange\n6.6,7.1,127,orange\n6.3,8.2,120,lemon\n6.1,7.9,135,lemon\n7.8,6.4,156,orange\n6.3,8.3,148,lemon\n7.9,7.1,193,orange\n6.3,7.2,109,orange\n6.7,7.9,140,lemon\n7.6,7.7,179,lemon\n6.6,8.1,134,lemon\n6.9,7.9,144,lemon\n7.5,7.2,174,orange\n7.5,6.9,163,orange\n6.0,8.4,115,lemon\n6.6,8.3,163,lemon\n7.5,7.4,160,orange\n6.4,7.6,137,lemon\n7.7,7.4,196,orange\n5.7,7.9,100,lemon\n4.8,7.2,96,lemon\n6.1,7.8,130,lemon\n"};
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const FG = "#111111", BLUE = "#1a56db", RED = "#c5221f", GREEN = "#137333", MUTED = "#5f6368", LINE = "#d9dce1", SOFT = "#f3f4f6";
+const ORANGE = "#e8590c", LEMON = "#b88a00", OR_SOFT = "#fde3d2", LE_SOFT = "#f8eec2", BLUE_SOFT = "#dbe6fc", GREY_SOFT = "#eceef1", RED_SOFT = "#fce8e6";
+const SVGNS = "http://www.w3.org/2000/svg";
+function S(tag, attrs = {}, text){
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs){
+    if (k === "font-size") e.style.fontSize = attrs[k] + "px"; // the stylesheet sets svg text size, so this has to be a style
+    else e.setAttribute(k, attrs[k]);
+  }
+  if (text != null) e.textContent = text;
+  return e;
+}
+const fmt = (x, d = 1) => { const s = Number(x).toFixed(d); return (+s === 0 ? Math.abs(+s).toFixed(d) : s).replace("-", "−"); };
+const pct = x => Math.round(x * 100) + "%";
+const sig = z => 1 / (1 + Math.exp(-z));
+let clipN = 0;
+
+/* axes + clipped drawing area, returns scales */
+function plot(svg, o){
+  svg.innerHTML = "";
+  const H = +svg.getAttribute("viewBox").split(" ")[3];
+  const L = o.L ?? 68, R = o.R ?? 624, T = 16, B = H - (o.bot ?? 50);
+  const X = v => L + (v - o.x0) / (o.x1 - o.x0) * (R - L);
+  const Y = v => B - (v - o.y0) / (o.y1 - o.y0) * (B - T);
+  const Xi = p => o.x0 + (p - L) / (R - L) * (o.x1 - o.x0);
+  const Yi = p => o.y0 + (B - p) / (B - T) * (o.y1 - o.y0);
+  const ax = S("g"); svg.append(ax);
+  (o.yt || []).forEach(t => {
+    ax.append(S("line", {x1:L, x2:R, y1:Y(t), y2:Y(t), stroke:LINE}));
+    ax.append(S("text", {x:L - 8, y:Y(t) + 4, "text-anchor":"end"}, o.yf ? o.yf(t) : t));
+  });
+  (o.xt || []).forEach(t => {
+    ax.append(S("line", {x1:X(t), x2:X(t), y1:B, y2:B + 5, stroke:FG}));
+    ax.append(S("text", {x:X(t), y:B + 20, "text-anchor":"middle"}, o.xf ? o.xf(t) : t));
+  });
+  ax.append(S("line", {x1:L, x2:R, y1:B, y2:B, stroke:FG}));
+  if (o.xlab) ax.append(S("text", {x:(L + R) / 2, y:B + 42, "text-anchor":"middle"}, o.xlab));
+  if (o.ylab) ax.append(S("text", {x:14, y:(T + B) / 2, "text-anchor":"middle", transform:`rotate(-90 14 ${(T + B) / 2})`}, o.ylab));
+  const id = "clip" + (clipN++);
+  const defs = S("defs"), cp = S("clipPath", {id});
+  cp.append(S("rect", {x:L, y:T - 8, width:R - L, height:B - T + 8}));
+  defs.append(cp); svg.append(defs);
+  const under = S("g", {"clip-path":`url(#${id})`}); svg.insertBefore(under, ax);
+  const clip = S("g", {"clip-path":`url(#${id})`}); svg.append(clip);
+  const top = S("g"); svg.append(top);
+  return { X, Y, Xi, Yi, L, R, T, B, under, clip, top, o, svg };
+}
+function svgPoint(svg, e){
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function bindSlider(id, fmtFn, cb){
+  const s = $("#" + id), n = $("#n" + id.slice(1));
+  const upd = () => { n.textContent = fmtFn(+s.value); cb(+s.value); };
+  s.addEventListener("input", upd);
+  return { el: s, upd, set: v => { s.value = v; upd(); } };
+}
+function range(a, b, s = 1){ const r = []; for (let v = a; v <= b + 1e-9; v += s) r.push(+v.toFixed(6)); return r; }
+function eqAxes(svg, bounds, xlab, ylab, step = 1){
+  const H = +svg.getAttribute("viewBox").split(" ")[3], Wp = 624 - 68, Hp = H - 66;
+  const [a, b, c, d] = bounds, sc = Math.min(Wp / (b - a), Hp / (d - c));
+  const xm = (a + b) / 2, ym = (c + d) / 2, xs = Wp / sc / 2, ys = Hp / sc / 2;
+  const x0 = xm - xs, x1 = xm + xs, y0 = ym - ys, y1 = ym + ys;
+  return plot(svg, { x0, x1, y0, y1, xt: range(Math.ceil(x0 / step) * step, Math.floor(x1 / step) * step, step), yt: range(Math.ceil(y0 / step) * step, Math.floor(y1 / step) * step, step), xlab, ylab });
+}
+const visGrid = (P, nx = 110) => ({ x0:P.o.x0, x1:P.o.x1, y0:P.o.y0, y1:P.o.y1, nx, ny: Math.round(nx * (P.B - P.T) / (P.R - P.L)) });
+
+/* shade a grid of classes, merging runs into a single rect */
+function shade(P, g, f, cols, layer){
+  const grp = S("g", {"shape-rendering":"crispEdges"});
+  const cw = (g.x1 - g.x0) / g.nx, ch = (g.y1 - g.y0) / g.ny;
+  const v = new Int8Array(g.nx * g.ny);
+  for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) v[j * g.nx + i] = f(i, j, g.x0 + (i + .5) * cw, g.y0 + (j + .5) * ch);
+  for (let j = 0; j < g.ny; j++){
+    let i = 0;
+    while (i < g.nx){
+      const c = v[j * g.nx + i];
+      let k = i + 1;
+      while (k < g.nx && v[j * g.nx + k] === c) k++;
+      if (cols[c]){
+        const x = P.X(g.x0 + i * cw), y = P.Y(g.y0 + (j + 1) * ch);
+        grp.append(S("rect", {x, y, width:P.X(g.x0 + k * cw) - x + .6, height:P.Y(g.y0 + j * ch) - y + .6, fill:cols[c]}));
+      }
+      i = k;
+    }
+  }
+  (layer || P.under).append(grp);
+  return grp;
+}
+/* where the line nx*x + ny*y = c crosses a box [x0,x1,y0,y1] */
+function lineInBox(nx, ny, c, [x0, x1, y0, y1]){
+  const pts = [];
+  if (Math.abs(ny) > 1e-9){ [x0, x1].forEach(x => { const y = (c - nx * x) / ny; if (y >= y0 - 1e-9 && y <= y1 + 1e-9) pts.push([x, y]); }); }
+  if (Math.abs(nx) > 1e-9){ [y0, y1].forEach(y => { const x = (c - ny * y) / nx; if (x >= x0 - 1e-9 && x <= x1 + 1e-9) pts.push([x, y]); }); }
+  if (pts.length < 2) return null;
+  let best = [pts[0], pts[1]], bd = -1;
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++){
+    const d = Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]); if (d > bd){ bd = d; best = [pts[i], pts[j]]; }
+  }
+  return best;
+}
+
+/* legends */
+function fruitMark(g, x, y, c, o = {}){
+  const e = c ? S("ellipse", {cx:x, cy:y, rx:4.8, ry:6.8}) : S("circle", {cx:x, cy:y, r:6.2});
+  if (o.hollow){ e.setAttribute("fill", "#fff"); e.setAttribute("stroke", c ? LEMON : ORANGE); e.setAttribute("stroke-width", 2.4); }
+  else { e.setAttribute("fill", c ? LEMON : ORANGE); e.setAttribute("stroke", "#fff"); e.setAttribute("stroke-width", 1.2); }
+  g.append(e); return e;
+}
+const icon = (c, hollow) => `<svg width="14" height="16" viewBox="0 0 14 16">${c
+  ? `<ellipse cx="7" cy="8" rx="4.8" ry="6.8" fill="${hollow ? "#fff" : LEMON}" stroke="${hollow ? LEMON : "none"}" stroke-width="2"/>`
+  : `<circle cx="7" cy="8" r="6" fill="${hollow ? "#fff" : ORANGE}" stroke="${hollow ? ORANGE : "none"}" stroke-width="2"/>`}</svg>`;
+const dotI = (col, hollow) => `<svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="${hollow ? "#fff" : col}" stroke="${col}" stroke-width="2"/></svg>`;
+const lineI = (col, dash, w = 3) => `<svg width="26" height="14"><line x1="1" y1="7" x2="25" y2="7" stroke="${col}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ""}/></svg>`;
+$$(".legend.wl").forEach(l => l.innerHTML = `<span>${dotI(BLUE)} connected</span><span>${dotI(FG, true)} not connected</span>`);
+$$(".legend.sl").forEach(l => l.innerHTML = `<span>${dotI(BLUE)} group 1</span><span>${dotI(FG, true)} group 2</span>`);
+$$(".legend.fl2").forEach(l => l.innerHTML = `<span>${icon(1)}${icon(0)} training fruit</span><span>${icon(1, 1)}${icon(0, 1)} test fruit</span><span>${lineI(FG)} training loss</span><span>${lineI(BLUE)} test loss</span>`);
+function dotMark(g, x, y, c, r = 5){
+  g.append(c ? S("circle", {cx:x, cy:y, r, fill:BLUE, stroke:"#fff", "stroke-width":1}) : S("circle", {cx:x, cy:y, r:r - .6, fill:"#fff", stroke:FG, "stroke-width":1.8}));
+}
+
+/* buttons in a group that behave like tabs */
+function tabs(sel, attr, cb){
+  const box = $(sel);
+  const set = v => { $$("button[data-" + attr + "]", box).forEach(b => b.classList.toggle("on", b.dataset[attr] === String(v))); cb(v); };
+  box.addEventListener("click", e => { const b = e.target.closest("button[data-" + attr + "]"); if (b) set(b.dataset[attr]); });
+  return set;
+}
+
+/* ---------- a tiny neural network, trained in the browser ---------- */
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function gauss(r){ let u = 0; while (!u) u = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * r()); }
+const ACT = {
+  tanh: [Math.tanh, a => 1 - a * a],
+  relu: [z => z > 0 ? z : 0, a => a > 0 ? 1 : 0],
+  sigmoid: [sig, a => a * (1 - a)],
+};
+class Net {
+  constructor(sizes, act = "tanh", seed = 1){
+    const r = rng(seed);
+    this.sizes = sizes; this.act = act; this.L = []; this.t = 0;
+    for (let l = 1; l < sizes.length; l++){
+      const n = sizes[l], m = sizes[l - 1], s = act === "relu" ? Math.sqrt(2 / m) : Math.sqrt(1 / m);
+      const W = Array.from({length: n}, () => Array.from({length: m}, () => gauss(r) * s));
+      const b = Array.from({length: n}, () => act === "relu" ? 0.1 : 0);
+      this.L.push({ W, b, mW: W.map(w => w.map(() => 0)), vW: W.map(w => w.map(() => 0)), mb: b.map(() => 0), vb: b.map(() => 0) });
+    }
+  }
+  fwd(x){
+    const as = [x]; let a = x;
+    this.L.forEach((ly, l) => {
+      const f = ACT[l === this.L.length - 1 ? "sigmoid" : this.act][0];
+      a = ly.W.map((w, i) => { let s = ly.b[i]; for (let j = 0; j < w.length; j++) s += w[j] * a[j]; return f(s); });
+      as.push(a);
+    });
+    return as;
+  }
+  p(x){ const as = this.fwd(x); return as[as.length - 1][0]; }
+  loss(X, Y){ let s = 0; X.forEach((x, k) => { const o = this.p(x); s -= Y[k] * Math.log(o + 1e-12) + (1 - Y[k]) * Math.log(1 - o + 1e-12); }); return s / X.length; }
+  acc(X, Y){ let s = 0; X.forEach((x, k) => { s += (this.p(x) >= .5 ? 1 : 0) === Y[k] ? 1 : 0; }); return s / X.length; }
+  /* one step of training on a batch: backpropagation for the slopes, then Adam to take the step */
+  step(X, Y, lr = .01){
+    const gW = this.L.map(ly => ly.W.map(w => w.map(() => 0))), gb = this.L.map(ly => ly.b.map(() => 0));
+    const df = ACT[this.act][1], n = X.length;
+    X.forEach((x, k) => {
+      const as = this.fwd(x);
+      let d = [as[as.length - 1][0] - Y[k]];
+      for (let l = this.L.length - 1; l >= 0; l--){
+        const ly = this.L[l], a = as[l];
+        for (let i = 0; i < d.length; i++){ gb[l][i] += d[i]; const g = gW[l][i]; for (let j = 0; j < a.length; j++) g[j] += d[i] * a[j]; }
+        if (l > 0){
+          const nd = new Array(a.length);
+          for (let j = 0; j < a.length; j++){ let s = 0; for (let i = 0; i < d.length; i++) s += d[i] * ly.W[i][j]; nd[j] = s * df(a[j]); }
+          d = nd;
+        }
+      }
+    });
+    const b1 = .9, b2 = .999; this.t++;
+    const c1 = 1 - b1 ** this.t, c2 = 1 - b2 ** this.t;
+    this.L.forEach((ly, l) => {
+      ly.W.forEach((w, i) => { for (let j = 0; j < w.length; j++){
+        const g = gW[l][i][j] / n;
+        ly.mW[i][j] = b1 * ly.mW[i][j] + (1 - b1) * g; ly.vW[i][j] = b2 * ly.vW[i][j] + (1 - b2) * g * g;
+        w[j] -= lr * (ly.mW[i][j] / c1) / (Math.sqrt(ly.vW[i][j] / c2) + 1e-8);
+      }});
+      for (let i = 0; i < ly.b.length; i++){
+        const g = gb[l][i] / n;
+        ly.mb[i] = b1 * ly.mb[i] + (1 - b1) * g; ly.vb[i] = b2 * ly.vb[i] + (1 - b2) * g * g;
+        ly.b[i] -= lr * (ly.mb[i] / c1) / (Math.sqrt(ly.vb[i] / c2) + 1e-8);
+      }
+    });
+  }
+  snap(){ return { act: this.act, L: this.L.map(ly => ({ W: ly.W.map(w => w.slice()), b: ly.b.slice() })) }; }
+}
+function snapP(s, x){
+  let a = x;
+  s.L.forEach((ly, l) => {
+    const f = ACT[l === s.L.length - 1 ? "sigmoid" : s.act][0];
+    a = ly.W.map((w, i) => { let z = ly.b[i]; for (let j = 0; j < w.length; j++) z += w[j] * a[j]; return f(z); });
+  });
+  return a[0];
+}
+
+/* ---------- data ---------- */
+const parse = csv => { const [h, ...ls] = csv.trim().split("\n"); const c = h.split(","); return ls.map(l => { const v = l.split(","), o = {}; c.forEach((k,i) => o[k] = isNaN(+v[i]) ? v[i] : +v[i]); return o; }); };
+const SP = parse(D.spiral_csv);
+const WF = parse(D.wifi_csv);
+const FR = parse(D.fruits_csv).map((r, i) => ({ ...r, i, x: r.width, y: r.height, c: r.fruit === "lemon" ? 1 : 0 }));
+
+/* ---------- slide navigation ---------- */
+const slides = $$(".slide");
+const onEnter = {};
+let cur = 0;
+function show(i){
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle("active", k === cur));
+  $("#count").textContent = `${cur + 1} / ${slides.length}`;
+  $("#prev").disabled = cur === 0;
+  $("#next").disabled = cur === slides.length - 1;
+  slides[cur].scrollTop = 0;
+  try { history.replaceState(null, "", "#" + (cur + 1)); } catch (e) {}
+  const st = $("#sr-status"), h = slides[cur].querySelector("h1");
+  if (st) st.textContent = `Slide ${cur + 1} of ${slides.length}: ${h ? h.textContent : ""}`;
+  if (onEnter[cur + 1]) onEnter[cur + 1]();
+}
+$("#prev").onclick = () => show(cur - 1);
+$("#next").onclick = () => show(cur + 1);
+document.addEventListener("keydown", e => {
+  const t = e.target.tagName;
+  if (t === "TEXTAREA" || t === "INPUT") return;
+  if (["ArrowRight","PageDown"].includes(e.key) || (e.key === " " && t !== "BUTTON")) { e.preventDefault(); show(cur + 1); }
+  if (["ArrowLeft","PageUp"].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+});
+
+/* ---------- 1: a network learns a spiral ---------- */
+(function(){
+  const svg = $("#v-1"), out = $("#r-1"), btn = $("#b-1");
+  const P = eqAxes(svg, [-1.12, 1.12, -1.12, 1.12], "", "");
+  const X = SP.map(p => [p.x * 2, p.y * 2]), Y = SP.map(p => p.label);
+  const bg = S("g"); P.under.append(bg);
+  const dots = S("g"); P.clip.append(dots);
+  SP.forEach(p => dotMark(dots, P.X(p.x), P.Y(p.y), p.label, 4.6));
+  const G = visGrid(P, 84);
+  let net, steps, running = false, raf = 0;
+  const MAX = 900;
+  function render(){
+    bg.innerHTML = "";
+    shade(P, G, (i, j, x, y) => net.p([x * 2, y * 2]) >= .5 ? 1 : 0, [GREY_SOFT, BLUE_SOFT], bg);
+    const a = net.acc(X, Y);
+    out.innerHTML = steps === 0
+      ? `The network starts with random weights, so its first guess is a mess. ${pct(a)} of the points are on the right side.`
+      : `After ${steps} training steps, <b>${pct(a)}</b> of the points are on the right side`;
+  }
+  function reset(){ cancelAnimationFrame(raf); running = false; btn.textContent = "Train"; net = new Net([2, 16, 16, 1], "tanh", 2); steps = 0; render(); }
+  function frame(){
+    for (let k = 0; k < 4 && steps < MAX; k++){ net.step(X, Y, .01); steps++; }
+    render();
+    if (steps < MAX && running) raf = requestAnimationFrame(frame);
+    else { running = false; btn.textContent = steps < MAX ? "Train" : "Done"; btn.disabled = steps >= MAX; }
+  }
+  btn.onclick = () => {
+    if (running){ running = false; btn.textContent = "Train"; return; }
+    running = true; btn.textContent = "Pause"; raf = requestAnimationFrame(frame);
+  };
+  $("#b-1r").onclick = () => { btn.disabled = false; reset(); };
+  reset();
+})();
+
+/* ---------- 2: a real neuron ---------- */
+(function(){
+  const svg = $("#v-2"), out = $("#r-2");
+  const STR = [3, 2, 1], NEED = 4, NAMES = ["A", "B", "C"], WID = [11, 6.5, 2.5], WORD = ["strong", "medium", "weak"];
+  const on = [false, false, false];
+  const ys = [60, 170, 280], SX = 345, SY = 170, SR = 52;
+  const paths = [], dots = [];
+  // incoming connections
+  ys.forEach((y, i) => {
+    const ey = SY + (y - SY) * .32;
+    const d = `M 72 ${y} C 170 ${y}, 220 ${ey}, ${SX - SR + 4} ${ey}`;
+    const p = S("path", {d, fill:"none", stroke:LINE, "stroke-width":WID[i], "stroke-linecap":"round"});
+    svg.append(p); paths.push(p);
+    svg.append(S("circle", {cx:52, cy:y, r:20, fill:"#fff", stroke:FG, "stroke-width":2}));
+    svg.append(S("text", {x:52, y:y + 5, "text-anchor":"middle", "font-weight":700, "font-size":15}, NAMES[i]));
+    svg.append(S("text", {x:160, y:y + (i === 0 ? -14 : i === 2 ? 26 : -14), "text-anchor":"middle", fill:MUTED}, `${WORD[i]} (${STR[i]})`));
+  });
+  // axon
+  const axon = S("path", {d:`M ${SX + SR} ${SY} L 590 ${SY}`, fill:"none", stroke:LINE, "stroke-width":7, "stroke-linecap":"round"});
+  svg.append(axon);
+  [430, 490, 550].forEach(x => svg.append(S("rect", {x:x - 22, y:SY - 9, width:44, height:18, rx:9, fill:"#fff", stroke:LINE, "stroke-width":2})));
+  [[-30], [0], [30]].forEach(([dy]) => svg.append(S("path", {d:`M 590 ${SY} L 622 ${SY + dy}`, stroke:LINE, "stroke-width":4, "stroke-linecap":"round", fill:"none"})));
+  svg.append(S("text", {x:490, y:SY + 40, "text-anchor":"middle", fill:MUTED}, "axon"));
+  const soma = S("circle", {cx:SX, cy:SY, r:SR, fill:"#fff", stroke:FG, "stroke-width":2.5}); svg.append(soma);
+  const sumT = S("text", {x:SX, y:SY + 2, "text-anchor":"middle", "font-weight":700, "font-size":26}, "0"); svg.append(sumT);
+  svg.append(S("text", {x:SX, y:SY + 24, "text-anchor":"middle", fill:MUTED, "font-size":12}, `needs ${NEED}`));
+  const fireT = S("text", {x:SX, y:SY - SR - 12, "text-anchor":"middle", "font-weight":700}, ""); svg.append(fireT);
+  const pulseG = S("g"); svg.append(pulseG);
+  let anim = 0;
+  function draw(){
+    const sum = STR.reduce((s, v, i) => s + (on[i] ? v : 0), 0), fires = sum >= NEED;
+    $$("#p-2 button").forEach((b, i) => b.classList.toggle("on", on[i]));
+    paths.forEach((p, i) => p.setAttribute("stroke", on[i] ? BLUE : LINE));
+    cancelAnimationFrame(anim); pulseG.innerHTML = "";
+    sumT.textContent = "0"; soma.setAttribute("fill", "#fff"); axon.setAttribute("stroke", LINE); fireT.textContent = "";
+    const ps = paths.map((p, i) => on[i] ? S("circle", {r:7, fill:BLUE}) : null);
+    ps.forEach(c => c && pulseG.append(c));
+    const ap = S("circle", {r:8, fill:BLUE, opacity:0}); pulseG.append(ap);
+    const t0 = performance.now(), AL = axon.getTotalLength();
+    const tick = now => {
+      const t = (now - t0) / 700;
+      ps.forEach((c, i) => { if (!c) return; const L = paths[i].getTotalLength(), q = paths[i].getPointAtLength(Math.min(1, t) * L); c.setAttribute("cx", q.x); c.setAttribute("cy", q.y); c.setAttribute("opacity", t < 1 ? 1 : 0); });
+      if (t >= 1){
+        sumT.textContent = sum;
+        if (fires){
+          soma.setAttribute("fill", BLUE_SOFT); axon.setAttribute("stroke", BLUE); fireT.textContent = "fires!";
+          const u = Math.min(1, (t - 1) / .8), q = axon.getPointAtLength(u * AL);
+          ap.setAttribute("cx", q.x); ap.setAttribute("cy", q.y); ap.setAttribute("opacity", u < 1 ? 1 : 0);
+        } else if (sum > 0) fireT.textContent = "not enough";
+      }
+      if (t < 1.85) anim = requestAnimationFrame(tick);
+    };
+    anim = requestAnimationFrame(tick);
+    const list = NAMES.filter((n, i) => on[i]);
+    out.innerHTML = sum === 0
+      ? "No signals are coming in, so the neuron stays quiet. Press the buttons to send some."
+      : `Signal${list.length > 1 ? "s" : ""} ${list.join(" and ").replace(/ and (?=.* and )/, ", ")} add up to <b>${sum}</b>. The neuron needs ${NEED} to fire, so it ${fires ? "<b>fires</b>" : "stays quiet"}.`;
+  }
+  $("#p-2").onclick = e => { const b = e.target.closest("button"); if (!b) return; on[+b.dataset.i] = !on[+b.dataset.i]; draw(); };
+  draw();
+})();
+
+/* ---------- sorting cards (slides 4 and 20) ---------- */
+function sorter(box, say, labels, items){
+  let done = 0, right = 0;
+  items.forEach(it => {
+    const c = document.createElement("div"); c.className = "card";
+    c.innerHTML = `<div class="q">${it.q}</div><div class="pick">${labels.map((l, i) => `<button data-i="${i}">${l}</button>`).join("")}</div><div class="why"><b>${labels[it.a]}.</b> ${it.why}</div>`;
+    c.querySelector(".pick").onclick = e => {
+      const b = e.target.closest("button"); if (!b || c.classList.contains("done")) return;
+      const ok = +b.dataset.i === it.a;
+      c.classList.add("done", ok ? "right" : "wrong");
+      b.classList.add("on");
+      $$("button", c).forEach(x => x.disabled = true);
+      done++; if (ok) right++;
+      say.textContent = done < items.length ? `${right} of ${done} right so far` : `You got ${right} of ${items.length} right`;
+    };
+    box.append(c);
+  });
+  say.textContent = "Pick an answer for each";
+}
+sorter($("#v-4"), $("#r-4"), ["Brain", "Network"], [
+  { q:"Recognizing a new kind of animal after seeing two pictures of it", a:0, why:"People can learn from a handful of examples. A network usually needs thousands." },
+  { q:"Adding up a million numbers in a fraction of a second", a:1, why:"A network is math running on a computer, so it's very fast and never makes arithmetic mistakes." },
+  { q:"Running on about 20 watts, less than a light bulb", a:0, why:"Your brain uses about 20 watts. Training a large network can take thousands of computer chips running for weeks." },
+  { q:"Being copied to a thousand computers in a minute", a:1, why:"A trained network is just a list of numbers, so you can copy it as often as you like. You can't copy what you know into someone else's head." },
+  { q:"Learning something new without forgetting what it already knew", a:0, why:"Train a network on a new task and it tends to forget the old task, unless you're careful." },
+  { q:"Looking through a million X-rays without getting tired", a:1, why:"A network gives the millionth X-ray the same attention as the first." },
+]);
+
+/* ---------- 3: an artificial neuron ---------- */
+(function(){
+  const svg = $("#v-3"), out = $("#r-3");
+  const x = [1, 1, 0], w = [3, -2, 1]; let b = -1.5;
+  const ys = [45, 135, 225], NX = 380, NY = 135;
+  function draw(){
+    svg.innerHTML = "";
+    $$("#p-3 button").forEach((bt, i) => bt.classList.toggle("on", !!x[i]));
+    const z = w.reduce((s, wi, i) => s + wi * x[i], b), o = z > 0 ? 1 : 0;
+    ys.forEach((y, i) => {
+      const col = w[i] > 0 ? BLUE : w[i] < 0 ? RED : LINE;
+      svg.append(S("line", {x1:110, y1:y, x2:NX - 46, y2:NY + (y - NY) * .3, stroke:col, "stroke-width":1 + 1.6 * Math.abs(w[i]), "stroke-linecap":"round", opacity:x[i] ? 1 : .35}));
+      const mx = 110 + (NX - 46 - 110) * .5, my = y + (NY + (y - NY) * .3 - y) * .5;
+      svg.append(S("rect", {x:mx - 26, y:my - 13, width:52, height:24, rx:5, fill:"#fff", stroke:col}));
+      svg.append(S("text", {x:mx, y:my + 4, "text-anchor":"middle", "font-weight":700, fill:col === LINE ? MUTED : col}, fmt(w[i], 1)));
+      svg.append(S("circle", {cx:86, cy:y, r:22, fill:x[i] ? BLUE_SOFT : "#fff", stroke:FG, "stroke-width":2}));
+      svg.append(S("text", {x:86, y:y + 5, "text-anchor":"middle", "font-weight":700, "font-size":16}, x[i]));
+      svg.append(S("text", {x:36, y:y + 5, "text-anchor":"middle", fill:MUTED}, ["x₁", "x₂", "x₃"][i]));
+    });
+    svg.append(S("circle", {cx:NX, cy:NY, r:46, fill:o ? BLUE_SOFT : "#fff", stroke:FG, "stroke-width":2.5}));
+    svg.append(S("text", {x:NX, y:NY - 4, "text-anchor":"middle", "font-weight":700, "font-size":16}, "z = " + fmt(z, 1)));
+    svg.append(S("text", {x:NX, y:NY + 16, "text-anchor":"middle", fill:MUTED, "font-size":12}, "bias " + fmt(b, 1)));
+    svg.append(S("line", {x1:NX + 46, y1:NY, x2:530, y2:NY, stroke:o ? BLUE : LINE, "stroke-width":4}));
+    svg.append(S("path", {d:`M 530 ${NY - 8} L 544 ${NY} L 530 ${NY + 8} Z`, fill:o ? BLUE : LINE}));
+    svg.append(S("circle", {cx:578, cy:NY, r:26, fill:o ? BLUE : "#fff", stroke:FG, "stroke-width":2}));
+    svg.append(S("text", {x:578, y:NY + 6, "text-anchor":"middle", "font-weight":700, "font-size":18, fill:o ? "#fff" : FG}, o));
+    svg.append(S("text", {x:578, y:NY + 48, "text-anchor":"middle", fill:MUTED}, "output"));
+    const terms = w.map((wi, i) => `${fmt(wi, 1)}×${x[i]}`).join(" + ");
+    out.innerHTML = `z = ${terms} + (${fmt(b, 1)})\n  = ${fmt(z, 1)}\n` +
+      (o ? `z is above 0, so the neuron sends <b>1</b>` : `z is not above 0, so the neuron sends <b>0</b>`);
+  }
+  $("#p-3").onclick = e => { const bt = e.target.closest("button"); if (!bt) return; x[+bt.dataset.i] = 1 - x[+bt.dataset.i]; draw(); };
+  bindSlider("s3a", v => fmt(v, 1), v => { w[0] = v; draw(); }).upd();
+  bindSlider("s3b", v => fmt(v, 1), v => { w[1] = v; draw(); }).upd();
+  bindSlider("s3c", v => fmt(v, 1), v => { w[2] = v; draw(); }).upd();
+  bindSlider("s3d", v => fmt(v, 1), v => { b = v; draw(); }).upd();
+})();
+
+/* ---------- truth tables ---------- */
+(function(){
+  const G = { and:[0, 0, 0, 1], or:[0, 1, 1, 1], nand:[1, 1, 1, 0], xor:[0, 1, 1, 0] };
+  const NAME = { and:"AND", or:"OR", nand:"NAND", xor:"XOR" };
+  const x = [0, 0]; let g = "and";
+  function draw(){
+    $$("#p-tti button").forEach((b, i) => { b.classList.toggle("on", !!x[i]); b.textContent = `x${"\u2081\u2082"[i]} = ${x[i]}`; });
+    const k = x[0] * 2 + x[1], T = G[g];
+    $("#t-tt").innerHTML = `<table class="tbl" style="font-size:1.15rem"><thead><tr><th class="num">x\u2081</th><th class="num">x\u2082</th><th class="num">${NAME[g]}</th></tr></thead><tbody>` +
+      [[0, 0], [0, 1], [1, 0], [1, 1]].map(([a, c], i) => `<tr style="${i === k ? "background:var(--accent-soft)" : ""}"><td class="num">${a}</td><td class="num">${c}</td><td class="num" style="${T[i] ? "color:var(--accent);font-weight:700" : ""}">${T[i]}</td></tr>`).join("") + "</tbody></table>";
+    $("#r-tt").innerHTML = `With x\u2081 = ${x[0]} and x\u2082 = ${x[1]}, ${NAME[g]} outputs <b>${T[k]}</b>. Click the inputs to move through the rows.`;
+  }
+  tabs("#p-tt", "g", v => { g = v; draw(); });
+  $("#p-tti").onclick = e => { const b = e.target.closest("button"); if (!b) return; x[+b.dataset.i] = 1 - x[+b.dataset.i]; draw(); };
+  draw();
+})();
+
+/* ---------- 5: a neuron is a line, and with a sigmoid it's logistic regression ---------- */
+(function(){
+  const svg = $("#v-5"), out = $("#r-5"), tog = $("#b-5");
+  const EX = D.exams.map(([h, p]) => ({ h, p }));
+  let w = .15, b = -.25, sg = false;
+  // fit logistic regression with plain gradient descent
+  let fw = 0, fb = 0;
+  for (let it = 0; it < 20000; it++){
+    let gw = 0, gb = 0;
+    EX.forEach(e => { const d = sig(fw * e.h + fb) - e.p; gw += d * e.h; gb += d; });
+    fw -= .05 * gw / EX.length; fb -= .05 * gb / EX.length;
+  }
+  function draw(){
+    tog.classList.toggle("on", sg);
+    const P = plot(svg, { x0:0, x1:10, y0:-.5, y1:1.5, xt:range(0, 10, 2), yt:[0, .5, 1], yf:t => t === 1 ? "passed 1" : t === 0 ? "failed 0" : t, xlab:"hours studied", L:84 });
+    const f = h => sg ? sig(w * h + b) : w * h + b;
+    const pts = range(0, 10, .05).map(h => `${P.X(h)},${P.Y(f(h))}`).join(" ");
+    P.clip.append(S("polyline", {points:pts, fill:"none", stroke:BLUE, "stroke-width":3.5}));
+    EX.forEach(e => dotMark(P.clip, P.X(e.h), P.Y(e.p), e.p, 6));
+    const bs = b < 0 ? `− ${fmt(-b, 2)}` : `+ ${fmt(b, 2)}`;
+    out.innerHTML = sg
+      ? `Now the output is sigmoid(${fmt(w, 2)}x ${bs}). A student who studied 6 hours gets a <b>${pct(f(6))}</b> chance of passing.`
+      : `This neuron is the straight line z = ${fmt(w, 2)}x ${bs}. It goes below 0 and above 1, which doesn't work as a chance of passing.`;
+  }
+  const sw = bindSlider("s5w", v => fmt(v, 2), v => { w = v; draw(); });
+  const sb = bindSlider("s5b", v => fmt(v, 2), v => { b = v; draw(); });
+  tog.onclick = () => { sg = !sg; draw(); };
+  $("#b-5f").onclick = () => { sg = true; sw.el.value = fw.toFixed(2); sb.el.value = (Math.round(fb * 20) / 20).toFixed(2); sw.upd(); sb.upd(); };
+  sw.upd(); sb.upd();
+})();
+
+/* ---------- 6: activation functions ---------- */
+(function(){
+  const svg = $("#v-6"), out = $("#r-6");
+  const F = { step: z => z > 0 ? 1 : 0, sigmoid: sig, relu: z => Math.max(0, z) };
+  let fn = "step", z = 1.2;
+  function draw(){
+    const relu = fn === "relu";
+    const P = plot(svg, { x0:-5, x1:5, y0:relu ? -.5 : -.25, y1:relu ? 5.5 : 1.25, xt:range(-4, 4, 2), yt:relu ? range(0, 5, 1) : [0, .5, 1], xlab:"z, the neuron's total", ylab:"what it sends on" });
+    P.under.append(S("line", {x1:P.X(0), x2:P.X(0), y1:P.T, y2:P.B, stroke:LINE}));
+    const f = F[fn];
+    if (fn === "step"){
+      P.clip.append(S("line", {x1:P.X(-5), y1:P.Y(0), x2:P.X(0), y2:P.Y(0), stroke:BLUE, "stroke-width":3.5}));
+      P.clip.append(S("line", {x1:P.X(0), y1:P.Y(1), x2:P.X(5), y2:P.Y(1), stroke:BLUE, "stroke-width":3.5}));
+      P.clip.append(S("line", {x1:P.X(0), y1:P.Y(0), x2:P.X(0), y2:P.Y(1), stroke:BLUE, "stroke-width":1.5, "stroke-dasharray":"3 3"}));
+    } else {
+      P.clip.append(S("polyline", {points:range(-5, 5, .05).map(v => `${P.X(v)},${P.Y(f(v))}`).join(" "), fill:"none", stroke:BLUE, "stroke-width":3.5}));
+    }
+    const o = f(z);
+    P.clip.append(S("line", {x1:P.X(z), x2:P.X(z), y1:P.B, y2:P.Y(o), stroke:FG, "stroke-dasharray":"4 4"}));
+    P.clip.append(S("line", {x1:P.L, x2:P.X(z), y1:P.Y(o), y2:P.Y(o), stroke:FG, "stroke-dasharray":"4 4"}));
+    P.clip.append(S("circle", {cx:P.X(z), cy:P.Y(o), r:7, fill:FG, stroke:"#fff", "stroke-width":2}));
+    out.innerHTML = `${fmt(z, 2)} goes in and <b>${fmt(o, fn === "step" ? 0 : 2)}</b> comes out` +
+      (fn === "step" ? ". Moving z a little almost never changes the answer." : fn === "sigmoid" ? ". Any change in z moves the output a bit." : z < 0 ? ". Negative totals all become 0." : ". Positive totals pass straight through.");
+  }
+  tabs("#p-6", "f", v => { fn = v; draw(); });
+  bindSlider("s6", v => fmt(v, 2), v => { z = v; draw(); }).upd();
+})();
+
+/* ---------- 7 and 8: a single neuron as a logic gate ---------- */
+function gate(n, getTarget, onChange){
+  const svg = $("#v-" + n), tbl = $("#t-" + n), out = $("#r-" + n);
+  const IN = [[0, 0], [0, 1], [1, 0], [1, 1]];
+  const lo = -.45, hi = 1.45, PL = 70, PR = 600, PT = 20, PB = 450;
+  const X = v => PL + (v - lo) / (hi - lo) * (PR - PL), Y = v => PB - (v - lo) / (hi - lo) * (PB - PT);
+  const w = [0, 0]; let b = 0;
+  // clip the square to the side where w1*x + w2*y + b > 0
+  function halfPlane(){
+    let poly = [[lo, lo], [hi, lo], [hi, hi], [lo, hi]];
+    const f = p => w[0] * p[0] + w[1] * p[1] + b, res = [];
+    for (let i = 0; i < poly.length; i++){
+      const a = poly[i], c = poly[(i + 1) % poly.length], fa = f(a), fc = f(c);
+      if (fa > 0) res.push(a);
+      if ((fa > 0) !== (fc > 0)){ const t = fa / (fa - fc); res.push([a[0] + t * (c[0] - a[0]), a[1] + t * (c[1] - a[1])]); }
+    }
+    return res;
+  }
+  function draw(){
+    const T = getTarget();
+    svg.innerHTML = "";
+    svg.append(S("rect", {x:PL, y:PT, width:PR - PL, height:PB - PT, fill:"#fff", stroke:LINE}));
+    const hp = halfPlane();
+    if (hp.length > 2) svg.append(S("polygon", {points:hp.map(p => `${X(p[0])},${Y(p[1])}`).join(" "), fill:BLUE_SOFT}));
+    const seg = lineInBox(w[0], w[1], -b, [lo, hi, lo, hi]);
+    if (seg) svg.append(S("line", {x1:X(seg[0][0]), y1:Y(seg[0][1]), x2:X(seg[1][0]), y2:Y(seg[1][1]), stroke:BLUE, "stroke-width":3}));
+    [0, 1].forEach(t => {
+      svg.append(S("text", {x:X(t), y:PB + 28, "text-anchor":"middle", "font-size":22}, t));
+      svg.append(S("text", {x:PL - 14, y:Y(t) + 7, "text-anchor":"end", "font-size":22}, t));
+    });
+    svg.append(S("text", {x:(PL + PR) / 2, y:PB + 60, "text-anchor":"middle", "font-size":22}, "x₁"));
+    svg.append(S("text", {x:24, y:(PT + PB) / 2 + 7, "text-anchor":"middle", "font-size":22}, "x₂"));
+    let right = 0;
+    const rows = IN.map(([a, c], k) => {
+      const z = w[0] * a + w[1] * c + b, o = z > 0 ? 1 : 0, ok = o === T[k];
+      if (ok) right++;
+      if (!ok) svg.append(S("circle", {cx:X(a), cy:Y(c), r:30, fill:"none", stroke:RED, "stroke-width":4}));
+      svg.append(T[k] ? S("circle", {cx:X(a), cy:Y(c), r:17, fill:BLUE, stroke:"#fff", "stroke-width":2}) : S("circle", {cx:X(a), cy:Y(c), r:15, fill:"#fff", stroke:FG, "stroke-width":3.5}));
+      return `<tr><td class="num">${a}</td><td class="num">${c}</td><td class="num">${T[k]}</td><td class="num">${fmt(z, 1)}</td><td class="num">${o}</td><td>${ok ? '<span class="ok" role="img" aria-label="correct">✓</span>' : '<span class="no" role="img" aria-label="wrong">✗</span>'}</td></tr>`;
+    });
+    tbl.innerHTML = `<table class="tbl sm"><thead><tr><th class="num">x₁</th><th class="num">x₂</th><th class="num">want</th><th class="num">z</th><th class="num">out</th><th></th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+    out.innerHTML = right === 4 ? `That gets <b>all 4 rows</b> right` : `<b>${right} of 4</b> rows right. The circled dots are wrong.`;
+    if (onChange) onChange(right);
+  }
+  const sa = bindSlider(`s${n}a`, v => fmt(v, 1), v => { w[0] = v; draw(); });
+  const sb = bindSlider(`s${n}b`, v => fmt(v, 1), v => { w[1] = v; draw(); });
+  const sc = bindSlider(`s${n}c`, v => fmt(v, 1), v => { b = v; draw(); });
+  w[0] = +sa.el.value; w[1] = +sb.el.value; b = +sc.el.value;
+  sa.upd(); sb.upd(); sc.upd();
+  return { draw, set(a, c, d){ sa.el.value = a; sb.el.value = c; sc.el.value = d; w[0] = a; w[1] = c; b = d; sa.upd(); sb.upd(); sc.upd(); }, out };
+}
+(function(){
+  const T = { and:[0, 0, 0, 1], or:[0, 1, 1, 1] };
+  let g = "and";
+  const G = gate(7, () => T[g]);
+  tabs("#p-7", "g", v => { g = v; G.draw(); });
+  $("#b-7").onclick = () => g === "and" ? G.set(1, 1, -1.5) : G.set(1, 1, -.5);
+})();
+(function(){
+  const G = gate(8, () => [0, 1, 1, 0]);
+  $("#b-8").onclick = () => {
+    const r = rng(Date.now() % 100000), IN = [[0, 0], [0, 1], [1, 0], [1, 1]], T = [0, 1, 1, 0];
+    let best = -1, bw = null;
+    const counts = [0, 0, 0, 0, 0];
+    for (let k = 0; k < 10000; k++){
+      const a = Math.round((r() * 4 - 2) * 10) / 10, c = Math.round((r() * 4 - 2) * 10) / 10, d = Math.round((r() * 6 - 3) * 10) / 10;
+      const n = IN.filter(([p, q], i) => ((a * p + c * q + d > 0) ? 1 : 0) === T[i]).length;
+      counts[n]++;
+      if (n > best){ best = n; bw = [a, c, d]; }
+    }
+    G.set(...bw);
+    G.out.innerHTML = `Out of 10,000 random sets of weights, ${counts[3].toLocaleString()} got 3 rows right and <b>none got all 4</b>. The sliders now show a set that got 3.`;
+  };
+})();
+
+/* ---------- 10: layers and parameters ---------- */
+(function(){
+  const svg = $("#v-10"), out = $("#r-10");
+  const st = { in:2, hl:1, nl:3 };
+  const LIM = { in:[1, 6], hl:[0, 4], nl:[1, 8] };
+  function draw(){
+    const sizes = [st.in, ...Array(st.hl).fill(st.nl), 1];
+    svg.innerHTML = "";
+    ["in", "hl", "nl"].forEach(k => $("#c-" + k).textContent = st[k]);
+    const n = sizes.length, xs = sizes.map((_, l) => 60 + l * (520 / (n - 1)));
+    const pos = sizes.map((m, l) => Array.from({length:m}, (_, i) => [xs[l], 160 + (i - (m - 1) / 2) * Math.min(40, 280 / m)]));
+    for (let l = 1; l < n; l++) pos[l].forEach(p => pos[l - 1].forEach(q => svg.append(S("line", {x1:q[0], y1:q[1], x2:p[0], y2:p[1], stroke:"#9aa1ab", "stroke-width":1.2}))));
+    pos.forEach((col, l) => col.forEach(p => svg.append(S("circle", {cx:p[0], cy:p[1], r:15, fill:l === 0 ? SOFT : l === n - 1 ? BLUE : BLUE_SOFT, stroke:FG, "stroke-width":1.6}))));
+    xs.forEach((x, l) => svg.append(S("text", {x, y:328, "text-anchor":"middle", fill:MUTED}, l === 0 ? "input" : l === n - 1 ? "output" : `hidden ${l}`)));
+    let total = 0;
+    const lines = [];
+    for (let l = 1; l < n; l++){
+      const w = sizes[l - 1] * sizes[l], b = sizes[l]; total += w + b;
+      const from = l === 1 ? "input" : `hidden ${l - 1}`, to = l === n - 1 ? "output" : `hidden ${l}`;
+      lines.push(`${(from + " → " + to).padEnd(22)} ${sizes[l - 1]} × ${sizes[l]} weights + ${b} ${b === 1 ? "bias" : "biases"} = ${w + b}`);
+    }
+    out.innerHTML = lines.join("\n") + `\n<b>total: ${total} parameters</b>`;
+  }
+  $("#p-10").onclick = e => {
+    const b = e.target.closest("button"); if (!b) return;
+    const k = b.dataset.k; st[k] = Math.max(LIM[k][0], Math.min(LIM[k][1], st[k] + +b.dataset.d)); draw();
+  };
+  draw();
+})();
+
+/* ---------- 12: every ReLU neuron adds a bend ---------- */
+(function(){
+  const svg = $("#v-12"), out = $("#r-12");
+  const C = D.cafe.map(([x, y]) => ({ x, y }));
+  const X0 = 6.5, X1 = 21.5;
+  function solve(A, b){
+    const n = b.length, M = A.map((r, i) => [...r, b[i]]);
+    for (let c = 0; c < n; c++){
+      let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      [M[c], M[p]] = [M[p], M[c]];
+      for (let r = 0; r < n; r++) if (r !== c){ const f = M[r][c] / M[c][c]; for (let k = c; k <= n; k++) M[r][k] -= f * M[c][k]; }
+    }
+    return M.map((r, i) => r[n] / r[i]);
+  }
+  function fit(n){
+    const ks = range(0, n - 1).map(i => X0 + i * (X1 - X0) / n);
+    const feat = x => [1, ...ks.map(k => Math.max(0, x - k))];
+    const F = C.map(p => feat(p.x)), m = n + 1;
+    const A = Array.from({length:m}, (_, i) => Array.from({length:m}, (_, j) => F.reduce((s, r) => s + r[i] * r[j], 0) + (i === j ? 1e-6 : 0)));
+    const bb = Array.from({length:m}, (_, i) => F.reduce((s, r, k) => s + r[i] * C[k].y, 0));
+    const c = solve(A, bb);
+    const f = x => feat(x).reduce((s, v, i) => s + v * c[i], 0);
+    return { ks, f, mse: C.reduce((s, p) => s + (f(p.x) - p.y) ** 2, 0) / C.length };
+  }
+  const lin = fit(1), bent = fit(12);
+  tabs("#p-12", "a", v => {
+    const P = plot(svg, { x0:6, x1:22, y0:0, y1:95, xt:range(6, 22, 2), yt:range(0, 80, 20), xf:t => t + ":00", xlab:"time of day", ylab:"customers" });
+    C.forEach(p => P.clip.append(S("circle", {cx:P.X(p.x), cy:P.Y(p.y), r:4.5, fill:FG, opacity:.7})));
+    const m = v === "relu" ? bent : lin;
+    P.clip.append(S("polyline", {points:range(X0, X1, .05).map(x => `${P.X(x)},${P.Y(m.f(x))}`).join(" "), fill:"none", stroke:BLUE, "stroke-width":3.5}));
+    out.innerHTML = v === "relu"
+      ? `With ReLU the line can bend to follow the dots, and the average squared error drops to <b>${fmt(m.mse, 0)}</b>`
+      : `Without an activation function the best it can do is a straight line, with an average squared error of <b>${fmt(m.mse, 0)}</b>`;
+  })("linear");
+})();
+
+/* ---------- 13: the network finds its own features ---------- */
+(function(){
+  const svg = $("#v-13"), out = $("#r-13");
+  const P = eqAxes(svg, [-10.5, 10.5, -10.5, 10.5], "x (m)", "y (m)", 5);
+  const X = WF.map(p => [p.x / 5, p.y / 5]), Y = WF.map(p => p.connected);
+  const bg = S("g"), lines = S("g"), dots = S("g");
+  P.under.append(bg); P.clip.append(lines); P.clip.append(dots);
+  WF.forEach(p => dotMark(dots, P.X(p.x), P.Y(p.y), p.connected, 5.5));
+  P.clip.append(S("circle", {cx:P.X(0), cy:P.Y(0), r:7, fill:FG}));
+  P.top.append(S("text", {x:P.X(0), y:P.Y(-.9) + 14, "text-anchor":"middle", "font-weight":700, stroke:"#fff", "stroke-width":4, "paint-order":"stroke"}, "router"));
+  const SEED = { 1:1, 2:2, 3:6, 4:1, 8:1 }, G = visGrid(P, 80), MAX = 900;
+  let net, steps = 0, raf = 0, h = 3;
+  function render(){
+    bg.innerHTML = ""; lines.innerHTML = "";
+    shade(P, G, (i, j, x, y) => net.p([x / 5, y / 5]) >= .5 ? 1 : 0, [GREY_SOFT, BLUE_SOFT], bg);
+    const box = [P.o.x0, P.o.x1, P.o.y0, P.o.y1];
+    net.L[0].W.forEach((w, i) => {
+      const s = lineInBox(w[0], w[1], -5 * net.L[0].b[i], box);
+      if (s) lines.append(S("line", {x1:P.X(s[0][0]), y1:P.Y(s[0][1]), x2:P.X(s[1][0]), y2:P.Y(s[1][1]), stroke:FG, "stroke-width":1.8, "stroke-dasharray":"7 5", opacity:.75}));
+    });
+    const a = net.acc(X, Y), word = h === 1 ? "hidden neuron" : "hidden neurons";
+    out.innerHTML = steps < MAX ? `Training with ${h} ${word}...` : `With ${h} ${word}, the network gets <b>${pct(a)}</b> of the phones right` + (h === 1 ? ". That's the same as calling every phone not connected." : "");
+  }
+  function train(n){
+    cancelAnimationFrame(raf);
+    h = n; net = new Net([2, h, 1], "tanh", SEED[h]); steps = 0;
+    const frame = () => { for (let k = 0; k < 12 && steps < MAX; k++){ net.step(X, Y, .05); steps++; } render(); if (steps < MAX) raf = requestAnimationFrame(frame); };
+    frame();
+  }
+  tabs("#p-13", "h", v => train(+v));
+  let shown = false;
+  onEnter[12] = () => { if (!shown){ shown = true; train(h); } };
+  net = new Net([2, 3, 1], "tanh", 6);
+  for (let k = 0; k < MAX; k++) net.step(X, Y, .05);
+  steps = MAX; render();
+})();
+
+/* ---------- 14 and 15: gradient descent on a single weight ---------- */
+const LOSS = w => .25 * (w - 2.5) ** 2 + .4, SLOPE = w => .5 * (w - 2.5);
+function lossAxes(svg){
+  const P = plot(svg, { x0:-2.5, x1:7.5, y0:0, y1:6, xt:range(-2, 7, 1), yt:range(0, 6, 1), xlab:"the weight w", ylab:"loss" });
+  P.clip.append(S("polyline", {points:range(-2.5, 7.5, .05).map(w => `${P.X(w)},${P.Y(LOSS(w))}`).join(" "), fill:"none", stroke:FG, "stroke-width":3}));
+  return P;
+}
+(function(){
+  const svg = $("#v-14"), out = $("#r-14");
+  const LR = .8;
+  let w = -1.5, trail = [], last = null;
+  function draw(){
+    const P = lossAxes(svg);
+    trail.forEach((t, i) => {
+      P.clip.append(S("line", {x1:P.X(t[0]), y1:P.Y(LOSS(t[0])), x2:P.X(t[1]), y2:P.Y(LOSS(t[1])), stroke:BLUE, "stroke-width":2, "stroke-dasharray":"4 3"}));
+      P.clip.append(S("circle", {cx:P.X(t[0]), cy:P.Y(LOSS(t[0])), r:4, fill:BLUE, opacity:.5}));
+    });
+    const s = SLOPE(w), dx = 1.1;
+    P.clip.append(S("line", {x1:P.X(w - dx), y1:P.Y(LOSS(w) - s * dx), x2:P.X(w + dx), y2:P.Y(LOSS(w) + s * dx), stroke:RED, "stroke-width":2.5}));
+    P.clip.append(S("circle", {cx:P.X(w), cy:P.Y(LOSS(w)), r:10, fill:BLUE, stroke:"#fff", "stroke-width":2.5}));
+    const dir = s < 0 ? "right" : "left";
+    if (Math.abs(s) < .01) out.innerHTML = `The ground is flat here, so this is the bottom. The best weight is <b>w = ${fmt(w, 2)}</b> with a loss of ${fmt(LOSS(w), 2)}.`;
+    else if (last) out.innerHTML = `The step moved w from ${fmt(last[0], 2)} to ${fmt(w, 2)}, and the loss went from ${fmt(LOSS(last[0]), 2)} to <b>${fmt(LOSS(w), 2)}</b>. The red line shows the slope, which is now ${fmt(s, 2)}.`;
+    else out.innerHTML = `At w = ${fmt(w, 2)} the loss is ${fmt(LOSS(w), 2)}. The red line shows the slope, which is ${fmt(s, 2)}, so downhill is to the ${dir}.`;
+    svg.onclick = e => { const p = svgPoint(svg, e); if (p.x < P.L || p.x > P.R) return; w = Math.max(-2, Math.min(7, P.Xi(p.x))); trail = []; last = null; draw(); };
+  }
+  $("#b-14").onclick = () => { const nw = w - LR * SLOPE(w); trail.push([w, nw]); last = [w]; w = nw; draw(); };
+  $("#b-14r").onclick = () => { w = -1.5; trail = []; last = null; draw(); };
+  draw();
+})();
+(function(){
+  const svg = $("#v-15"), out = $("#r-15");
+  const sl = bindSlider("s15", v => fmt(v, 1), lr => {
+    $$("#p-15 button").forEach(b => b.classList.toggle("on", Math.abs(+b.dataset.v - lr) < 1e-9));
+    const P = lossAxes(svg);
+    let w = -1.5; const ws = [w];
+    for (let k = 0; k < 20; k++){ w = w - lr * SLOPE(w); ws.push(w); }
+    const pt = v => [P.X(Math.max(-50, Math.min(50, v))), P.Y(Math.min(60, LOSS(v)))];
+    P.clip.append(S("polyline", {points:ws.map(v => pt(v).join(",")).join(" "), fill:"none", stroke:BLUE, "stroke-width":1.8, opacity:.8}));
+    ws.forEach((v, i) => { const [x, y] = pt(v); P.clip.append(S("circle", {cx:x, cy:y, r:i === 0 || i === 20 ? 7 : 4.5, fill:i === 20 ? BLUE : i === 0 ? FG : BLUE, opacity:i === 0 || i === 20 ? 1 : .55})); });
+    P.top.append(S("text", {x:pt(ws[0])[0] - 14, y:pt(ws[0])[1] + 5, "text-anchor":"end", "font-weight":700}, "start"));
+    const L = LOSS(w), f = 1 - .5 * lr;
+    let msg;
+    if (lr < .55) msg = "The steps are so small that it's still a long way from the bottom.";
+    else if (f > .05) msg = "It walks smoothly down to the bottom.";
+    else if (f > -.05) msg = "The first step lands almost exactly on the bottom.";
+    else if (f > -.97) msg = "Each step jumps over the bottom to the other side, so it zigzags its way down.";
+    else if (f > -1.03) msg = "It jumps back and forth between the same two spots and never gets down.";
+    else msg = "Each jump lands higher than the last, so the loss shoots off.";
+    out.innerHTML = `After 20 steps the loss is <b>${L > 1000 ? Math.round(L).toLocaleString() : fmt(L, 2)}</b>, and the lowest it can go is 0.40. ${msg}`;
+  });
+  $("#p-15").onclick = e => { const b = e.target.closest("button"); if (b) sl.set(b.dataset.v); };
+  sl.upd();
+})();
+
+/* ---------- 16: a slope for every weight ---------- */
+(function(){
+  const svg = $("#v-16"), tbl = $("#t-16"), out = $("#r-16");
+  const XIN = [1, .5], TARGET = 1, LR = 2;
+  const W0 = [.5, -.4, -.3, .8, -.6, .4];
+  let W, steps, L0;
+  // w1: x1->h1, w2: x2->h1, w3: x1->h2, w4: x2->h2, w5: h1->out, w6: h2->out
+  function fwd(W){
+    const h1 = sig(W[0] * XIN[0] + W[1] * XIN[1]), h2 = sig(W[2] * XIN[0] + W[3] * XIN[1]);
+    const o = sig(W[4] * h1 + W[5] * h2);
+    return { h1, h2, o, L: (TARGET - o) ** 2 };
+  }
+  function grad(W){
+    const { h1, h2, o } = fwd(W), d = -2 * (TARGET - o) * o * (1 - o);
+    const d1 = d * W[4] * h1 * (1 - h1), d2 = d * W[5] * h2 * (1 - h2);
+    return [d1 * XIN[0], d1 * XIN[1], d2 * XIN[0], d2 * XIN[1], d * h1, d * h2];
+  }
+  const NAMES = ["w₁", "w₂", "w₃", "w₄", "w₅", "w₆"];
+  function draw(){
+    svg.innerHTML = "";
+    const F = fwd(W), g = grad(W), gmax = Math.max(...g.map(Math.abs)) || 1;
+    const IN = [[80, 60], [80, 200]], HID = [[320, 60], [320, 200]], OUT = [560, 130];
+    const E = [[IN[0], HID[0]], [IN[1], HID[0]], [IN[0], HID[1]], [IN[1], HID[1]], [HID[0], OUT], [HID[1], OUT]];
+    E.forEach(([a, b], i) => {
+      const col = g[i] < 0 ? BLUE : RED, wd = 1.5 + 9 * Math.abs(g[i]) / gmax;
+      svg.append(S("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1], stroke:col, "stroke-width":wd, "stroke-linecap":"round", opacity:.85}));
+      const t = i === 1 ? .3 : i === 2 ? .3 : .5, mx = a[0] + (b[0] - a[0]) * t, my = a[1] + (b[1] - a[1]) * t;
+      svg.append(S("rect", {x:mx - 32, y:my - 12, width:64, height:22, rx:5, fill:"#fff", stroke:LINE}));
+      svg.append(S("text", {x:mx, y:my + 4, "text-anchor":"middle", "font-size":12}, `${NAMES[i]} ${fmt(W[i], 2)}`));
+    });
+    const node = (p, v, lab) => {
+      svg.append(S("circle", {cx:p[0], cy:p[1], r:26, fill:"#fff", stroke:FG, "stroke-width":2}));
+      svg.append(S("text", {x:p[0], y:p[1] + 5, "text-anchor":"middle", "font-weight":700}, fmt(v, 2)));
+      if (lab) svg.append(S("text", {x:p[0], y:p[1] + 46, "text-anchor":"middle", fill:MUTED, "font-size":12}, lab));
+    };
+    node(IN[0], XIN[0], "input"); node(IN[1], XIN[1], "input"); node(HID[0], F.h1); node(HID[1], F.h2); node(OUT, F.o, "output, should be 1");
+    const rows = W.map((w, i) => {
+      const Wn = W.slice(); Wn[i] += .1; const dl = fwd(Wn).L - F.L;
+      return `<tr><td>${NAMES[i]}</td><td class="num">${fmt(w, 2)}</td><td class="num" style="color:${dl < 0 ? BLUE : RED};font-weight:700">${dl < 0 ? "" : "+"}${fmt(dl, 4)}</td><td>${dl < 0 ? "move up" : "move down"}</td></tr>`;
+    });
+    tbl.innerHTML = `<table class="tbl sm"><thead><tr><th>weight</th><th class="num">value</th><th class="num">loss change if
+nudged up 0.1</th><th>so it
+should</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+    out.innerHTML = steps === 0
+      ? `The output is ${fmt(F.o, 2)} and the loss, (1 − output)&sup2;, is <b>${fmt(F.L, 3)}</b>`
+      : `After ${steps} step${steps > 1 ? "s" : ""} the output is ${fmt(F.o, 2)} and the loss has gone from ${fmt(L0, 3)} to <b>${fmt(F.L, 3)}</b>`;
+  }
+  function reset(){ W = W0.slice(); steps = 0; L0 = fwd(W).L; draw(); }
+  $("#b-16").onclick = () => { const g = grad(W); W = W.map((w, i) => w - LR * g[i]); steps++; draw(); };
+  $("#b-16r").onclick = reset;
+  reset();
+})();
+
+/* ---------- 17: stochastic gradient descent ---------- */
+(function(){
+  const svg = $("#v-17"), out = $("#r-17"), btn = $("#b-17");
+  const PTS = D.sgd.map(([x, y]) => ({ x, y })), N = PTS.length, LR = .06, BATCH = 10, START = [.2, 4.2];
+  const loss = (w, b, pts = PTS) => pts.reduce((s, p) => s + (w * p.x + b - p.y) ** 2, 0) / pts.length;
+  const grad = (w, b, pts) => { let gw = 0, gb = 0; pts.forEach(p => { const e = w * p.x + b - p.y; gw += 2 * e * p.x; gb += 2 * e; }); return [gw / pts.length, gb / pts.length]; };
+  $("#lg-17").innerHTML = `<span>${lineI(FG)} gradient descent, all 200 points per step</span><span>${lineI(ORANGE)} SGD, 10 points per step</span>`;
+  // best fit, for the ring levels
+  const mx = PTS.reduce((s, p) => s + p.x, 0) / N, my = PTS.reduce((s, p) => s + p.y, 0) / N;
+  const bw = PTS.reduce((s, p) => s + (p.x - mx) * (p.y - my), 0) / PTS.reduce((s, p) => s + (p.x - mx) ** 2, 0), bb = my - bw * mx, LMIN = loss(bw, bb);
+  let gd, sgd, seen, raf = 0, order, r;
+  const P = plot(svg, { x0:-.4, x1:3.6, y0:-1.5, y1:4.8, xt:range(0, 3.5, .5), yt:range(-1, 4, 1), xlab:"weight w", ylab:"bias b" });
+  const RING = ["#c9d8f8", "#d8e3fa", "#e4ecfb", "#edf2fc", "#f4f7fd", "#fafbfe", "#ffffff"];
+  shade(P, visGrid(P, 120), (i, j, w, b) => Math.min(RING.length - 1, Math.floor(Math.sqrt(loss(w, b) - LMIN) / .85)), RING);
+  const paths = S("g"); P.clip.append(paths);
+  P.clip.append(S("circle", {cx:P.X(bw), cy:P.Y(bb), r:5, fill:FG}));
+  P.top.append(S("text", {x:P.X(bw) + 9, y:P.Y(bb) + 18, "font-weight":700}, "lowest loss"));
+  P.top.append(S("text", {x:P.X(START[0]) - 12, y:P.Y(START[1]) + 5, "text-anchor":"end", "font-weight":700}, "start"));
+  function nextBatch(){
+    if (order.length < BATCH){ order = PTS.map((_, i) => i); for (let i = order.length - 1; i > 0; i--){ const j = Math.floor(r() * (i + 1)); [order[i], order[j]] = [order[j], order[i]]; } }
+    return order.splice(0, BATCH).map(i => PTS[i]);
+  }
+  function draw(){
+    paths.innerHTML = "";
+    [[gd, FG, 2.5], [sgd, ORANGE, 1.8]].forEach(([path, col, wd]) => {
+      paths.append(S("polyline", {points:path.map(p => `${P.X(p[0])},${P.Y(p[1])}`).join(" "), fill:"none", stroke:col, "stroke-width":wd, "stroke-linejoin":"round"}));
+      const e = path[path.length - 1];
+      paths.append(S("circle", {cx:P.X(e[0]), cy:P.Y(e[1]), r:6.5, fill:col, stroke:"#fff", "stroke-width":2}));
+    });
+    const g = gd[gd.length - 1], s = sgd[sgd.length - 1];
+    out.innerHTML = seen === 0
+      ? `Both start at the same spot, far from the lowest loss of ${fmt(LMIN, 2)}`
+      : `After ${seen.toLocaleString()} examples, gradient descent has taken ${gd.length - 1} steps and its loss is <b>${fmt(loss(...g), 2)}</b>. SGD has taken ${sgd.length - 1} steps and its loss is <b>${fmt(loss(...s), 2)}</b>.`;
+  }
+  function reset(){ cancelAnimationFrame(raf); gd = [START.slice()]; sgd = [START.slice()]; seen = 0; r = rng(3); order = []; btn.textContent = "Look at 2,000 examples"; btn.disabled = false; draw(); }
+  btn.onclick = () => {
+    const goal = seen + 2000; btn.disabled = true;
+    const frame = () => {
+      for (let k = 0; k < 4 && seen < goal; k++){
+        seen += BATCH;
+        const s = sgd[sgd.length - 1], gs = grad(s[0], s[1], nextBatch());
+        sgd.push([s[0] - LR * gs[0], s[1] - LR * gs[1]]);
+        if (seen % N === 0){ const g = gd[gd.length - 1], gg = grad(g[0], g[1], PTS); gd.push([g[0] - LR * gg[0], g[1] - LR * gg[1]]); }
+      }
+      draw();
+      if (seen < goal) raf = requestAnimationFrame(frame);
+      else { btn.disabled = false; btn.textContent = "Look at 2,000 more"; }
+    };
+    frame();
+  };
+  $("#b-17r").onclick = reset;
+  reset();
+})();
+
+/* ---------- 18: overfitting ---------- */
+(function(){
+  const svg = $("#v-18"), lsvg = $("#v-18l"), out = $("#r-18");
+  const mean = a => a.reduce((s, v) => s + v, 0) / a.length, sd = a => { const m = mean(a); return Math.sqrt(mean(a.map(v => (v - m) ** 2))); };
+  const MW = mean(FR.map(p => p.x)), MH = mean(FR.map(p => p.y)), SW = sd(FR.map(p => p.x)), SH = sd(FR.map(p => p.y));
+  const r = rng(11), order = FR.map((p, i) => [r(), i]).sort((a, b) => a[0] - b[0]).map(a => a[1]);
+  const isTest = new Set(order.slice(0, 20));
+  const tr = FR.filter(p => !isTest.has(p.i)), te = FR.filter(p => isTest.has(p.i));
+  const inp = p => [(p.x - MW) / SW, (p.y - MH) / SH];
+  const Xtr = tr.map(inp), Ytr = tr.map(p => p.c), Xte = te.map(inp), Yte = te.map(p => p.c);
+  const STEPS = 2000, EVERY = 10;
+  const FB = (() => { const xs = FR.map(p => p.x), ys = FR.map(p => p.y); return [Math.min(...xs) - .3, Math.max(...xs) + .3, Math.min(...ys) - .3, Math.max(...ys) + .3]; })();
+  const CFG = { big: { sizes:[2, 32, 32, 1], lr:.001 }, small: { sizes:[2, 3, 1], lr:.01 } };
+  const runs = {};
+  let which = "big", idx = 200, started = false;
+  const sl = bindSlider("s18", v => v * EVERY, v => { idx = v; draw(); });
+  function startTraining(){
+    if (started) return; started = true;
+    Object.keys(CFG).forEach(k => {
+      const c = CFG[k], net = new Net(c.sizes, "relu", 1);
+      runs[k] = { snaps:[net.snap()], trL:[net.loss(Xtr, Ytr)], teL:[net.loss(Xte, Yte)], teA:[net.acc(Xte, Yte)], net, done:false };
+    });
+    const work = () => {
+      let busy = false;
+      Object.keys(CFG).forEach(k => {
+        const R = runs[k]; if (R.done) return; busy = true;
+        for (let s = 0; s < 40; s++){
+          R.net.step(Xtr, Ytr, CFG[k].lr);
+          if (R.net.t % EVERY === 0){ R.snaps.push(R.net.snap()); R.trL.push(R.net.loss(Xtr, Ytr)); R.teL.push(R.net.loss(Xte, Yte)); R.teA.push(R.net.acc(Xte, Yte)); }
+          if (R.net.t >= STEPS){ R.done = true; break; }
+        }
+      });
+      if (cur === 16) draw();
+      if (busy) setTimeout(work, 0);
+    };
+    work();
+  }
+  function draw(){
+    const R = runs[which];
+    $$("#p-18 button").forEach(b => b.classList.toggle("on", b.dataset.n === which));
+    if (!R){ out.textContent = "Training..."; return; }
+    const have = R.snaps.length - 1, i = Math.min(idx, have);
+    const P = eqAxes(svg, FB, "width (cm)", "height (cm)");
+    const snap = R.snaps[i];
+    shade(P, visGrid(P, 90), (a, b, x, y) => snapP(snap, [(x - MW) / SW, (y - MH) / SH]) >= .5 ? 1 : 0, [OR_SOFT, LE_SOFT]);
+    tr.forEach(p => fruitMark(P.clip, P.X(p.x), P.Y(p.y), p.c));
+    te.forEach(p => fruitMark(P.clip, P.X(p.x), P.Y(p.y), p.c, { hollow:true }));
+    // loss chart
+    const top = 1;
+    const Q = plot(lsvg, { x0:0, x1:STEPS, y0:0, y1:top, xt:range(0, STEPS, 500), yt:[0, .25, .5, .75, 1], xlab:"training step", ylab:"loss", bot:44 });
+    const line = (arr, col) => Q.clip.append(S("polyline", {points:arr.map((v, k) => `${Q.X(k * EVERY)},${Q.Y(Math.min(top + .1, v))}`).join(" "), fill:"none", stroke:col, "stroke-width":2.5}));
+    line(R.trL, FG); line(R.teL, BLUE);
+    let best = 0; R.teL.forEach((v, k) => { if (v < R.teL[best]) best = k; });
+    if (R.done){
+      Q.clip.append(S("circle", {cx:Q.X(best * EVERY), cy:Q.Y(R.teL[best]), r:5, fill:BLUE}));
+      Q.top.append(S("text", {x:Q.X(best * EVERY), y:Q.Y(R.teL[best]) - 12, "text-anchor":"middle", fill:BLUE, "font-size":12, "font-weight":700, stroke:"#fff", "stroke-width":4, "paint-order":"stroke"}, "lowest test loss"));
+    }
+    Q.clip.append(S("line", {x1:Q.X(i * EVERY), x2:Q.X(i * EVERY), y1:Q.T, y2:Q.B, stroke:FG, "stroke-dasharray":"4 3"}));
+    const step = i * EVERY;
+    let msg = `Step ${step}: training loss ${fmt(R.trL[i], 2)}, test loss ${fmt(R.teL[i], 2)}, test accuracy ${pct(R.teA[i])}.`;
+    if (R.done && which === "big" && i > best + 20) msg += ` The test loss has been rising since step ${best * EVERY}, so the network is memorizing.`;
+    if (R.done && which === "big" && i <= best + 20 && i > 0) msg += " Both are still going down, so it's still learning the pattern.";
+    if (R.done && which === "small") msg += " With only 3 neurons it can't bend around single fruits, so the test loss stays low.";
+    if (!R.done) msg = "Training... " + msg;
+    out.innerHTML = msg;
+  }
+  $("#n18").textContent = STEPS;
+  tabs("#p-18", "n", v => { which = v; draw(); });
+  onEnter[17] = () => { startTraining(); draw(); };
+  onEnter[16] = startTraining;
+})();
+
+/* ---------- 19: learning from a useless feature ---------- */
+(function(){
+  const out = $("#r-19"), bars = $("#r-19b"), pics = $("#v-19");
+  const ROWS = D.dogs.map(([weight, snout, snow, wolf]) => ({ weight, snout, snow, wolf }));
+  const NEW = D.dogs_new.map(([weight, snout, snow, wolf]) => ({ weight, snout, snow, wolf }));
+  const tr = ROWS.slice(0, 90), te = ROWS.slice(90);
+  const cols = ["weight", "snout", "snow"];
+  const st = cols.map(c => { const v = tr.map(p => p[c]), m = v.reduce((s, x) => s + x, 0) / v.length; return [m, Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / v.length)]; });
+  const inp = (p, k) => cols.slice(0, k).map((c, i) => (p[c] - st[i][0]) / st[i][1]);
+  // pick some new photos that show what goes wrong
+  const pick = [];
+  [[1, 0], [0, 1], [1, 1], [0, 0], [1, 0], [0, 1], [1, 1], [0, 0]].forEach(([snow, wolf]) => { const p = NEW.find(q => q.snow === snow && q.wolf === wolf && !pick.includes(q)); if (p) pick.push(p); });
+  const res = {};
+  [3, 2].forEach(k => {
+    const net = new Net([k, 6, 1], "tanh", 1), X = tr.map(p => inp(p, k)), Y = tr.map(p => p.wolf);
+    for (let s = 0; s < 600; s++) net.step(X, Y, .02);
+    const acc = rows => net.acc(rows.map(p => inp(p, k)), rows.map(p => p.wolf));
+    res[k] = { tr: acc(tr), te: acc(te), nw: acc(NEW), pred: pick.map(p => net.p(inp(p, k)) >= .5 ? 1 : 0) };
+  });
+  function draw(withSnow){
+    const R = res[withSnow ? 3 : 2];
+    bars.innerHTML = [["training photos", R.tr], ["test photos", R.te], ["new photos", R.nw]].map(([l, v], i) =>
+      `<span class="lab">${l}</span><div class="track"><div class="fill${i === 2 ? " b" : ""}" style="width:${v * 100}%"></div></div><span class="n">${pct(v)}</span>`).join("");
+    pics.innerHTML = pick.map((p, i) => {
+      const ok = R.pred[i] === p.wolf;
+      return `<div class="photo ${p.snow ? "snow" : "grass"} ${ok ? "hit" : "miss"}"><div class="bg">${p.snow ? "snow" : "grass"}</div><div class="who">${p.wolf ? "wolf" : "husky"}</div><div>guess: ${R.pred[i] ? "wolf" : "husky"} ${ok ? '<span class="ok" role="img" aria-label="correct">✓</span>' : '<span class="no" role="img" aria-label="wrong">✗</span>'}</div></div>`;
+    }).join("");
+    out.innerHTML = withSnow
+      ? `With snow, the network looks great on the training and test photos, which came from the same collection. On new photos, where snow has nothing to do with wolves, it drops to <b>${pct(R.nw)}</b>. It mostly calls anything in snow a wolf.`
+      : `Without snow, the network has to look at the dog itself. It scores lower on the collection, but it holds up much better on new photos, with <b>${pct(R.nw)}</b>.`;
+  }
+  tabs("#p-19", "s", v => draw(v === "1"));
+  draw(true);
+})();
+
+/* ---------- 20: when to use a network ---------- */
+sorter($("#v-20"), $("#r-20"), ["Good fit", "Probably not"], [
+  { q:"Recognizing which bird is in a photo, with a million labeled photos", a:0, why:"Images are where networks shine, and there's plenty of data to learn from." },
+  { q:"Predicting house prices from 200 rows with the size and age of each house", a:1, why:"There's little data and the pattern is simple. Linear regression will do as well and is much easier to check." },
+  { q:"A bank that has to tell customers why their loan was turned down", a:1, why:"A network can't easily explain its decisions. A model you can read, like a decision tree or logistic regression, makes this much easier." },
+  { q:"Turning speech into text", a:0, why:"Sound is complicated and there are huge amounts of recorded speech, so networks do this far better than anything else." },
+  { q:"Spotting fraud in millions of card payments", a:0, why:"There's lots of data and the patterns are subtle and keep changing, which suits a network." },
+]);
+
+/* ---------- 22: the F1 score ---------- */
+(function(){
+  const svg = $("#v-22"), out = $("#r-22"), bars = $("#r-22b");
+  let p = 1, r = .05;
+  const f1 = (p, r) => p + r === 0 ? 0 : 2 * p * r / (p + r);
+  function draw(){
+    $$("#p-22 button").forEach(b => b.classList.toggle("on", Math.abs(+b.dataset.p - p) < .006 && Math.abs(+b.dataset.r - r) < .006));
+    const avg = (p + r) / 2, f = f1(p, r);
+    bars.innerHTML = [["average", avg, ""], ["F1", f, " b"]].map(([l, v, c]) =>
+      `<span class="lab">${l}</span><div class="track"><div class="fill${c}" style="width:${v * 100}%"></div></div><span class="n">${pct(v)}</span>`).join("");
+    const P = plot(svg, { x0:0, x1:1, y0:0, y1:1, xt:[0, .25, .5, .75, 1], yt:[0, .5, 1], xf:pct, yf:pct, xlab:`recall, with precision fixed at ${pct(p)}`, bot:44 });
+    const xs = range(0, 1, .01);
+    P.clip.append(S("polyline", {points:xs.map(x => `${P.X(x)},${P.Y((p + x) / 2)}`).join(" "), fill:"none", stroke:FG, "stroke-width":2.5}));
+    P.clip.append(S("polyline", {points:xs.map(x => `${P.X(x)},${P.Y(f1(p, x))}`).join(" "), fill:"none", stroke:BLUE, "stroke-width":3}));
+    P.clip.append(S("circle", {cx:P.X(r), cy:P.Y(avg), r:6, fill:FG}));
+    P.clip.append(S("circle", {cx:P.X(r), cy:P.Y(f), r:6, fill:BLUE}));
+    P.top.append(S("text", {x:P.X(.98), y:P.Y((p + .98) / 2) - 8, "text-anchor":"end", "font-weight":700}, "average"));
+    P.top.append(S("text", {x:P.X(.98), y:P.Y(f1(p, .98)) + 18, "text-anchor":"end", "font-weight":700, fill:BLUE}, "F1"));
+    const lo = Math.min(p, r);
+    out.innerHTML = Math.abs(p - r) < .1
+      ? `When precision and recall are close, F1 is close to the average`
+      : `The ${p < r ? "precision" : "recall"} is only ${pct(lo)}, so F1 stays low at ${pct(f)} even though the average is ${pct(avg)}`;
+  }
+  const sp = bindSlider("s22p", pct, v => { p = v; draw(); });
+  const sr = bindSlider("s22r", pct, v => { r = v; draw(); });
+  $("#p-22").onclick = e => { const b = e.target.closest("button"); if (!b) return; sp.el.value = b.dataset.p; sr.el.value = b.dataset.r; sp.upd(); sr.upd(); };
+  sp.upd(); sr.upd();
+})();
+
+/* ---------- Python in the browser (Pyodide) ---------- */
+const PY_HELPER = `
+import ast, io, sys, warnings
+import pandas as pd
+warnings.filterwarnings("ignore")
+pd.set_option("display.width", 160)
+pd.set_option("display.max_columns", 30)
+pd.set_option("display.max_rows", 60)
+
+def _run(code):
+    ns = {"pd": pd}
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        tree = ast.parse(code)
+        last = None
+        if tree.body and isinstance(tree.body[-1], ast.Expr):
+            last = ast.Expression(tree.body.pop().value)
+        exec(compile(tree, "<code>", "exec"), ns)
+        if last is not None:
+            result = eval(compile(last, "<code>", "eval"), ns)
+            if result is not None:
+                print(repr(result) if isinstance(result, str) else result)
+    except Exception as e:
+        print(type(e).__name__ + ": " + str(e))
+    finally:
+        sys.stdout = old
+    return buf.getvalue()
+`;
+
+let pyPromise = null;
+const pystat = $("#pystat");
+function loadPy(){
+  if (pyPromise) return pyPromise;
+  pystat.textContent = "Python: loading"; pystat.classList.remove("ready");
+  pyPromise = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+    s.onload = res;
+    s.onerror = () => rej(new Error("Could not load Python. Check the internet connection and press Run again."));
+    document.head.appendChild(s);
+  }).then(() => loadPyodide())
+    .then(async py => {
+      await py.loadPackage(["pandas", "scikit-learn"]);
+      py.runPython(PY_HELPER);
+      pystat.textContent = "Python: ready"; pystat.classList.add("ready");
+      return py;
+    })
+    .catch(e => { pyPromise = null; pystat.textContent = "Python: not loaded"; throw e; });
+  return pyPromise;
+}
+function writeFiles(py){
+  py.FS.writeFile("wifi.csv", D.wifi_csv);
+  py.FS.writeFile("spiral.csv", D.spiral_csv);
+}
+
+$$(".runner").forEach(r => {
+  const ta = $("textarea", r), orig = ta.value;
+  const fit = () => { ta.rows = Math.max(ta.value.split("\n").length, 2); };
+  fit();
+  ta.addEventListener("input", fit);
+  const bar = document.createElement("div"); bar.className = "run-bar";
+  bar.innerHTML = `<button class="primary run">Run</button><button class="reset">Reset code</button><span class="hint">Ctrl+Enter runs</span>`;
+  const out = document.createElement("pre"); out.className = "out"; out.hidden = true;
+  r.append(bar, out);
+  async function run(){
+    out.hidden = false;
+    out.textContent = "Running... (the first run loads Python, it can take a few seconds)";
+    try {
+      const py = await loadPy();
+      writeFiles(py);
+      out.textContent = py.globals.get("_run")(ta.value) || "(no output)";
+    } catch (e) { out.textContent = e.message || String(e); }
+  }
+  $(".run", bar).onclick = run;
+  $(".reset", bar).onclick = () => { ta.value = orig; fit(); out.hidden = true; };
+  ta.addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); run(); }
+    if (e.key === "Tab" && !e.shiftKey){
+      e.preventDefault();
+      const s = ta.selectionStart; ta.setRangeText("    ", s, ta.selectionEnd, "end");
+    }
+  });
+});
+
+/* ---------- accessibility ---------- */
+(function(){
+  const SVG = {
+    "v-1": "Spiral of two groups of points, shaded by what the network predicts",
+    "v-2": "Diagram of a brain neuron with three incoming signals, a cell body and an axon",
+    "v-3": "Diagram of an artificial neuron with three weighted inputs, a total z and an output",
+    "v-5": "Exam results against hours studied, with the neuron's line or S curve",
+    "v-6": "Plot of the selected activation function",
+    "v-7": "The four truth table inputs and the neuron's dividing line",
+    "v-8": "The four XOR inputs and the neuron's dividing line",
+    "v-10": "Diagram of the network's layers",
+    "v-12": "Cafe customers through the day with the network's fitted line",
+    "v-13": "Phones around a router, shaded by what the network predicts, with a dashed line for each hidden neuron",
+    "v-14": "Loss curve for a single weight, showing the current weight and the slope",
+    "v-15": "Loss curve with the path of 20 gradient descent steps",
+    "v-16": "Small network with each weight colored by its slope",
+    "v-17": "Loss rings for two weights, with the paths of gradient descent and SGD",
+    "v-18": "Lemons and oranges by width and height, shaded by what the network predicts",
+    "v-18l": "Training loss and test loss over the training steps",
+    "v-22": "Average and F1 score as recall changes",
+  };
+  Object.entries(SVG).forEach(([id, label]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.setAttribute("role", "img"); el.setAttribute("aria-label", label);
+    const say = el.closest(".slide").querySelector(".say");
+    if (say){ if (!say.id) say.id = id + "-say"; el.setAttribute("aria-describedby", say.id); }
+  });
+  // results under each demo are read out when they change, except the ones that update every frame
+  const QUIET = new Set(["r-1", "r-13", "r-17", "r-18"]);
+  $$(".say").forEach(p => { if (!QUIET.has(p.id)) p.setAttribute("aria-live", "polite"); });
+  // toggle and tab buttons say whether they're on
+  const sync = b => b.setAttribute("aria-pressed", b.classList.contains("on") ? "true" : "false");
+  const toggles = $$(".ctrls button").filter(b => b.classList.contains("tog") || b.dataset.g || b.dataset.f || b.dataset.a || b.dataset.h || b.dataset.n || b.dataset.s || b.dataset.v || b.dataset.p);
+  toggles.forEach(b => { sync(b); new MutationObserver(() => sync(b)).observe(b, { attributes:true, attributeFilter:["class"] }); });
+  // plus and minus buttons on the layers slide
+  const WORD = { in:"inputs", hl:"hidden layers", nl:"neurons per layer" };
+  $$("#p-10 button").forEach(b => b.setAttribute("aria-label", `${+b.dataset.d > 0 ? "More" : "Fewer"} ${WORD[b.dataset.k]}`));
+  // slides
+  slides.forEach((s, i) => { s.setAttribute("role", "group"); s.setAttribute("aria-roledescription", "slide"); s.setAttribute("aria-label", `${i + 1} of ${slides.length}`); });
+  // code boxes
+  $$(".runner").forEach(r => { $("textarea", r).setAttribute("aria-label", "Python code"); const o = $(".out", r); o.setAttribute("aria-live", "polite"); o.setAttribute("tabindex", "0"); });
+})();
+
+show((parseInt(location.hash.slice(1)) || 1) - 1);
+window.addEventListener("load", () => setTimeout(() => loadPy().catch(() => {}), 400));
+
+</script>
+</body>
+</html>
