@@ -1,0 +1,1876 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unsupervised Learning</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#111111; --muted:#5f6368; --line:#d9dce1; --soft:#f3f4f6;
+  --accent:#1a56db; --accent-soft:#e1eafd;
+  --bad:#c5221f; --bad-soft:#fce8e6; --good:#137333; --good-soft:#e6f4ea;
+  --orange:#e8590c; --orange-soft:#fde3d2; --lemon:#b88a00; --lemon-soft:#f8eec2;
+  --mono: ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:18px;line-height:1.5}
+.deck{height:100%;display:flex;flex-direction:column}
+#slides{flex:1;min-height:0}
+.slide{display:none;height:100%;overflow-y:auto;box-sizing:border-box;padding:36px clamp(16px,5vw,64px) 40px}
+.slide.active{display:block}
+.inner{max-width:1200px;margin:0 auto}
+h1{font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;margin:0 0 28px;text-wrap:balance}
+.kicker{font-size:.85rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:44px;align-items:start}
+.cols > *{min-width:0}
+.cols.cols-recap{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+@media (max-width:900px){.cols,.cols.cols-recap{grid-template-columns:minmax(0,1fr)}}
+.txt{font-size:1.15rem;line-height:1.6;max-width:62ch;margin:0 0 22px}
+.txt p{margin:0 0 .9em}
+.txt p:last-child{margin-bottom:0}
+.txt ol,.txt ul{margin:0 0 .9em;padding-left:1.3em}
+.txt li{margin:0 0 .35em}
+.big{font-size:1.25rem;font-weight:600;line-height:1.45;border-left:4px solid var(--fg);padding:2px 0 2px 14px;margin:0 0 22px;max-width:52ch}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.08em .35em;border-radius:4px}
+pre.code{font-family:var(--mono);font-size:1rem;background:var(--soft);padding:14px 16px;border-radius:6px;margin:0 0 22px;overflow-x:auto;white-space:pre}
+.note{color:var(--muted);font-size:1rem;margin:0 0 16px}
+button{font:inherit;font-size:.95rem;padding:7px 14px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);border-radius:6px;cursor:pointer}
+button:hover{background:var(--soft)}
+button:disabled{opacity:.4;cursor:default}
+button.on,button.primary{background:var(--fg);color:var(--bg)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.readout{font-family:var(--mono);font-size:1rem}
+.say{font-size:1.05rem;line-height:1.55;min-height:3.1em;margin:12px 0 0}
+.viz{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto}
+svg text{fill:var(--fg);font-family:var(--sans);font-size:13px}
+svg.click{cursor:crosshair}
+input[type=range]{width:200px;accent-color:var(--fg)}
+.slider{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin:8px 0;max-width:460px}
+.slider label{font-family:var(--mono);min-width:6ch}
+.slider input{width:100%}
+.slider .readout{min-width:6ch;text-align:right}
+.ok{color:var(--good);font-weight:700}
+.no{color:var(--bad);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:.92rem;color:var(--muted);margin:6px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{display:inline-block}
+
+/* tables */
+.tbl{border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:4px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:pre}
+.tbl th{border-bottom:2px solid var(--fg)}
+.tbl.sm th,.tbl.sm td{padding:2px 10px;font-size:.85rem}
+.tbl .num{text-align:right}
+
+/* bars */
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center;max-width:520px;margin:10px 0}
+.bars .lab{font-family:var(--mono);white-space:pre;text-align:right}
+.bars .track{height:22px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bars .fill{height:100%;background:var(--fg);width:0;transition:width .25s}
+.bars .fill.b{background:var(--accent)}
+.bars .n{font-variant-numeric:tabular-nums;min-width:4ch;font-weight:700;font-family:var(--mono)}
+
+/* recap */
+.recap{display:grid;gap:12px}
+.recap div{border:1.5px solid var(--line);border-radius:8px;padding:10px 14px}
+.recap b{display:block;font-size:1.05rem}
+.recap span{color:var(--muted);font-size:.98rem}
+.recap code{font-size:.85em}
+
+/* code runner */
+.runner{border:1.5px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 18px;background:var(--bg)}
+.runner textarea{display:block;width:100%;box-sizing:border-box;border:0;resize:vertical;font-family:var(--mono);font-size:1rem;line-height:1.5;padding:12px 14px;background:var(--soft);color:var(--fg);white-space:pre;overflow-x:auto;tab-size:4}
+.run-bar{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.run-bar .hint{color:var(--muted);font-size:.85rem;margin-left:auto}
+.out{margin:0;padding:12px 14px;font-family:var(--mono);font-size:.86rem;line-height:1.45;border-top:1px solid var(--line);max-height:360px;overflow:auto;white-space:pre}
+
+/* nav */
+.bar{display:flex;align-items:center;gap:12px;padding:10px clamp(16px,5vw,64px) calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg)}
+#count{font-variant-numeric:tabular-nums;color:var(--muted);min-width:5ch;text-align:center}
+#pystat{color:var(--muted);font-size:.85rem;margin-right:auto}
+#pystat.ready{color:var(--good)}
+@media (max-width:700px){
+  #pystat,#count{display:none}
+  .bar{justify-content:space-between}
+}
+@media (max-width:700px){svg text{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* sorting cards (birds and planes, when to use a network) */
+.sort{display:grid;gap:8px;margin:4px 0 10px}
+.sort .card{border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
+.sort .card .q{font-size:1rem;line-height:1.4}
+.sort .card .pick{display:flex;gap:6px}
+.sort .card .pick button{font-size:.85rem;padding:4px 10px}
+.sort .card .why{grid-column:1 / -1;font-size:.92rem;color:var(--muted);display:none}
+.sort .card.done .why{display:block}
+.sort .card.right{border-color:var(--good);background:var(--good-soft)}
+.sort .card.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.sort .card .why b{color:var(--fg)}
+@media (max-width:520px){.sort .card{grid-template-columns:1fr}}
+
+/* toggles that show on/off state */
+button.tog{min-width:9ch}
+button.tog.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* formula readout */
+.calc{font-family:var(--mono);font-size:.95rem;background:var(--soft);border-radius:6px;padding:10px 14px;margin:10px 0 0;white-space:pre-wrap;line-height:1.55}
+
+/* small stat row */
+.stats{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--mono);font-size:.98rem;margin:8px 0 0}
+.stats b{font-weight:700}
+
+/* touch: no double-tap zoom, no sideways swiping of the page, pinch zoom still works */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overscroll-behavior:none}
+.deck{height:100vh;height:100dvh}
+.slide{touch-action:pan-y pinch-zoom;overscroll-behavior:contain}
+.viz,.runner textarea,.out,.tbl-wrap{touch-action:pan-x pan-y pinch-zoom}
+button,input,textarea,label{touch-action:manipulation}
+button{min-height:40px}
+@media (pointer:coarse){button{min-height:44px}input[type=range]{min-height:32px}}
+
+/* screen reader only text */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* small screens */
+@media (max-width:420px){
+  .slider{grid-template-columns:auto minmax(0,1fr) auto;gap:8px}
+  .slider label{min-width:0}
+  .bars{grid-template-columns:auto minmax(0,1fr) auto}
+  h1{font-size:1.5rem}
+  .txt{font-size:1.05rem}
+}
+/* short screens, like a phone on its side */
+@media (max-height:520px){
+  .viz svg{max-height:78vh;margin:0 auto}
+  .slide{padding-top:18px}
+}
+
+/* ten runs of k-means */
+.runs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:6px 0 4px}
+.run{border:1.5px solid var(--line);border-radius:8px;padding:4px 4px 2px}
+.run.best{border-color:var(--accent);background:var(--accent-soft)}
+.run .cap{font-family:var(--mono);font-size:.8rem;text-align:center;color:var(--muted)}
+.run .cap b{color:var(--fg)}
+.run.stuck .cap b{color:var(--bad)}
+.runs.cmp{grid-template-columns:repeat(3,minmax(0,1fr))}
+.run.truth{background:var(--soft)}
+@media (max-width:520px){.runs,.runs.cmp{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* four answers per card */
+.sort.sort4 .card{grid-template-columns:1fr}
+.recap.wide{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* long inline code can wrap on small phones */
+.txt code{overflow-wrap:anywhere}
+/* no double-tap zoom on anything */
+svg,svg *,.txt,.txt *,h1,.kicker,.say,.calc,.bars,.runs,.run,.legend,.sort,.sort *{touch-action:manipulation}
+@media (max-width:900px){.recap.wide{grid-template-columns:minmax(0,1fr)}}
+.sort.sort4 .pick{flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="deck">
+<main id="slides">
+
+<!-- 1 -->
+<section class="slide"><div class="inner">
+<h1>Unsupervised learning</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Every model so far has learned from labeled data, where each row comes with the answer, like lemon or orange. This is called <b>supervised learning</b>.</p>
+      <p>In <b>unsupervised learning</b> there are no labels, so the model has to find patterns in the features on its own.</p>
+      <p>Each dot is a person at a music festival, placed where their phone was at 8 pm. Nobody told us who is with which crowd. Press Find groups and an algorithm will look for 4 groups on its own.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-1" class="primary">Find groups</button><button id="b-1r">Start over</button></div>
+    <div class="viz"><svg id="v-1" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-1"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 2 -->
+<section class="slide"><div class="inner">
+<p class="kicker">k-means</p>
+<h1>Where to park the food trucks</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Say you have 3 food trucks at the festival, and each person walks to whichever truck is closest. Drag the trucks around to make the average walk as short as you can.</p>
+      <p>The best spots end up in the middle of the crowds, and <b>k-means</b> is a way to find them. Each truck is a <b>cluster center</b>, and everyone who walks to the same truck is in the same <b>cluster</b>.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-3">Use k-means</button><button id="b-3r">Start over</button></div>
+    <div class="viz"><svg id="v-3" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-3"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 3 -->
+<section class="slide"><div class="inner">
+<p class="kicker">k-means</p>
+<h1>How k-means works</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <ol>
+        <li>Put k centers in random spots, where k is the number of clusters you want</li>
+        <li>Give each point to its closest center</li>
+        <li>Move each center to the middle of its points, which is the average of their positions</li>
+      </ol>
+      <p>Repeat steps 2 and 3 until the centers stop moving. Each round, the centers get pulled a little closer to the middle of a crowd.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-4" class="primary">Next step</button><button id="b-4e">Run to the end</button><button id="b-4n">New start</button></div>
+    <div class="viz"><svg id="v-4" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-4"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 4 -->
+<section class="slide"><div class="inner">
+<p class="kicker">k-means</p>
+<h1>A bad start</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Because the centers start in random spots, some runs get stuck. Two centers can end up sharing one crowd while another center has to cover two crowds.</p>
+      <p>To tell a good run from a bad one, add up the squared distance from each point to its center. This total is called the <b>inertia</b>, and a lower inertia means the points are closer to their centers.</p>
+      <p>scikit-learn runs k-means several times from different starts and keeps the run with the lowest inertia. <code>n_init</code> sets how many times it runs.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-5" class="primary">Run 10 more times</button></div>
+    <div class="runs" id="v-5"></div>
+    <p class="say" id="r-5"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 5 -->
+<section class="slide"><div class="inner">
+<p class="kicker">k-means</p>
+<h1>How many clusters?</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>You have to pick k yourself, but adding a cluster always lowers the inertia, because every point gets a center that's at least as close. If you picked the k with the lowest inertia, you'd end up with one cluster per point.</p>
+      <p>Instead, plot the inertia for each k and look for the <b>elbow</b>, where the line stops dropping quickly. Past the elbow, extra clusters only split up groups that belong together.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s6">k</label><input type="range" id="s6" min="1" max="8" step="1" value="2"><span class="readout" id="n6"></span></div>
+    <div class="viz"><svg id="v-6" viewBox="0 0 640 330"></svg></div>
+    <div class="viz"><svg id="v-6e" viewBox="0 0 640 200"></svg></div>
+    <p class="say" id="r-6"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 6 -->
+<section class="slide"><div class="inner">
+<p class="kicker">k-means</p>
+<h1>The silhouette score</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The silhouette score is another way to choose k. It checks how well each point fits in its own cluster compared to the next closest cluster, using two numbers:</p>
+      <ul>
+        <li><b>a</b>, the average distance to the other points in its cluster</li>
+        <li><b>b</b>, the average distance to the points in the closest other cluster</li>
+      </ul>
+    </div>
+    <pre class="code">silhouette = (b &minus; a) / the bigger of a and b</pre>
+    <div class="txt">
+      <p>A point well inside its cluster has a small a and a big b, so its silhouette is close to 1. A point on the border between two clusters has an a and b that are about the same, so its silhouette is close to 0.</p>
+      <p>The <b>silhouette score</b> is the average over all the points, and the k with the highest score is a good choice. Click a person to see their numbers.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-7"><button data-k="2">k = 2</button><button data-k="3">k = 3</button><button data-k="4">k = 4</button><button data-k="5">k = 5</button><button data-k="6">k = 6</button></div>
+    <div class="viz"><svg id="v-7" class="click" viewBox="0 0 640 310"></svg></div>
+    <div class="calc" id="c-7"></div>
+    <div class="bars" id="r-7b"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 7 -->
+<section class="slide"><div class="inner">
+<p class="kicker">k-means</p>
+<h1>k-means in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>This clusters the fruits in fruits.csv without using the fruit column. There's nothing to predict, so there's no <code>y</code> and no <code>train_test_split</code>.</p>
+      <p>k-means uses distances, so the features are scaled first, like with KNN.</p>
+      <p>k-means numbers the clusters but doesn't tell you what they mean. To find out, look at the average of each feature in each cluster. Here cluster 1 has the taller, lighter fruits.</p>
+      <p>Since we do have the fruit column, <code>pd.crosstab</code> can check the clusters against it, and cluster 1 turns out to be mostly lemons.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler
+
+df = pd.read_csv("fruits.csv")
+X = StandardScaler().fit_transform(df[["width", "height", "weight"]])
+
+for k in range(2, 7):
+    model = KMeans(n_clusters=k, n_init=10, random_state=0)
+    model.fit(X)
+    print(k, round(model.inertia_), round(silhouette_score(X, model.labels_), 3))
+
+model = KMeans(n_clusters=2, n_init=10, random_state=0)
+df["cluster"] = model.fit_predict(X)
+
+print(df.groupby("cluster")[["width", "height", "weight"]].mean().round(1))
+print(pd.crosstab(df["cluster"], df["fruit"]))</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 8 -->
+<section class="slide"><div class="inner">
+<p class="kicker">k-means</p>
+<h1>Where k-means struggles</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Later that night, there's a crowd at the stage, a line of people walking along the curved path to the parking lot, and a group at the gate. A few people are wandering around on their own.</p>
+      <p>Every point goes to its closest center, so the border between two clusters is always a straight line. This works well for round groups of about the same size, but not for a long, curved path.</p>
+      <p>k-means also has to put every point in a cluster, so the wanderers get added to whichever cluster is closest.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-11"><button data-k="2">k = 2</button><button data-k="3" class="on">k = 3</button><button data-k="4">k = 4</button><button data-k="5">k = 5</button></div>
+    <div class="viz"><svg id="v-11" viewBox="0 0 640 360"></svg></div>
+    <p class="say" id="r-11"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 9 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Hierarchical clustering</p>
+<h1>Merging step by step</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p><b>Hierarchical clustering</b> builds clusters by merging. Every point starts as its own cluster, and each step merges the two clusters that are closest together, until everything is in one cluster.</p>
+      <p>The tree under the plot is called a <b>dendrogram</b>, and it records every merge. The height where two branches join is how far apart those clusters were when they merged, so close points join near the bottom and groups that are far apart join near the top.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-h1" class="primary">Merge</button><button id="b-h1a">Merge all</button><button id="b-h1r">Start over</button></div>
+    <div class="viz"><svg id="v-h1" viewBox="0 0 640 300"></svg></div>
+    <div class="viz"><svg id="v-h1d" viewBox="0 0 640 220"></svg></div>
+    <p class="say" id="r-h1"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 10 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Hierarchical clustering</p>
+<h1>Cutting the tree</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The dendrogram holds every possible clustering, from one cluster per point to one big cluster. To pick one, cut across it with a line, and each branch the line crosses becomes a cluster.</p>
+      <p>A good place to cut is a tall gap, where the line can move a long way without crossing a join. A tall gap means those groups stayed apart for a long time before they merged.</p>
+      <p>In scikit-learn, <code>AgglomerativeClustering(n_clusters=4)</code> does the merging and the cut, and scipy can draw the dendrogram:</p>
+    </div>
+    <pre class="code">from scipy.cluster.hierarchy import linkage, dendrogram
+dendrogram(linkage(X, "ward"))
+plt.show()</pre>
+  </div>
+  <div>
+    <div class="slider"><label for="s-h2">cut</label><input type="range" id="s-h2" min="0" max="34" step="0.5" value="5"><span class="readout" id="n-h2"></span></div>
+    <div class="viz"><svg id="v-h2d" viewBox="0 0 640 230"></svg></div>
+    <div class="viz"><svg id="v-h2" viewBox="0 0 640 280"></svg></div>
+    <p class="say" id="r-h2"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 11 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Hierarchical clustering</p>
+<h1>Linkage</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>To find the two closest clusters, we need a way to measure the distance between two groups of points. This choice is called the <b>linkage</b>.</p>
+      <p><b>Single</b> linkage uses the distance between the closest pair of points, one from each cluster. A cluster can grow one nearby point at a time, so it can follow long shapes like these queues. At night, though, the wanderers form a chain between the groups, and almost everyone ends up in one cluster.</p>
+      <p><b>Ward</b> linkage merges the two clusters that would add the least to the inertia. It makes round clusters like k-means does, and it's the default in scikit-learn.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-h3"><button data-l="single" class="on">single</button><button data-l="ward">Ward</button></div>
+    <div class="viz"><svg id="v-h3a" viewBox="0 0 640 150"></svg></div>
+    <div class="ctrls" id="p-h3d"><button data-d="queues" class="on">queues</button><button data-d="night">night</button></div>
+    <div class="viz"><svg id="v-h3" viewBox="0 0 640 300"></svg></div>
+    <p class="say" id="r-h3"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 12 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Density</p>
+<h1>DBSCAN</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Density-based clustering says a cluster is a crowded area with emptier space around it. The crowd can be any shape, as long as the points are packed close together.</p>
+      <p><b>DBSCAN</b> checks how crowded the spot around each point is. It draws a circle of radius <code>eps</code> around the point, and if at least <code>min_samples</code> points are inside, the point is in a crowded spot.</p>
+      <p>Crowded points within eps of each other join the same cluster, so a cluster keeps growing as long as the crowd keeps going. This is how it follows the curved path.</p>
+      <p>Points that aren't close to any crowd are called <b>noise</b>, and they're left out of every cluster. You don't choose the number of clusters, since it depends on how big eps is. Click a point to see its circle.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s12e">eps</label><input type="range" id="s12e" min="2" max="16" step="0.5" value="7"><span class="readout" id="n12e"></span></div>
+    <div class="slider"><label for="s12m">min_samples</label><input type="range" id="s12m" min="2" max="10" step="1" value="4"><span class="readout" id="n12m"></span></div>
+    <div class="legend" id="l-12"></div>
+    <div class="viz"><svg id="v-12" class="click" viewBox="0 0 640 360"></svg></div>
+    <p class="say" id="r-12"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 13 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Density</p>
+<h1>HDBSCAN</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>DBSCAN uses the same eps everywhere, so it expects every cluster to be about as crowded as the others. Here two tight crowds at the food stands are next to a looser group sitting on the lawn.</p>
+      <p>With a small eps, the tight crowds are found but most of the lawn is called noise. With an eps big enough for the lawn, the circles around the two tight crowds overlap and they merge into one.</p>
+      <p><b>HDBSCAN</b> tries every eps, from small to large, and watches how the clusters merge as eps grows. It keeps the clusters that last the longest before merging, so it can find a tight crowd and a loose group at the same time. Instead of eps, you set <code>min_cluster_size</code>, the smallest group you'd still call a cluster.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-d2"><button data-m="db" class="on">DBSCAN</button><button data-m="hdb">HDBSCAN</button></div>
+    <div class="slider"><label for="s-d2">eps</label><input type="range" id="s-d2" min="1.5" max="8" step="0.5" value="3"><span class="readout" id="n-d2"></span></div>
+    <div class="viz"><svg id="v-d2" viewBox="0 0 640 340"></svg></div>
+    <p class="say" id="r-d2"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 14 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Gaussian mixtures</p>
+<h1>Stretched clusters</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>People at the food stands are waiting in three long lines. k-means looks for round clusters, so it cuts across the lines instead of along them.</p>
+      <p>A <b>Gaussian mixture</b> assumes each cluster is a cloud of points shaped like a bell curve, thick in the middle and thinning out toward the edges. Each cloud can stretch and tilt to fit its points, like the ellipses here, so it can fit long, thin lines.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-g1"><button data-m="km" class="on">k-means</button><button data-m="gm">Gaussian mixture</button></div>
+    <div class="viz"><svg id="v-g1" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-g1"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 15 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Gaussian mixtures</p>
+<h1>Soft clustering</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>k-means puts every point in exactly one cluster, even a point sitting right on the border.</p>
+      <p>A Gaussian mixture knows how far each point is from the middle of each cloud, so it can give it a chance of being in each one, like 70% and 30%. This is called <b>soft clustering</b>, and it shows how sure the model is.</p>
+      <p>Here it splits the fruits into 2 clusters. The faded fruits are near the border, where the model isn't sure. Click a fruit to see its chances.</p>
+    </div>
+  </div>
+  <div>
+    <div class="viz"><svg id="v-g3" class="click" viewBox="0 0 640 360"></svg></div>
+    <div class="bars" id="r-g3b"></div>
+    <p class="say" id="r-g3"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 16 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Clustering</p>
+<h1>The other methods in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Each of these works like <code>KMeans</code>. Here they run on the three queues, which have 40 people each.</p>
+      <p>Single linkage and the Gaussian mixture find all three queues. HDBSCAN finds them too, but calls 28 people noise.</p>
+      <p>HDBSCAN gives noise the label &minus;1, and <code>predict_proba</code> gives each point's chance of being in each cluster.</p>
+      <p>A Gaussian mixture can get stuck like k-means. <code>init_params="random_from_data"</code> starts it from random points, which works better on these lines.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.cluster import AgglomerativeClustering, HDBSCAN
+from sklearn.mixture import GaussianMixture
+
+df = pd.read_csv("queues.csv")
+X = df[["x", "y"]]
+
+tree = AgglomerativeClustering(n_clusters=3, linkage="single")
+df["tree"] = tree.fit_predict(X)
+
+density = HDBSCAN(min_cluster_size=10)
+df["density"] = density.fit_predict(X)
+
+mixture = GaussianMixture(n_components=3, n_init=10, init_params="random_from_data", random_state=0)
+df["mixture"] = mixture.fit_predict(X)
+
+print(df["tree"].value_counts())
+print(df["density"].value_counts())
+print(df["mixture"].value_counts())
+print(mixture.predict_proba(X)[:5].round(2))</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 17 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Clustering</p>
+<h1>No method wins everywhere</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Each plot has a score for how well it matches the real groups, from 0 for random to 1 for a perfect match. Hollow points are noise.</p>
+      <p>On round crowds that are far apart, every method does well. On the other shapes the scores spread out, and a different method comes out on top each time.</p>
+      <p>With your own data there are no real groups to check against. Plot what you can, think about what shape the groups might have, and try more than one method.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-cmp"><button data-d="festival" class="on">festival</button><button data-d="night">night</button><button data-d="queues">queues</button><button data-d="density">different density</button></div>
+    <div class="runs cmp" id="v-cmp"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 18 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Clustering</p>
+<h1>Pick a method</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <ul>
+        <li><b>k-means</b> for round groups, and it's fast on big data</li>
+        <li><b>Hierarchical clustering</b> to see groups inside bigger groups, but it's slow on big data</li>
+        <li><b>DBSCAN</b> for groups of any shape, with noise left out</li>
+        <li><b>Gaussian mixtures</b> for stretched or overlapping groups, with a chance for each point</li>
+      </ul>
+      <p>Pick a method for each of these.</p>
+    </div>
+  </div>
+  <div>
+    <div class="sort sort4" id="v-pick"></div>
+    <p class="say" id="r-pick"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 19 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Dimensionality reduction</p>
+<h1>Too many features</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Lots of features make models slower and more likely to overfit, and there's no way to plot them all at once.</p>
+      <p>Distances also stop working well. This chart shows how far one random point is from 199 others. As you add features, the distances bunch together until every point is about the same distance away. Then "closest" doesn't mean much, which hurts methods like KNN and k-means. This is called the <b>curse of dimensionality</b>.</p>
+      <p><b>Dimensionality reduction</b> squashes lots of features into a few, while keeping as much of the information as it can.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s14">features</label><input type="range" id="s14" min="0" max="10" step="1" value="1"><span class="readout" id="n14"></span></div>
+    <div class="viz"><svg id="v-14" viewBox="0 0 640 330"></svg></div>
+    <p class="say" id="r-14"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 20 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Dimensionality reduction</p>
+<h1>Squashing two features into one</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>These are the height and arm span of 50 people. Taller people usually have longer arms, so the two go up together.</p>
+      <p>To describe each person with one number, we can draw a line through the middle and slide each person onto it. A line along the cloud keeps the people spread out, so you can still tell them apart. A line across it squashes them together.</p>
+      <p>The line that keeps the most spread is called the <b>first principal component</b>. <b>PCA</b>, short for principal component analysis, finds it for you, and then finds the next best line at a right angle to it.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-15">Show the best line</button></div>
+    <div class="slider"><label for="s15">angle</label><input type="range" id="s15" min="0" max="179" step="1" value="150"><span class="readout" id="n15"></span></div>
+    <div class="viz"><svg id="v-15" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-15"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 21 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Dimensionality reduction</p>
+<h1>How many components?</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>These are images of handwritten digits. Each one is 8 by 8 pixels, so it has 64 features. PCA turns them into 64 components, sorted from the one that keeps the most spread to the one that keeps the least.</p>
+      <p>The bars show how much each component keeps, and the line adds them up. A common rule is to keep enough components for 90% of the spread, which is 21 here.</p>
+      <p>The bottom row rebuilds the digits from only the components you keep. The first few give the rough shape, and the later ones add the details.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s17">keep</label><input type="range" id="s17" min="1" max="64" step="1" value="2"><span class="readout" id="n17"></span></div>
+    <div class="viz"><svg id="v-17" viewBox="0 0 640 260"></svg></div>
+    <div class="viz"><svg id="v-18" viewBox="0 0 640 260"></svg></div>
+    <p class="say" id="r-17"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 22 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Dimensionality reduction</p>
+<h1>Digits in 2D</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>With two components, each 64-pixel image becomes a single point you can plot. Each number here is one image, colored by the digit it shows.</p>
+      <p>PCA never saw the labels, but most of the 0s, 4s and 6s still end up near each other. Other digits overlap, since two components only keep 29% of the spread.</p>
+      <p><b>t-SNE</b> is another method made for plots like this, and its groups are much cleaner. It's only for looking, though. It can't place new data on the same plot, so it can't go before a model like PCA can.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-19"><button data-m="pca" class="on">PCA</button><button data-m="tsne">t-SNE</button></div>
+    <div class="viz"><svg id="v-19" viewBox="0 0 640 440"></svg></div>
+    <p class="say" id="r-19"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 23 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Dimensionality reduction</p>
+<h1>PCA in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>PCA works like <code>StandardScaler</code>, with <code>fit</code> and <code>transform</code>. <code>n_components</code> can be the number of components to keep, or a share of the spread like 0.9.</p>
+      <p>PCA looks for spread, so scale your features first if they're in different units. Otherwise the feature with the biggest numbers takes over.</p>
+      <p>PCA can also go in a pipeline before a model. Here KNN scores about the same with 10 components as with all 64 pixels.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.datasets import load_digits
+from sklearn.decomposition import PCA
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
+
+X, y = load_digits(return_X_y=True)
+
+pca = PCA(n_components=0.9)
+pca.fit(X)
+print(pca.n_components_, "components keep 90% of the spread")
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=0)
+for n in [2, 5, 10, 64]:
+    model = make_pipeline(PCA(n_components=n), KNeighborsClassifier())
+    model.fit(X_train, y_train)
+    print(n, round(model.score(X_test, y_test), 3))</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 24 -->
+<section class="slide"><div class="inner">
+<h1>Recap</h1>
+<div class="recap wide">
+      <div><b>Unsupervised learning</b><span>Finds patterns in data that has no labels</span></div>
+      <div><b>k-means</b><span>Moves k centers to the middle of their points. Choose k with the elbow or the silhouette score.</span></div>
+      <div><b>Hierarchical clustering</b><span>Keeps merging the two closest clusters, then you cut the dendrogram to get clusters</span></div>
+      <div><b>DBSCAN and HDBSCAN</b><span>Find crowded areas of any shape and leave the rest as noise</span></div>
+      <div><b>Gaussian mixtures</b><span>Fit a stretched cloud to each cluster and give each point a chance of being in each one</span></div>
+      <div><b>PCA</b><span>Finds the directions with the most spread, so you can keep the first few and drop the rest</span></div>
+    </div>
+<div class="cols" style="margin-top:28px">
+  <div>
+    <div class="txt">
+      <p>This uses PCA and k-means to split the digits into 10 clusters without the labels, then checks which digits ended up in each cluster.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.datasets import load_digits
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
+from sklearn.pipeline import make_pipeline
+
+X, y = load_digits(return_X_y=True)
+
+model = make_pipeline(PCA(n_components=20), KMeans(n_clusters=10, n_init=10, random_state=0))
+clusters = model.fit_predict(X)
+
+pd.crosstab(clusters, y, rownames=["cluster"], colnames=["digit"])</textarea></div>
+  </div>
+</div>
+</div></section>
+
+</main>
+<nav class="bar" aria-label="Slides">
+  <span id="pystat">Python: loading</span>
+  <button id="prev" aria-label="Previous slide">&larr; Back</button>
+  <span id="count" aria-hidden="true">1 / 24</span>
+  <button id="next" class="primary" aria-label="Next slide">Next &rarr;</button>
+</nav>
+<p id="sr-status" class="sr-only" aria-live="polite"></p>
+</div>
+<script>
+/* ---------- data ---------- */
+const D = {"festival_csv":"x,y\n38.1,43.3\n41.0,18.8\n65.8,49.5\n36.8,52.8\n82.8,13.4\n75.8,48.2\n26.2,58.7\n45.3,7.7\n49.1,10.7\n18.7,42.4\n19.0,50.4\n77.8,50.1\n83.1,18.1\n86.5,4.5\n59.2,55.1\n24.8,41.1\n36.2,52.6\n19.1,49.9\n61.1,8.3\n18.6,44.8\n53.0,20.3\n79.5,58.7\n23.5,62.0\n51.4,16.2\n49.9,20.6\n28.0,50.1\n85.2,14.8\n68.6,50.0\n76.2,53.1\n42.4,21.2\n23.9,46.6\n26.8,46.6\n27.8,52.7\n25.9,41.7\n72.0,12.9\n29.4,44.8\n77.8,51.2\n41.0,4.4\n48.6,16.2\n71.6,48.4\n24.8,47.3\n85.2,18.2\n82.3,19.4\n26.7,52.8\n27.9,44.9\n91.9,20.8\n61.5,54.5\n49.5,16.4\n67.5,52.7\n68.2,42.3\n14.7,39.0\n49.9,3.9\n71.9,50.4\n80.8,17.0\n28.0,52.1\n28.5,52.0\n34.3,56.0\n78.6,46.7\n72.2,43.7\n79.9,14.4\n54.9,15.5\n29.1,46.7\n30.5,47.2\n52.0,17.9\n85.0,9.7\n65.7,52.0\n28.7,41.5\n74.3,46.6\n72.5,46.5\n31.4,50.5\n71.7,45.2\n47.5,20.1\n63.7,45.2\n34.0,48.8\n54.5,10.4\n19.4,48.5\n49.9,8.0\n73.6,44.9\n27.7,48.8\n65.4,42.7\n71.3,38.0\n33.3,39.6\n51.1,11.7\n80.3,11.2\n85.3,10.7\n26.1,41.8\n85.0,21.1\n90.3,15.2\n89.5,15.6\n29.4,51.5\n43.7,6.7\n73.8,49.8\n27.8,54.2\n43.1,20.7\n16.2,33.8\n35.4,42.3\n28.9,39.7\n46.2,5.2\n17.3,44.7\n22.2,43.6\n27.5,52.7\n71.0,44.1\n28.4,57.4\n44.5,11.1\n65.2,52.2\n25.6,55.4\n49.7,18.2\n10.4,44.2\n79.1,54.1\n79.5,49.1\n87.2,15.9\n80.4,41.3\n89.8,16.3\n69.4,47.0\n37.5,37.2\n83.9,14.3\n55.3,15.2\n47.5,24.3\n69.7,48.2\n68.8,49.1\n80.0,47.0\n26.6,40.2\n66.9,54.7\n52.7,20.8\n60.3,24.2\n71.1,50.1\n70.7,46.2\n44.6,12.4\n24.6,43.7\n25.0,45.9\n23.9,47.2\n48.4,22.4\n21.2,42.3\n81.9,46.0\n29.1,63.7\n25.7,45.4\n54.6,21.1\n15.1,46.4\n67.8,48.0\n28.8,48.4\n61.4,54.4\n27.8,52.9\n32.5,34.1\n86.0,14.8\n72.8,40.8\n","night_csv":"x,y\n19.4,62.7\n88.5,61.8\n15.5,56.7\n30.1,51.1\n71.8,42.2\n62.1,45.1\n31.4,28.3\n90.8,15.0\n80.9,41.4\n85.6,29.6\n72.4,44.0\n83.2,35.6\n29.0,52.3\n75.4,43.0\n89.7,58.7\n28.7,54.1\n85.9,53.9\n73.9,41.9\n49.0,43.0\n28.0,56.7\n84.7,35.7\n24.1,57.9\n22.4,57.5\n23.9,46.2\n86.4,56.9\n58.0,29.2\n23.1,48.5\n20.1,54.3\n48.6,44.2\n19.6,55.2\n81.4,39.1\n26.9,46.0\n19.6,41.0\n29.9,43.7\n93.0,58.2\n27.9,49.2\n77.8,36.8\n82.1,35.5\n38.7,36.5\n18.9,45.3\n16.6,48.1\n56.4,37.7\n67.0,43.2\n24.7,55.5\n63.2,45.2\n64.2,46.6\n27.0,48.1\n28.0,49.8\n86.1,57.6\n84.4,59.7\n21.8,50.8\n21.2,52.2\n56.1,34.5\n84.4,34.3\n46.7,41.7\n71.4,41.5\n57.3,44.3\n80.3,38.6\n80.4,38.9\n77.3,21.2\n35.6,37.2\n23.4,51.2\n25.2,59.5\n40.3,37.6\n21.1,51.9\n85.7,58.2\n42.3,40.7\n18.6,49.8\n10.9,52.6\n20.5,49.8\n71.1,41.7\n58.2,47.1\n23.2,57.0\n84.8,31.1\n23.5,44.9\n91.0,63.6\n87.4,60.7\n25.3,54.8\n22.7,49.8\n34.1,13.1\n85.8,31.2\n20.1,43.9\n36.8,34.8\n19.6,49.5\n21.1,50.9\n54.8,47.3\n61.8,46.2\n45.0,41.7\n54.5,27.3\n30.4,51.7\n30.4,23.8\n12.4,40.0\n29.4,42.4\n19.9,43.3\n15.8,59.3\n57.1,42.1\n31.0,23.3\n24.8,50.8\n41.3,40.7\n21.4,52.9\n40.9,39.1\n39.2,37.0\n22.3,45.9\n88.3,59.1\n85.7,31.7\n75.6,42.1\n48.6,44.6\n71.4,42.0\n25.0,46.8\n87.7,55.6\n16.4,53.3\n57.3,43.0\n19.8,42.2\n87.1,60.3\n47.4,43.7\n85.7,55.9\n21.3,44.4\n18.8,16.9\n20.2,43.0\n17.4,44.6\n71.3,46.0\n48.7,42.9\n72.7,49.0\n88.5,56.2\n19.8,47.5\n63.2,54.0\n39.1,39.7\n","people":[[152.0,154.0],[168.0,166.0],[158.0,156.0],[165.0,165.0],[174.0,169.0],[174.0,171.0],[185.0,185.0],[169.0,171.0],[157.0,158.0],[164.0,160.0],[163.0,163.0],[160.0,164.0],[175.0,178.0],[165.0,166.0],[153.0,152.0],[177.0,181.0],[170.0,170.0],[174.0,172.0],[172.0,171.0],[177.0,183.0],[171.0,174.0],[182.0,187.0],[175.0,175.0],[175.0,179.0],[175.0,174.0],[158.0,159.0],[170.0,179.0],[169.0,173.0],[173.0,173.0],[159.0,160.0],[186.0,188.0],[172.0,177.0],[160.0,160.0],[156.0,152.0],[168.0,169.0],[170.0,172.0],[165.0,166.0],[172.0,178.0],[165.0,168.0],[176.0,180.0],[164.0,162.0],[171.0,175.0],[180.0,188.0],[194.0,198.0],[162.0,164.0],[167.0,169.0],[163.0,171.0],[178.0,177.0],[161.0,162.0],[167.0,170.0]],"dig_mean":[0.0,0.304,5.205,11.836,11.848,5.782,1.362,0.13,0.006,1.994,10.382,11.979,10.279,8.176,1.846,0.108,0.003,2.602,9.903,6.993,7.098,7.806,1.789,0.05,0.001,2.47,9.091,8.821,9.927,7.551,2.318,0.002,0.0,2.339,7.667,9.072,10.302,8.744,2.909,0.0,0.009,1.584,6.881,7.228,7.672,8.237,3.456,0.027,0.007,0.705,7.507,9.539,9.416,8.758,3.725,0.206,0.001,0.279,5.558,12.089,11.809,6.764,2.068,0.364],"dig_comp":[[0.0,-0.0173,-0.2234,-0.1359,-0.033,-0.0966,-0.0083,0.0023,-0.0003,-0.1193,-0.2445,0.1485,-0.0467,-0.2177,-0.0148,0.0045,-0.0,-0.0795,0.0834,0.2159,-0.1721,-0.1637,0.0286,0.0042,0.0001,0.0642,0.2541,-0.0357,-0.2095,-0.0431,0.0513,0.0002,0.0,0.16,0.3687,0.1644,0.0852,0.0373,0.0216,0.0,0.0013,0.1069,0.3031,0.2478,0.2096,0.0122,-0.0369,0.0016,0.0007,-0.0084,-0.0559,0.0931,0.1074,-0.1377,-0.0633,0.001,0.0,-0.0141,-0.2357,-0.1412,-0.0092,-0.0894,-0.0366,-0.0115],[0.0,0.0101,0.0491,0.0094,0.0536,0.1178,0.0621,0.0079,0.0002,0.021,-0.0603,0.0053,0.092,0.0519,0.0589,0.0033,0.0,-0.0362,-0.1983,0.0486,0.2256,0.0045,-0.0268,0.0002,0.0001,-0.0771,-0.1884,0.138,0.261,-0.0498,-0.0651,-0.0,0.0,-0.0882,-0.0872,0.2709,0.2853,-0.1665,-0.1279,0.0,-0.0003,-0.0508,-0.1303,0.2689,0.3016,-0.2403,-0.2176,-0.0013,-0.0003,-0.0106,-0.1534,0.1195,0.0973,-0.2859,-0.1488,-0.0005,0.0,0.0101,0.0703,-0.0171,-0.1943,-0.1767,-0.0195,0.0067],[0.0,-0.0183,-0.1265,-0.1322,0.134,0.2649,0.1166,0.0168,-0.0004,-0.0794,-0.0874,-0.0656,0.0008,0.2801,0.1597,0.0152,-0.0002,-0.0424,-0.0047,-0.0738,-0.0965,0.3076,0.148,0.0063,-0.0001,0.0442,0.0726,-0.0713,0.0081,0.353,0.1483,0.0002,0.0,0.0545,0.0336,-0.1413,-0.015,0.258,0.0938,0.0,0.0003,0.0241,-0.1217,-0.1714,0.0858,0.1446,-0.0701,-0.0029,0.0001,-0.0186,-0.235,-0.1699,0.054,-0.0849,-0.2228,-0.0219,0.0,-0.0176,-0.1232,-0.0984,-0.1385,-0.2321,-0.167,-0.0348],[-0.0,-0.02,-0.1774,-0.1957,-0.0321,-0.0951,-0.0718,-0.0092,-0.0001,-0.0749,-0.3076,-0.037,0.1537,-0.0272,-0.0454,-0.0024,-0.0001,-0.1239,-0.2198,0.2756,0.2784,0.0574,-0.0225,0.0015,-0.0001,-0.0984,-0.1163,0.1922,0.216,0.082,-0.0553,0.0001,-0.0,-0.0523,-0.0979,-0.0105,0.1321,0.1608,-0.01,-0.0,0.0005,-0.0063,-0.0521,-0.059,0.0256,0.1943,0.0844,0.0023,0.0004,-0.0106,-0.1073,-0.1321,0.0317,0.2256,0.1396,0.016,0.0,-0.021,-0.2033,-0.2082,0.2245,0.3077,0.0994,0.0245],[0.0,-0.0141,-0.0828,0.0656,0.0154,-0.167,-0.0949,-0.0044,-0.0001,-0.0523,-0.0444,0.0046,0.1339,0.2154,-0.0354,-0.0094,-0.0002,-0.0987,-0.2187,-0.1463,0.1319,0.3622,0.0177,-0.0059,-0.0002,-0.1129,-0.315,-0.3077,-0.0276,0.1686,0.0978,-0.0002,0.0,0.0389,0.0746,-0.0046,-0.0729,-0.0168,0.1058,0.0,0.0004,0.0992,0.3994,0.2301,-0.1026,-0.12,0.0412,0.0005,0.0008,0.0255,0.2607,0.1959,-0.1235,-0.0459,0.0177,-0.0072,0.0001,-0.0125,-0.0709,-0.0222,-0.0506,0.0356,0.0159,-0.0224],[0.0,0.0096,0.081,-0.0127,0.0148,-0.0314,-0.053,-0.0137,0.0003,0.0125,0.0498,0.0944,0.2846,0.1367,-0.0423,-0.0084,0.0,0.0326,0.1383,0.3023,0.2538,0.1161,0.0037,-0.0036,0.0,0.0383,0.1049,0.1627,-0.0275,-0.0508,0.0129,-0.0,0.0,0.0339,-0.0339,-0.1926,-0.2845,-0.2548,-0.0525,0.0,0.0009,0.0644,0.1341,-0.0509,0.1007,0.0981,-0.1822,-0.0059,0.0014,0.0575,0.2381,0.0236,0.3878,0.177,-0.2656,-0.018,0.0001,0.0116,0.0707,0.0207,0.107,-0.1645,-0.144,-0.0151],[-0.0,0.0025,0.037,0.0223,0.1133,0.1197,-0.0018,-0.0111,0.0003,0.0011,0.0437,-0.1038,-0.0034,0.1192,-0.0152,-0.0104,-0.0001,-0.0357,-0.0214,0.0222,0.0723,0.0186,-0.0451,-0.0018,0.0,-0.0337,0.1769,0.4706,0.2063,-0.0178,0.0032,0.0,-0.0,-0.0131,0.2972,0.3862,-0.0321,0.0289,0.0352,0.0,-0.0008,-0.0121,0.2116,-0.0268,-0.3308,0.0467,0.0896,0.0018,-0.0005,0.0219,0.1607,-0.1462,-0.3208,0.0071,-0.0814,-0.0377,-0.0001,0.0009,0.0701,-0.036,-0.0425,-0.0719,-0.2175,-0.1086],[-0.0,-0.0226,-0.207,-0.1005,0.1227,0.3164,0.0919,0.0053,0.0005,-0.0503,0.0367,0.0764,-0.0766,0.3703,0.1431,-0.0017,0.0002,0.0784,0.2609,-0.0078,-0.1946,0.2234,0.0207,-0.0059,0.0,0.0151,0.1097,0.032,-0.0556,-0.119,-0.1395,-0.0003,-0.0,-0.1362,-0.0827,0.1171,0.0819,-0.3138,-0.1733,-0.0,-0.0017,-0.0971,0.0573,0.0373,0.0749,-0.0602,-0.0434,0.0008,-0.0007,-0.0263,0.1008,0.1306,-0.0623,0.0853,0.1086,0.0103,0.0002,-0.0201,-0.2259,-0.0389,0.1233,0.3115,0.1461,0.0156],[-0.0,0.017,0.0985,0.0402,0.1883,0.2066,0.0305,-0.0056,0.0002,0.024,0.0057,-0.0372,-0.037,0.0915,0.0509,-0.0044,-0.0005,-0.0944,-0.2495,-0.1446,-0.1368,-0.1415,-0.0241,-0.0018,-0.0003,-0.0716,-0.2484,-0.1642,-0.1464,-0.2913,-0.118,-0.0003,-0.0,0.0349,0.0811,0.1243,0.2912,0.1,-0.0857,0.0,0.0009,0.0843,0.1854,-0.054,0.1337,0.4145,-0.0225,-0.004,0.0005,0.0376,0.0911,-0.0793,0.1855,0.2931,-0.0596,-0.0154,-0.0,0.0173,0.1271,0.082,0.0903,-0.0584,-0.1178,-0.0284],[-0.0,-0.0249,-0.0048,0.2214,-0.0303,-0.2191,-0.1168,-0.0182,0.0,-0.0049,0.2629,0.165,0.0417,0.018,-0.1025,-0.0159,-0.0001,0.0743,0.3548,-0.0714,0.0617,0.2099,-0.0525,-0.0034,0.0001,0.0718,0.1472,-0.0239,0.2837,0.2123,-0.0638,-0.0001,-0.0,0.0264,0.0248,0.1657,0.3649,0.2637,0.0366,-0.0,-0.0011,-0.0423,0.0004,0.0914,0.1247,0.2092,0.0578,0.0014,-0.0017,-0.0453,-0.037,0.1729,0.125,0.1314,0.0593,0.0013,-0.0001,-0.0248,-0.0291,0.2264,0.0606,-0.0348,-0.0346,0.003],[0.0,-0.0025,-0.1322,-0.0139,0.3364,0.2466,0.0285,-0.0074,0.0005,0.0714,0.0135,0.1231,0.3972,0.0836,-0.1052,-0.0135,0.0008,0.159,0.0364,-0.0146,0.2016,-0.2328,-0.2025,-0.0116,0.0003,0.1038,0.0474,-0.1242,-0.0398,-0.2073,-0.1025,-0.0005,0.0,0.0121,-0.0191,-0.131,-0.0887,0.1792,0.1442,0.0,-0.0002,-0.0154,-0.0908,0.1602,-0.1912,0.0369,0.2104,0.0017,0.0005,-0.0462,-0.1792,0.2971,-0.0534,-0.0224,0.0703,-0.0185,0.0001,-0.0074,-0.0965,-0.0757,-0.0989,-0.0517,-0.0844,-0.0642],[-0.0,-0.0069,0.0026,0.1752,-0.0258,0.086,0.2,0.0488,-0.0017,-0.1478,-0.0282,0.3104,-0.0212,-0.0295,0.2208,0.0344,-0.0006,-0.252,-0.0353,0.3203,-0.2305,-0.0717,0.1316,0.0074,-0.0002,-0.2287,-0.1914,0.2499,-0.081,0.1173,0.0614,0.0004,-0.0,-0.1654,-0.1239,-0.0002,-0.1021,0.1758,0.0695,-0.0,-0.0007,-0.0897,-0.0416,-0.0103,-0.1168,0.0463,0.1261,0.0085,0.0011,0.0076,0.0982,0.3403,0.0584,0.014,0.0912,0.024,0.0,-0.0013,0.0127,0.2164,-0.0796,-0.0887,-0.0143,0.0128],[-0.0,0.0268,0.1164,0.0616,0.1272,-0.0708,-0.0803,-0.007,0.0011,0.1281,-0.0045,0.0344,0.3004,0.0287,-0.0485,0.0061,0.0005,0.1158,-0.2122,-0.0693,-0.1191,0.0819,0.1236,0.0124,0.0002,0.0309,0.0434,0.0528,-0.3307,0.2074,0.2528,0.0005,0.0,-0.0434,0.2499,0.3857,-0.097,-0.1147,0.0513,0.0,-0.0014,-0.1769,-0.2331,0.0155,0.0004,-0.099,-0.009,0.0021,-0.0009,-0.0688,-0.2109,0.0365,0.176,0.2323,0.0735,0.0188,-0.0001,0.016,0.106,0.0004,0.092,0.1359,0.0835,0.0322],[0.0,0.0527,0.2816,-0.1898,-0.1644,0.2364,0.1872,0.0169,-0.0002,0.1336,0.0546,-0.105,0.0469,-0.042,0.1236,0.0051,-0.0007,0.0781,0.0995,0.0511,0.0643,-0.0492,0.0213,-0.0035,-0.0004,-0.0186,0.1294,-0.0217,0.0097,0.2474,0.0087,-0.0001,-0.0,0.0085,0.0578,-0.0469,0.0085,0.208,-0.0245,0.0,0.0018,0.079,0.0751,0.2662,0.0896,0.1273,-0.0514,-0.0008,0.0013,0.0704,0.2058,0.1086,0.0258,0.0995,0.1352,0.0069,0.0001,0.0572,0.3213,-0.3203,-0.2601,0.209,0.2001,0.015],[-0.0,0.0096,0.1036,0.1736,0.4158,0.1415,-0.1723,-0.0483,0.0007,0.0347,-0.1034,-0.1651,-0.2294,0.0993,-0.2184,-0.0404,-0.0005,-0.0446,-0.1608,0.0873,-0.1051,0.0397,-0.1629,-0.0158,-0.0003,0.0139,0.1242,0.2093,0.0823,0.1243,-0.0245,-0.0004,0.0,0.1033,0.1263,-0.2392,-0.0682,0.0702,0.0893,0.0,0.0025,0.1106,0.0601,-0.0208,0.2578,-0.1027,0.1094,0.0081,0.0014,0.0312,0.0465,0.0951,0.1413,-0.2227,0.1357,0.0344,-0.0,0.0013,0.1223,0.1664,0.135,0.1191,0.1959,0.0674],[0.0,0.0058,-0.1125,-0.0787,0.2909,0.0774,0.02,0.0132,0.0014,0.1347,0.0203,-0.0615,-0.125,-0.3031,0.0738,0.0231,0.0007,0.1954,0.0111,-0.1674,-0.124,-0.1637,0.1895,0.0171,0.0003,0.0366,-0.101,0.0517,0.2141,0.2217,0.1375,0.0009,0.0,-0.0011,-0.2874,0.058,-0.0927,0.0341,0.032,0.0,0.0039,0.0651,0.0423,0.3289,-0.1335,-0.0662,-0.0952,-0.0019,0.0035,0.0631,0.1387,0.0102,0.1305,0.094,-0.1667,-0.0459,0.0002,0.0066,-0.1206,-0.0241,0.3564,0.0076,-0.1124,-0.0713],[-0.0,0.0078,0.0209,0.0538,-0.0226,-0.1475,-0.1574,-0.0324,0.0005,0.0146,-0.0666,-0.2447,-0.1549,0.0733,-0.153,-0.0375,0.0004,-0.0317,-0.0167,0.0826,-0.1036,0.1545,-0.0742,-0.0183,0.0,-0.1021,0.1025,0.1325,-0.2953,-0.0099,-0.0756,-0.0007,0.0,-0.1041,-0.2901,-0.0499,-0.1187,-0.0559,-0.0432,-0.0,0.0013,-0.0291,-0.1155,0.4804,0.124,0.29,0.0261,-0.0032,-0.0002,-0.0251,-0.1667,0.0474,-0.2719,0.1322,-0.0525,-0.0244,-0.0,0.0051,0.0365,-0.0006,-0.0836,-0.076,-0.2088,-0.0692],[-0.0,-0.0233,-0.1307,0.0129,-0.0994,-0.0268,-0.0803,-0.0218,-0.0009,-0.123,-0.1356,-0.0995,-0.1227,-0.0746,-0.053,-0.0163,-0.0004,-0.0353,-0.2472,-0.3154,-0.0521,-0.0602,-0.062,-0.0054,-0.0002,0.0719,0.1684,0.0976,0.2,0.0354,0.011,0.0003,0.0,0.0181,0.1544,-0.1391,-0.0114,-0.13,-0.1494,-0.0,0.0001,-0.044,-0.1924,-0.147,-0.0887,0.0972,-0.167,-0.0055,0.0023,-0.0063,0.1412,0.5153,0.0491,0.2785,-0.0967,0.0136,0.0,-0.0193,-0.1205,-0.0905,-0.2215,-0.0459,-0.0105,0.0555],[0.0,-0.0192,0.0005,0.0052,0.3196,-0.1505,-0.1562,-0.0154,-0.0013,-0.1407,0.0944,0.0443,0.3247,-0.0281,-0.1768,-0.0014,-0.0003,-0.1352,0.118,0.0049,-0.1397,-0.1724,0.0317,0.0069,0.0,-0.057,-0.0136,0.0367,-0.1654,0.1246,0.096,0.0004,-0.0,-0.0492,-0.1293,-0.0273,0.1963,0.0868,-0.2058,0.0,0.0015,-0.0106,-0.0883,-0.1441,-0.0064,0.1389,-0.2917,-0.007,0.0021,0.0685,0.2515,-0.0279,-0.2823,-0.2279,-0.1962,-0.0031,0.0002,-0.0087,0.0102,-0.1292,-0.0498,0.0866,0.177,0.0643],[0.0,0.0042,-0.003,0.0648,0.0203,-0.1974,0.1629,0.0633,0.0011,0.0467,-0.1156,-0.1266,0.2415,0.0431,0.3292,0.0604,-0.0004,-0.0077,-0.116,-0.2072,0.1062,-0.0005,0.3053,0.0228,-0.0004,-0.0005,0.3397,0.1082,-0.0546,-0.1709,0.1547,0.0012,-0.0,0.0443,-0.0798,-0.1461,0.2151,-0.0587,0.05,0.0,0.0024,0.0894,-0.1088,0.0142,0.2105,0.0163,0.2538,0.0035,0.0031,0.0495,0.2382,0.0411,-0.095,-0.1306,0.1782,-0.004,-0.0,-0.0042,0.0138,0.0728,0.1465,-0.0401,-0.1176,-0.073],[0.0,0.0264,0.0235,-0.2989,-0.09,-0.1177,-0.1695,-0.0459,-0.0009,0.0642,-0.0912,-0.0121,0.0901,0.1088,-0.1663,-0.0284,-0.0009,0.046,0.0096,-0.1165,-0.3315,0.0347,-0.1781,-0.0097,-0.0001,-0.1003,0.0176,0.0638,-0.0329,0.0379,-0.1843,-0.0005,0.0,-0.1814,-0.1904,0.0993,0.0973,0.0938,0.0324,-0.0,-0.0009,-0.0904,-0.0186,-0.1088,-0.0367,-0.1884,0.2618,0.005,0.0014,0.0475,0.2512,-0.0298,0.3498,-0.1141,0.1274,-0.0228,0.0006,0.0282,0.0154,-0.2444,-0.0609,-0.2108,-0.1537,-0.1055],[-0.0,0.0087,-0.1392,-0.099,0.0313,-0.1646,-0.0514,0.0074,0.0035,0.3286,0.1841,0.0393,-0.049,-0.0157,0.0427,0.0149,0.0023,0.4522,-0.1085,0.029,-0.0565,0.071,0.1373,0.0141,0.0005,0.0116,-0.226,0.2743,0.0057,-0.104,0.0944,0.0008,0.0,-0.0238,-0.0074,0.0081,-0.1016,-0.0104,-0.0463,0.0,0.0015,0.1031,0.1828,-0.1635,0.1094,0.3214,-0.0058,-0.0015,0.0007,-0.0188,-0.0759,0.0815,-0.0213,-0.1681,0.1597,0.0324,-0.0005,-0.009,-0.1555,-0.0397,-0.2326,-0.1237,0.189,0.0551],[-0.0,0.0273,0.0851,-0.0665,0.051,0.0321,-0.1794,-0.0362,0.0002,0.0802,-0.0891,0.2004,-0.1864,0.1245,-0.0909,-0.0155,-0.0002,0.1217,-0.0476,0.3818,-0.1034,0.0566,0.1192,0.0099,0.0002,0.2251,-0.0485,-0.0871,0.0552,-0.0767,0.2956,0.0009,-0.0,0.2651,-0.1324,-0.0473,0.3843,-0.1516,0.1442,-0.0,0.0027,0.1539,-0.1372,-0.0443,-0.163,-0.1117,0.0342,0.0015,0.0038,0.028,0.0603,0.0824,-0.143,0.1663,0.0242,-0.0202,0.0004,0.0276,0.1462,-0.1114,-0.1001,-0.0202,-0.1225,-0.0513],[-0.0,-0.05,-0.0688,-0.1127,0.0207,0.1034,-0.0929,-0.0243,-0.0026,-0.1953,0.2612,-0.1198,-0.0643,-0.0097,-0.1228,-0.0172,-0.0015,-0.235,0.2812,-0.205,0.1434,-0.1338,0.0058,0.0046,-0.0008,-0.1833,-0.1962,0.1902,-0.0502,-0.1149,0.3532,0.0004,-0.0,0.0503,-0.0271,0.0669,-0.0315,-0.0977,0.3632,-0.0,0.0023,0.1337,-0.0644,-0.0214,0.2719,-0.0718,0.1216,0.0042,0.0029,0.0232,0.0033,-0.0052,0.058,0.1772,0.0623,0.022,-0.0001,-0.04,-0.1031,-0.1172,-0.1492,0.0153,0.0102,0.0323],[-0.0,-0.0204,-0.0401,-0.0186,-0.249,0.0052,-0.0704,-0.0154,0.0014,-0.0073,-0.0522,-0.1127,-0.1975,0.2999,-0.0042,-0.0119,0.0007,0.1406,-0.0551,0.0082,0.2085,-0.0622,0.0135,0.0014,0.0002,0.107,0.0374,0.0531,-0.2419,-0.207,0.0652,0.0002,0.0,0.0638,-0.1192,0.256,-0.053,0.4387,0.145,-0.0,-0.0007,0.0191,-0.1663,0.0047,-0.0842,-0.0284,-0.1658,-0.0065,0.0025,0.0397,0.1909,0.1444,0.1138,-0.171,-0.2363,-0.0065,-0.0,-0.0215,-0.0704,0.1122,0.1372,0.1225,0.1174,0.0888],[-0.0,0.0032,-0.0065,0.0848,0.3302,-0.1151,-0.0544,0.0078,-0.0008,-0.0335,-0.1516,-0.155,-0.2634,-0.0062,0.0457,0.0272,-0.001,-0.1341,0.1966,0.1003,0.232,0.0638,0.1988,0.0301,-0.0002,-0.0889,0.0737,-0.2685,0.0682,-0.1352,0.0913,0.0012,-0.0,-0.0957,0.0269,0.1732,-0.0928,-0.0675,-0.0922,0.0,-0.0044,-0.1785,-0.1314,0.0349,-0.2409,0.2102,0.0332,-0.0007,-0.0003,-0.0562,0.0876,-0.0253,0.2382,-0.1023,0.2098,0.029,0.0,0.0013,0.0577,-0.1764,-0.0937,-0.2172,0.1896,0.0177],[-0.0,0.0082,0.1428,-0.085,-0.0608,-0.1047,0.0014,-0.0208,-0.0018,-0.1363,-0.1326,0.1121,0.2009,0.1397,0.0421,-0.0079,-0.0003,-0.1424,0.0145,-0.1914,-0.3083,0.0609,0.0283,0.0027,-0.0005,-0.0043,0.1129,0.0764,0.2769,-0.212,-0.0228,0.0002,0.0,0.1726,-0.175,0.0775,-0.1174,-0.0931,0.189,-0.0,0.0038,0.2636,0.0491,0.1593,-0.2185,0.1692,-0.0286,0.0041,0.0023,0.0407,-0.2566,-0.0281,0.0889,-0.0556,-0.0984,0.0428,0.0002,0.0162,0.1352,0.0201,0.0175,-0.0107,0.339,0.1588],[0.0,-0.0092,-0.0418,-0.043,-0.1129,0.1764,0.0125,-0.0281,0.0007,-0.0849,-0.0823,0.4233,-0.0409,0.0213,-0.1579,-0.0207,-0.0003,0.0376,-0.1617,-0.0918,0.0522,-0.06,-0.1609,-0.0047,0.0002,0.1427,0.0285,-0.1304,0.1122,0.1316,0.0894,-0.0002,-0.0,-0.0161,-0.0076,0.1762,-0.2459,-0.1356,0.0442,0.0,0.0019,0.0192,-0.2643,0.1017,0.2227,0.2898,0.0175,-0.0006,0.0023,0.0793,0.3092,-0.2145,-0.1511,-0.1119,0.2066,0.046,0.0001,0.0063,-0.0331,0.0915,0.0683,-0.1307,0.0134,-0.0211],[0.0,-0.0018,0.0475,-0.2382,-0.1266,-0.0255,-0.26,-0.0249,0.0004,0.063,0.2929,0.1669,-0.081,0.3457,0.0104,0.01,-0.0,-0.154,-0.0732,-0.0467,-0.0021,-0.2316,0.168,0.0153,-0.0002,-0.1773,0.0069,0.028,0.1042,-0.0225,0.16,0.0005,0.0,0.0001,0.2463,-0.254,-0.0166,0.0817,-0.3327,-0.0,0.0005,-0.049,-0.0615,0.2284,-0.0996,-0.0148,-0.037,-0.0057,-0.0008,-0.0839,-0.1368,0.0018,0.0395,-0.0966,0.1307,-0.0123,-0.0001,-0.0098,0.005,-0.0133,0.2271,-0.0302,-0.0817,-0.0593],[0.0,0.0531,0.1324,-0.1496,0.1087,-0.0808,-0.0024,-0.0211,-0.002,0.0059,0.094,0.1642,-0.1022,-0.2286,0.0882,-0.0141,-0.0004,-0.105,0.0822,-0.0566,0.0221,0.3328,0.0186,0.002,-0.0,-0.0268,-0.1661,0.0081,-0.0243,-0.1372,-0.1961,0.0009,-0.0,0.1147,0.1713,0.0839,-0.1553,0.0194,-0.0168,-0.0,0.003,0.1573,-0.2753,-0.1186,0.0661,0.1041,0.0651,-0.0128,0.0057,0.1567,-0.053,0.2687,-0.0465,-0.2245,-0.1077,-0.0831,0.0003,0.0649,0.1135,-0.2244,0.1939,0.2304,-0.2224,-0.1621],[-0.0,-0.0073,0.0936,0.0216,0.0103,-0.2111,-0.0036,0.0067,0.0012,-0.0093,-0.0699,-0.1244,0.0248,0.2012,0.1332,0.0148,0.0009,0.1659,0.0749,0.1615,-0.2272,-0.2027,0.008,0.0124,0.0006,-0.0094,-0.1385,-0.1747,0.3149,-0.0884,-0.0103,0.0007,0.0,-0.2285,0.2306,-0.0564,-0.1157,-0.0046,0.3551,-0.0,-0.0072,-0.288,-0.0536,-0.0058,0.2685,0.0535,0.011,0.0126,-0.0026,-0.1014,0.0782,0.0679,-0.186,0.0428,-0.2259,0.0006,-0.0003,-0.0035,0.0471,-0.1441,0.1261,0.0212,-0.0093,0.0198],[-0.0,-0.0822,0.0172,-0.0979,-0.0178,-0.0438,-0.0343,-0.007,-0.0039,-0.3497,0.2289,-0.3903,0.1489,0.0502,0.1331,0.0025,0.0001,-0.0254,-0.0346,0.1868,-0.1132,-0.0959,0.0781,-0.0013,0.0015,0.4558,-0.2436,0.0197,0.0128,0.1289,-0.2064,-0.0001,-0.0,0.2697,0.0342,0.0992,-0.0741,-0.0716,-0.1136,0.0,0.0011,0.0233,-0.1198,0.0914,-0.0293,0.0467,0.1117,-0.0018,-0.0036,-0.026,0.075,0.0138,0.0692,-0.0576,0.1749,-0.0024,-0.0003,-0.061,-0.077,0.1024,-0.0416,-0.0445,-0.0113,-0.0596],[0.0,-0.0373,-0.0958,-0.1976,0.1644,-0.1,0.0783,0.01,0.0024,0.1123,0.4529,0.0329,-0.0539,-0.1061,0.1261,-0.0053,0.0007,-0.1107,-0.3045,0.1848,-0.0265,0.1659,-0.1001,-0.0192,-0.0,-0.1455,0.2274,-0.0799,-0.0301,-0.0707,-0.2193,-0.0002,0.0,0.004,0.0803,-0.0342,0.0655,0.0348,0.2241,0.0,0.0026,0.0334,-0.203,0.1227,-0.0469,-0.1193,-0.051,0.0065,0.0025,0.0549,0.1577,-0.1197,-0.0367,0.165,-0.082,0.0656,0.0001,-0.0482,-0.143,0.0134,-0.0287,-0.1633,0.187,0.2004],[0.0,-0.0282,0.0609,-0.1036,-0.196,0.2015,0.1762,-0.0249,-0.001,-0.0472,0.1084,-0.1777,0.0347,-0.1672,-0.1363,-0.0397,-0.0002,0.0315,-0.0318,0.0452,0.0073,0.1541,-0.2087,-0.0151,0.0001,0.0058,-0.0558,0.03,-0.0975,0.0372,0.2662,-0.0008,0.0,-0.0922,0.0753,-0.1224,0.28,-0.2304,0.0849,-0.0,-0.0036,-0.1832,0.0259,0.0411,-0.1989,0.2596,0.1742,0.0003,-0.003,-0.112,-0.0047,0.1454,0.0432,-0.2644,-0.1518,-0.0002,-0.0,-0.0364,0.006,-0.0261,0.3302,-0.13,0.1278,0.0885],[0.0,-0.0292,0.0952,-0.0144,0.0641,0.0494,-0.1498,-0.0176,-0.0026,-0.3243,0.2305,0.2124,-0.0924,-0.1412,-0.0175,0.0061,-0.0002,-0.0262,-0.2886,-0.0652,0.0636,0.0978,0.2122,0.009,-0.0001,0.3262,0.1841,0.025,0.017,-0.1522,0.0434,-0.0005,0.0,-0.2218,-0.2036,-0.0404,-0.0449,0.0911,0.062,-0.0,-0.0081,-0.2882,0.275,0.0065,0.0887,0.006,0.1028,0.0026,-0.0093,-0.1634,-0.049,-0.047,0.0729,-0.0545,-0.1004,-0.0223,-0.0008,-0.0174,0.0907,-0.1479,-0.1215,0.1834,-0.0312,-0.0359],[-0.0,0.0222,0.043,-0.2632,-0.0644,0.1736,-0.3061,-0.0328,0.0001,0.0272,0.0265,-0.1475,0.046,-0.0558,-0.0334,0.0038,0.0001,-0.0049,-0.0469,0.1278,0.0889,-0.1468,0.2631,0.0105,-0.0,-0.1607,0.1995,-0.2689,0.0484,0.1736,-0.114,0.0015,0.0,-0.2614,-0.0585,0.1731,-0.0059,-0.1685,0.097,-0.0,0.0055,0.1893,0.0834,-0.1949,0.0117,0.0948,0.1272,0.0006,0.0108,0.1998,-0.1127,0.193,-0.0705,-0.0704,-0.0933,-0.0353,0.0004,0.0274,-0.0147,0.3285,-0.0392,0.0452,-0.0035,-0.0331],[0.0,0.0257,-0.0376,0.206,0.0119,-0.2173,0.2487,0.0659,0.0026,0.1391,0.2272,-0.0015,-0.1202,0.2268,0.0325,0.0253,0.0004,-0.1309,-0.1649,0.075,-0.0041,-0.2623,-0.2372,-0.0114,-0.0006,-0.0479,0.1505,-0.1084,0.0326,0.2014,0.0829,-0.001,-0.0,0.0917,-0.1697,0.1164,-0.0063,-0.2194,0.0555,0.0,0.0028,0.0783,0.0409,-0.0829,-0.0583,0.1647,0.0657,-0.0029,-0.0025,-0.0025,-0.0797,0.0022,0.2024,-0.1711,-0.0868,-0.0714,-0.0005,0.0131,-0.1274,-0.1711,-0.1089,0.3168,-0.1454,-0.1524],[0.0,0.022,-0.0696,-0.1779,-0.025,0.0498,0.1203,0.0134,0.0026,0.1984,0.0111,-0.1877,0.1737,-0.1425,-0.2066,0.0032,-0.001,-0.1822,-0.01,0.1133,-0.2114,0.1906,-0.0252,0.0147,-0.0011,-0.0213,0.0533,-0.1117,0.2162,-0.2822,0.2693,0.0013,0.0,0.063,-0.0119,0.0128,-0.0982,0.1301,0.0028,-0.0,-0.0044,-0.1885,-0.0205,0.0178,0.0249,0.0273,-0.2493,-0.0101,0.0008,-0.074,0.0901,-0.0124,0.0639,-0.0691,0.1391,-0.0625,0.0,-0.0029,-0.05,0.3207,-0.1704,0.2291,-0.1397,-0.2274],[-0.0,-0.011,-0.1009,0.4466,-0.2255,0.3064,-0.3238,-0.0992,0.0017,0.1179,0.0308,-0.0154,0.146,-0.1199,0.0018,-0.0227,0.0003,0.0453,-0.019,0.0334,-0.1178,0.0436,0.261,0.0042,-0.0006,-0.213,-0.0175,0.0048,0.0408,-0.0485,-0.1819,-0.0017,-0.0,0.1734,0.0804,-0.0711,0.0301,-0.0641,0.1008,0.0,-0.0011,-0.0157,-0.1593,0.1076,-0.0597,0.0797,0.0812,0.0113,-0.0061,-0.1336,0.1476,-0.1699,0.121,-0.1336,-0.1155,0.0171,-0.0003,-0.0185,-0.1507,-0.1654,-0.1114,0.1433,-0.0045,-0.0254],[-0.0,-0.0659,0.049,0.2255,-0.028,-0.0099,0.1555,0.0137,-0.0033,-0.3006,0.0892,-0.0883,0.0412,0.0056,-0.1618,-0.0181,0.0023,0.27,-0.0607,0.123,-0.1222,0.0925,0.0007,-0.0017,0.0014,-0.0526,0.023,-0.0885,0.1091,-0.1719,0.2175,0.0016,-0.0,-0.3576,0.1398,-0.0293,-0.0088,0.1121,-0.23,-0.0,0.0118,0.3238,-0.111,0.0943,-0.0392,-0.0832,0.0998,0.0041,0.0218,0.3932,-0.0458,-0.0965,0.0979,0.0294,-0.0114,0.0282,0.0012,-0.0145,-0.1158,-0.0802,-0.0427,0.0634,-0.0641,0.0358],[-0.0,-0.0223,-0.106,-0.2299,0.1228,-0.1481,-0.0158,0.0335,-0.0001,-0.0482,-0.1562,0.1309,-0.084,0.0072,0.0971,0.028,-0.0002,0.1366,0.0887,-0.0931,0.0719,-0.0211,-0.0603,0.0055,-0.0003,-0.0235,-0.1243,0.0967,-0.0544,0.0414,0.0127,0.0013,0.0,-0.0081,0.1866,-0.1544,0.1046,-0.0953,-0.049,-0.0,0.0005,-0.1077,-0.134,0.1927,-0.0983,0.0672,0.2978,0.0003,0.0037,0.0607,0.1024,-0.2003,0.1487,-0.0141,-0.3257,-0.0717,0.0004,-0.008,0.0917,0.3471,-0.3313,0.2789,0.0701,-0.036],[-0.0,0.1435,-0.097,0.1203,-0.0744,0.0062,-0.0623,-0.0281,0.0016,0.2878,0.0022,-0.0036,0.0015,0.0502,0.0078,-0.0004,-0.0003,-0.3298,0.0534,-0.0577,0.0036,-0.0164,0.0676,0.0124,0.0001,0.423,-0.1013,0.11,-0.0489,-0.003,-0.0496,0.0026,0.0,-0.2415,0.1008,-0.1227,0.0922,-0.0399,0.1758,-0.0,0.0041,-0.1473,0.0181,0.0892,-0.0647,0.0408,-0.0868,0.0186,0.0218,0.5461,-0.0654,-0.0429,0.0366,-0.0124,0.0314,0.024,0.0022,0.1696,-0.0872,-0.0427,-0.008,-0.0308,0.0997,-0.0924],[-0.0,0.0447,-0.0503,0.0259,-0.0417,0.0468,0.0545,0.0114,0.0044,0.2954,0.0233,-0.0247,0.0338,0.0113,-0.1127,0.0013,-0.0008,-0.2377,0.0232,0.0524,-0.0483,0.0162,0.0544,0.0112,-0.0004,0.1352,-0.0112,-0.0875,0.112,-0.0487,0.1258,0.0005,0.0,0.1456,-0.0966,0.1435,-0.161,0.1063,-0.3904,0.0,-0.0011,-0.0629,0.0125,-0.04,0.1835,-0.0828,0.4997,-0.0051,-0.0021,0.0157,0.0348,0.053,-0.1084,0.1093,-0.3192,0.0037,0.0002,0.0211,-0.0315,-0.0588,0.0005,-0.0731,0.1195,0.2683],[-0.0,0.0541,0.0801,0.045,0.0139,0.0579,-0.3783,-0.2204,-0.0019,-0.0558,-0.0004,-0.0312,0.0587,-0.1108,0.5752,-0.1153,0.0007,0.0566,0.0028,0.0411,-0.0197,0.0389,-0.4433,-0.0456,0.0004,-0.0709,0.0583,-0.0588,0.0259,-0.04,0.2805,-0.0004,-0.0,0.1014,-0.0939,0.0438,-0.0448,0.0488,-0.1092,-0.0,-0.0027,-0.1493,0.069,-0.0273,0.0225,0.0035,0.0005,-0.0017,0.0025,0.2086,-0.0444,-0.0144,-0.0166,-0.0065,0.0369,0.019,0.0009,0.0896,-0.0909,0.0146,-0.0169,-0.0012,-0.0146,0.0278],[0.0,0.1209,0.4736,-0.0803,0.066,-0.0026,0.0821,0.1064,-0.0015,-0.0616,-0.0572,0.0291,-0.0276,0.0287,-0.149,0.0904,-0.0007,0.091,0.0098,-0.0445,0.0407,-0.0134,0.1251,0.0301,-0.0006,-0.1155,-0.0059,0.0164,-0.0021,0.0106,-0.0736,0.001,0.0,0.2398,-0.0179,-0.0278,0.0261,-0.0354,0.0453,-0.0,-0.0014,-0.2905,0.0537,0.0311,-0.0345,0.0427,-0.0167,-0.0005,0.0059,0.2063,0.0013,-0.0013,-0.0022,-0.0493,0.0703,0.1455,0.0009,0.1663,-0.4223,0.0388,-0.0687,0.0689,-0.2331,0.3845],[-0.0,-0.0672,0.0111,-0.0283,0.0323,-0.011,-0.0878,-0.0656,0.0022,0.1892,-0.0639,-0.0108,0.0245,-0.0333,0.1394,-0.0514,-0.0004,-0.1632,0.0779,-0.0156,-0.0155,0.0065,-0.0735,-0.015,0.0,0.2347,-0.0556,-0.0009,-0.0071,0.0126,0.0381,-0.0002,0.0,-0.3253,0.053,0.0004,0.0098,-0.0203,0.029,-0.0,0.0004,0.2862,-0.038,0.0395,-0.0788,0.0432,-0.0644,-0.0054,-0.0083,-0.286,0.0666,-0.0322,0.0595,-0.1055,0.08,0.1775,-0.0011,-0.1335,0.0184,0.0275,-0.0612,0.1607,-0.3636,0.5396],[0.0,0.0107,0.522,0.0072,0.0359,0.0018,-0.0396,0.0136,0.0018,0.1126,-0.0892,0.0469,-0.0212,-0.0237,0.0644,0.0083,-0.0008,-0.1081,0.033,-0.0216,0.0245,0.0256,-0.0656,-0.0063,-0.0005,0.1306,-0.0234,0.0298,-0.0329,-0.0126,0.0283,-0.0004,-0.0,-0.1942,0.038,-0.0179,0.0213,0.0303,-0.0355,0.0,-0.0023,0.2363,-0.0587,0.0143,-0.0052,-0.0356,0.0378,0.0019,-0.018,-0.3056,0.0638,-0.0219,-0.025,0.0755,-0.0988,-0.1153,-0.0027,-0.0394,-0.4838,0.0389,-0.0458,-0.0682,0.2294,-0.3584],[0.0,-0.1001,-0.0179,0.0334,-0.0396,0.089,-0.2623,0.7239,0.001,0.0192,0.0036,-0.016,0.0186,-0.0388,0.0685,0.5458,0.0002,-0.0143,0.0052,0.0112,-0.0364,0.0569,-0.1809,0.1402,0.0001,0.0258,0.0037,-0.0009,0.005,-0.0238,0.0398,0.0093,-0.0,-0.01,-0.0057,0.0117,-0.0097,0.0022,0.0024,0.0,0.0,0.019,-0.0053,0.0071,-0.0002,0.0165,-0.011,-0.0086,0.0011,0.0489,-0.0063,0.006,0.0013,-0.0085,0.0063,-0.0188,0.0008,-0.1063,0.05,-0.0422,0.0257,-0.0108,0.0013,0.0159],[0.0,0.6017,-0.1658,0.0059,-0.0044,-0.0023,-0.0259,0.1139,-0.0065,-0.1542,0.0715,-0.0551,0.0148,-0.0016,0.0023,0.0687,-0.0009,0.0302,-0.0094,0.0237,-0.0037,0.0149,-0.041,0.018,0.0011,0.0121,-0.0053,0.0025,0.0092,-0.0066,0.0259,-0.0001,-0.0,-0.0797,0.0295,-0.0008,0.0107,0.0184,-0.008,0.0,-0.008,0.1517,-0.048,0.0115,-0.0044,-0.0102,0.0096,0.0036,-0.0217,-0.2734,0.0487,-0.022,0.0064,0.0052,-0.0105,-0.0048,-0.0011,0.6626,0.013,0.0386,0.0124,-0.0099,0.0137,0.0461],[0.0,0.0072,-0.0062,-0.0378,0.0092,-0.0112,0.0021,0.041,0.0044,0.0097,0.0092,-0.0121,-0.0089,-0.0036,-0.0027,-0.0033,-0.0014,0.004,0.0091,-0.0029,0.0095,0.0028,-0.0117,-0.0106,-0.0,-0.0054,-0.0003,-0.0123,-0.0045,0.0022,0.0108,-0.0002,-0.0,0.0193,-0.0184,0.0118,0.003,0.0124,-0.0388,-0.0,0.0002,0.0112,0.0066,-0.0142,-0.008,-0.0035,0.0354,0.199,-0.0033,-0.0288,-0.0063,0.0233,-0.0044,0.0,-0.1151,0.9229,-0.0001,-0.0024,0.0288,0.0099,0.0084,0.0289,0.0033,-0.2885],[-0.0,-0.0017,-0.0051,-0.0,-0.0004,-0.008,0.0657,-0.5676,0.0006,-0.0088,0.0101,-0.0068,-0.0081,0.0079,-0.0246,0.646,0.0004,0.0029,-0.0057,0.0042,0.0044,0.0114,-0.053,0.4989,-0.0003,-0.0011,0.0028,0.0018,-0.0139,0.0081,-0.0127,0.018,-0.0,-0.0095,-0.0039,-0.0037,0.002,0.002,-0.0048,0.0,-0.003,0.0261,0.0056,0.0045,0.0028,-0.0091,0.0026,0.0078,-0.0028,-0.0153,-0.0023,0.0092,-0.0089,0.0111,-0.0089,0.0259,-0.0001,0.0007,0.0049,0.0063,-0.0013,0.0016,-0.0016,-0.0066],[0.0,0.7422,-0.0041,0.0031,-0.0029,0.0019,-0.0026,0.0008,-0.0178,-0.059,0.006,0.0024,-0.0001,0.0001,0.001,0.0006,-0.0012,0.0206,0.0025,0.0001,-0.0015,-0.0025,-0.0001,0.0058,0.0019,-0.006,-0.0052,-0.0024,0.0038,0.0005,-0.0015,0.0028,-0.0,0.0084,0.0012,-0.0014,-0.0001,-0.0005,-0.0008,-0.0,0.0194,-0.015,-0.0015,0.0058,0.0009,0.0007,0.0001,0.0024,-0.0154,0.0551,-0.001,-0.0044,0.0001,0.0022,0.0012,-0.0048,-0.0104,-0.6638,0.0008,-0.0045,-0.0022,-0.0005,0.0002,0.0012],[0.0,-0.0079,0.0032,-0.0047,-0.0009,0.001,-0.0006,0.0085,-0.0054,-0.001,0.0002,0.0011,0.0006,-0.002,-0.0003,-0.0147,0.0024,-0.0002,-0.0006,-0.0038,0.005,0.004,-0.0035,0.0241,-0.0002,0.0,-0.0001,-0.0027,-0.003,-0.0024,0.003,0.0016,0.0,0.007,-0.0016,0.0028,-0.0063,0.0,-0.0127,-0.0,0.0058,0.0025,-0.0037,-0.0021,0.0011,0.0076,-0.0181,0.9787,0.0037,-0.0015,0.0017,0.0009,-0.0001,-0.0032,0.0185,-0.1905,-0.0002,-0.0035,-0.0018,0.0001,-0.0007,-0.0015,-0.0123,0.0594],[0.0,-0.0047,0.0044,0.0041,-0.0025,0.0042,-0.0091,0.191,0.0002,-0.0028,0.0044,0.0025,0.003,0.0001,0.0228,-0.4848,0.001,0.0012,-0.0071,-0.0002,0.0012,-0.0022,-0.0263,0.8419,-0.001,-0.005,0.0067,0.0011,-0.0072,0.0094,-0.0156,0.0696,0.0,0.0043,-0.0051,-0.0067,0.0009,-0.0033,0.0018,0.0,0.0269,-0.0004,0.0053,0.0014,-0.0002,-0.0028,0.0007,-0.0291,0.1046,-0.0069,0.0003,-0.0024,-0.0008,0.0012,-0.001,0.005,0.0025,0.0003,-0.0059,0.0015,-0.0025,0.0007,0.0008,-0.0041],[-0.0,0.0167,0.0037,0.0017,-0.0006,0.0001,-0.0007,-0.022,0.0028,-0.0022,0.001,0.0004,-0.0004,-0.001,0.0027,0.0572,-0.0018,-0.002,0.0011,-0.0007,0.0015,0.001,-0.0021,-0.0962,-0.0004,0.0032,-0.0013,0.0003,-0.0002,0.0003,-0.0017,0.0927,0.0,0.0027,-0.0019,0.0026,-0.0014,0.0012,-0.0016,0.0,0.3581,-0.0063,0.0036,-0.0023,0.0018,-0.0002,0.0012,-0.0018,0.9202,-0.0458,0.0027,-0.0027,-0.0013,-0.0004,-0.0021,0.0013,0.0285,0.0032,-0.0012,-0.0015,0.0003,-0.0008,0.0023,-0.0022],[0.0,-0.0166,-0.0005,-0.0007,-0.0005,0.0002,-0.0009,0.0016,-0.0003,0.0009,-0.0018,-0.0004,-0.0002,0.0002,0.0008,-0.005,-0.0023,-0.0006,0.0013,0.0003,0.0005,0.0018,-0.0005,0.0143,-0.0008,0.0006,-0.0001,-0.0014,0.0009,-0.0033,0.0013,-0.0392,-0.0,-0.0021,0.0011,0.0003,-0.0003,0.0013,0.0022,0.0,0.9324,-0.0128,0.0014,-0.0019,-0.0002,-0.0002,-0.0008,-0.0046,-0.3557,0.0008,0.0006,0.0014,-0.0002,-0.0004,-0.0,0.0,-0.0381,0.0177,0.0012,0.0004,-0.0002,-0.0003,0.0,0.0004],[-0.0,0.016,0.0013,-0.0009,-0.0001,0.0006,-0.0007,-0.0,0.9543,-0.0116,0.0003,-0.0004,0.0004,-0.0014,0.0003,-0.0007,0.2954,-0.0006,0.0018,-0.0008,-0.0001,0.0005,-0.0001,-0.0003,0.0391,-0.0004,-0.0014,0.0004,-0.0003,0.0003,-0.0001,-0.0004,-0.0,0.0002,0.0002,-0.0006,0.0008,-0.0001,0.0,0.0,0.0005,0.0002,-0.0003,-0.0003,-0.0012,-0.0004,-0.0,0.0037,-0.0027,0.0014,-0.0005,0.0005,0.0011,-0.0001,0.0021,-0.0044,0.001,-0.0068,0.0017,-0.001,-0.0005,-0.0006,-0.0007,0.0012],[0.0,-0.0038,0.0008,-0.0008,0.0001,0.0005,0.0003,0.0001,-0.2893,0.0036,-0.0012,0.0004,-0.0005,0.0002,-0.0009,0.0004,0.8879,-0.0037,0.0006,-0.0009,0.0004,0.0001,0.0004,-0.0005,0.3575,-0.0004,0.0007,-0.0001,0.0002,0.0002,0.0003,-0.0028,0.0,0.001,-0.0004,0.0001,0.0005,-0.0002,0.0004,-0.0,0.0029,-0.0008,0.0002,-0.0004,0.0007,0.0001,0.0006,-0.0031,0.0018,-0.0017,0.0014,-0.0001,0.0003,0.0002,-0.0004,0.0029,0.0017,0.0024,0.0,0.0005,-0.0005,0.0004,0.0001,-0.0011],[0.0,-0.0047,-0.0006,0.0005,-0.0003,0.0002,0.0017,-0.008,-0.001,0.0001,-0.0002,0.0002,-0.0,0.0005,-0.0021,0.0112,0.0053,0.0003,-0.0001,-0.0002,0.0001,-0.0005,0.0022,-0.0593,-0.0052,-0.0009,-0.0001,-0.0001,-0.0001,-0.0,-0.0004,0.9744,0.0,0.0008,-0.0003,0.0001,0.0002,-0.0001,0.0002,0.0,-0.0034,-0.0005,0.0001,0.0,-0.0001,0.0,-0.0,0.0004,-0.0978,0.0016,-0.0001,-0.0003,0.0004,-0.0003,0.0003,-0.0002,-0.1926,0.0038,0.0004,-0.0007,0.0003,-0.0001,-0.0003,0.0004],[0.0,-0.0013,0.0003,0.0001,-0.0001,0.0001,0.0001,-0.0001,0.0709,0.0005,-0.0,0.0004,-0.0001,-0.0001,-0.0001,-0.0004,-0.3525,-0.0003,-0.0002,-0.0005,0.0001,0.0001,0.0001,0.0011,0.933,-0.0012,0.0004,0.0002,-0.0001,-0.0003,0.0002,0.0041,-0.0,0.0004,-0.0003,-0.0003,0.0,-0.0001,0.0003,0.0,-0.0005,-0.0002,0.0003,-0.0,-0.0,0.0002,-0.0002,0.0012,-0.0001,0.0001,-0.0003,-0.0,0.0002,0.0,-0.0001,-0.001,-0.0144,0.0002,-0.0002,-0.0,-0.0005,0.0006,0.0,0.0002],[-0.0,0.006,0.0006,0.0003,0.0001,-0.0002,0.0006,-0.0017,0.0001,-0.0005,0.0003,0.0001,-0.0002,0.0,-0.0003,0.0014,-0.006,0.0003,-0.0003,-0.0001,0.0003,-0.0003,0.0007,-0.0104,0.0121,-0.0001,-0.0,0.0001,-0.0,-0.0,-0.0,0.1872,0.0,-0.0002,0.0001,0.0002,-0.0003,0.0001,0.0002,0.0,0.0253,0.0005,0.0001,-0.0003,0.0003,0.0003,-0.0001,0.0003,-0.0604,-0.0019,0.0001,-0.0,-0.0001,-0.0001,-0.0001,-0.0004,0.9799,-0.0059,-0.0006,-0.0,-0.0001,0.0001,0.0002,-0.0004],[-0.0,-0.0,0.0,0.0,0.0,0.0,-0.0,0.0,0.0,0.0,0.0,0.0,0.0,-0.0,0.0,-0.0,-0.0,-0.0,-0.0,-0.0,0.0,0.0,-0.0,0.0,0.0,-0.0,0.0,0.0,-0.0,-0.0,0.0,-0.0,0.9998,0.0,-0.0,-0.0,-0.0,0.0,-0.0,-0.0182,0.0,0.0,0.0,0.0,-0.0,-0.0,-0.0,0.0,0.0,-0.0,-0.0,-0.0,0.0,0.0,0.0,-0.0,-0.0,-0.0,-0.0,0.0,-0.0,0.0,0.0,-0.0],[-0.0,-0.0,0.0,-0.0,0.0,-0.0,-0.0,0.0,-0.0,0.0,-0.0,-0.0,0.0,-0.0,0.0,-0.0,0.0,-0.0,0.0,0.0,-0.0,0.0,-0.0,0.0,-0.0,0.0,0.0,0.0,0.0,-0.0,0.0,-0.0,0.0182,-0.0,0.0,-0.0,0.0,-0.0,-0.0,0.9998,-0.0,0.0,-0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-0.0,0.0,-0.0,0.0,-0.0,0.0,0.0,0.0,-0.0,0.0,-0.0,-0.0],[1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]],"dig_evr":[0.14891,0.13619,0.11795,0.0841,0.05782,0.04917,0.04316,0.03661,0.03353,0.03079,0.02372,0.02273,0.01822,0.01774,0.01467,0.0141,0.01319,0.01248,0.01018,0.00906,0.0089,0.00797,0.00767,0.00723,0.00696,0.00596,0.00576,0.00515,0.0049,0.00429,0.00374,0.00353,0.00337,0.00328,0.00308,0.00294,0.00257,0.00228,0.00222,0.00211,0.0019,0.00159,0.00151,0.00141,0.00117,0.00107,0.00096,0.00077,0.00056,0.0004,0.00021,8e-05,5e-05,5e-05,3e-05,1e-05,1e-05,0.0,0.0,0.0,0.0,0.0,0.0,0.0],"dig_ex":[[0,0,5,13,9,1,0,0,0,0,13,15,10,15,5,0,0,3,15,2,0,11,8,0,0,4,12,0,0,8,8,0,0,5,8,0,0,9,8,0,0,4,11,0,1,12,7,0,0,2,14,5,10,12,0,0,0,0,6,13,10,0,0,0],[0,0,0,4,15,12,0,0,0,0,3,16,15,14,0,0,0,0,8,13,8,16,0,0,0,0,1,6,15,11,0,0,0,1,8,13,15,1,0,0,0,9,16,16,5,0,0,0,0,3,13,16,16,11,5,0,0,0,0,3,11,16,9,0],[0,0,7,15,13,1,0,0,0,8,13,6,15,4,0,0,0,2,1,13,13,0,0,0,0,0,2,15,11,1,0,0,0,0,0,1,12,12,1,0,0,0,0,0,1,10,8,0,0,0,8,4,5,14,9,0,0,0,7,13,13,9,0,0],[0,0,0,1,11,0,0,0,0,0,0,7,8,0,0,0,0,0,1,13,6,2,2,0,0,0,7,15,0,9,8,0,0,5,16,10,0,16,6,0,0,4,15,16,13,16,1,0,0,0,0,3,15,10,0,0,0,0,0,2,16,4,0,0],[0,0,7,8,13,16,15,1,0,0,7,7,4,11,12,0,0,0,0,0,8,13,1,0,0,4,8,8,15,15,6,0,0,2,11,15,15,4,0,0,0,0,0,16,5,0,0,0,0,0,9,15,1,0,0,0,0,0,13,5,0,0,0,0],[0,0,11,12,0,0,0,0,0,2,16,16,16,13,0,0,0,3,16,12,10,14,0,0,0,1,16,1,12,15,0,0,0,0,13,16,9,15,2,0,0,0,0,3,0,9,11,0,0,0,0,0,9,15,4,0,0,0,9,12,13,3,0,0]],"dig_pts":[[6.14,25.56,7.08,16.66,1],[-19.55,-10.89,-28.13,-19.84,9],[-2.78,17.48,4.8,48.32,7],[-23.89,-0.59,-41.54,4.36,3],[2.34,6.22,-13.62,14.14,8],[-20.05,-6.6,-38.69,-6.05,3],[-19.5,-13.92,-26.97,-19.22,9],[0.05,18.77,-6.02,9.48,8],[-12.69,18.4,7.57,43.22,7],[5.75,-17.81,3.07,-50.62,0],[7.91,11.54,-0.79,10.86,1],[5.82,-18.5,-5.3,-56.4,0],[-16.93,-12.73,-30.06,-21.08,9],[-3.84,6.49,-10.35,9.11,8],[-21.08,1.63,-36.39,-3.47,3],[-16.32,3.37,-35.25,-3.75,3],[-0.17,1.5,-11.83,8.97,8],[-6.51,4.13,-29.31,33.13,2],[-11.21,7.31,-33.31,25.73,2],[19.79,-11.14,34.82,-21.48,6],[2.37,-2.54,23.15,18.07,9],[3.47,25.26,5.34,16.91,1],[-5.08,3.49,-46.16,27.86,1],[-19.84,8.78,-40.29,5.16,3],[2.41,12.67,9.61,38.25,7],[29.98,-8.01,43.89,13.27,4],[-24.54,-13.51,-23.84,-21.33,9],[-7.89,-0.97,-46.33,27.39,1],[17.28,-8.04,32.28,-21.79,6],[-21.47,-1.23,-37.57,-4.24,3],[28.76,-6.93,42.96,8.25,4],[-1.69,-1.99,21.38,8.05,1],[8.95,1.76,-47.25,31.08,1],[-3.97,-14.03,-2.66,-24.97,5],[-11.76,1.97,-34.08,27.88,2],[1.56,15.38,5.87,-13.79,5],[-0.24,3.71,-12.9,-3.14,8],[-20.47,0.58,-40.17,-1.89,3],[-21.72,-0.53,-36.94,-4.94,3],[-13.99,-13.46,-26.28,-3.23,3],[7.96,-23.21,6.17,-55.61,0],[0.12,20.34,10.29,9.41,1],[0.15,-7.71,-13.8,9.04,8],[-1.42,-22.16,-3.41,-55.52,0],[1.41,11.22,17.31,9.12,1],[4.42,9.68,7.84,-15.44,5],[3.77,-0.82,0.78,-22.09,5],[-11.39,-9.72,-34.35,-8.9,3],[3.76,15.9,14.89,44.95,7],[7.79,0.91,-10.5,13.63,8],[-20.85,-3.08,-41.85,3.32,3],[7.76,11.81,41.76,23.36,4],[3.65,6.8,-9.99,7.72,8],[3.12,10.38,-3.23,6.28,8],[18.1,-0.15,39.79,17.02,4],[4.1,-18.32,-0.86,-56.37,0],[21.14,3.91,-0.93,1.72,6],[-11.38,11.1,-32.41,34.29,2],[26.16,-12.67,47.28,8.3,4],[1.11,-21.34,-2.56,-57.67,0],[-8.63,-18.05,0.32,-58.02,0],[-19.46,-4.32,-27.21,-2.65,3],[-11.2,9.87,-30.29,34.17,2],[2.47,12.9,13.44,38.92,7],[-20.45,6.7,-40.64,6.19,3],[-1.26,-23.8,4.1,-59.68,0],[-8.13,-4.39,-15.43,-1.86,8],[6.45,-26.14,4.08,-54.54,0],[-19.15,-12.69,-22.83,-18.02,9],[16.52,-11.6,30.95,-22.26,6],[15.73,5.91,35.59,9.11,4],[21.32,-6.96,30.93,-16.75,6],[-14.56,9.79,-22.32,28.81,2],[12.8,11.29,-1.89,12.26,1],[3.01,11.39,0.73,-12.86,5],[8.69,24.76,5.4,14.87,1],[-23.19,-0.95,-38.27,0.08,3],[-2.6,-7.39,-7.0,-53.25,0],[-13.31,-12.16,-4.48,-23.22,5],[-19.18,0.9,-35.76,-4.62,3],[-4.97,-29.19,0.88,-63.77,0],[-7.42,18.12,6.19,39.39,7],[-14.6,3.25,-40.17,-1.39,3],[1.33,-4.05,3.41,-22.4,5],[-2.24,18.72,5.5,46.44,7],[1.74,-7.27,23.46,17.46,9],[-8.67,7.68,-27.2,27.58,2],[-3.65,-19.2,3.03,-60.51,0],[-27.88,-4.25,-42.44,-6.59,3],[-3.82,19.82,4.47,-14.23,5],[-22.66,9.37,-37.28,4.53,3],[28.23,-9.63,42.88,8.7,4],[-20.82,-12.35,-25.08,-20.03,9],[-2.11,12.94,8.71,-11.14,5],[19.3,-13.88,38.62,-23.38,6],[11.25,-17.27,25.13,-26.19,6],[0.6,9.41,-9.1,5.56,8],[-2.62,2.63,-0.93,-19.87,5],[6.02,-20.84,3.93,-51.14,0],[-4.59,-22.96,-0.66,-59.78,0],[-7.71,19.19,1.04,31.87,9],[8.89,-7.57,32.61,-29.99,5],[5.72,6.56,-12.42,14.98,8],[25.68,-4.37,48.68,7.99,4],[14.56,-17.15,37.4,-26.68,6],[5.71,-24.43,5.89,-56.7,0],[2.81,12.75,14.21,38.51,7],[-0.01,3.91,4.01,-20.76,5],[28.84,-2.01,43.46,12.84,4],[-1.52,8.06,-0.16,-15.9,5],[11.01,12.8,3.21,10.36,1],[-12.35,-0.92,-35.51,22.48,2],[-10.23,5.03,-21.3,30.92,2],[10.32,-3.06,24.27,16.67,9],[-21.63,-8.55,-40.48,-8.76,3],[-7.52,20.73,1.7,37.17,3],[-3.91,-3.83,21.47,11.75,1],[1.69,10.39,14.43,39.26,7],[9.02,12.33,-0.52,10.71,1],[18.89,-6.02,30.73,-18.65,6],[-1.28,-0.97,3.62,-21.75,5],[22.36,6.7,35.91,6.22,4],[-7.94,2.25,-13.46,-0.15,8],[17.18,-9.56,31.83,-22.36,6],[21.7,-7.18,34.14,-15.43,6],[6.46,-20.57,3.58,-50.95,0],[-0.62,-24.85,-2.62,-58.48,0],[27.79,-5.31,44.72,11.94,4],[1.44,5.46,19.46,11.95,1],[21.99,9.72,50.22,17.28,4],[-25.11,-2.19,-40.78,-4.53,3],[15.66,-0.24,51.51,16.17,4],[-19.76,7.33,-24.1,30.96,2],[29.56,-3.93,50.1,12.86,4],[8.06,-19.79,24.73,-26.62,6],[27.27,0.56,49.63,14.62,4],[11.96,2.82,-47.58,30.25,1],[1.0,17.33,-3.5,6.35,8],[0.56,14.03,11.09,37.46,7],[8.56,-23.52,7.55,-55.67,0],[0.78,2.68,9.13,-16.2,5],[8.48,-1.29,23.82,17.04,9],[17.87,1.83,29.83,-16.04,6],[5.24,-27.91,3.01,-56.17,0],[24.51,-1.22,42.66,13.94,4],[2.4,12.64,8.28,-14.26,5],[-0.04,16.0,9.34,39.6,7],[9.16,19.76,-0.27,13.79,1],[-10.76,6.61,-26.39,31.77,2],[8.04,14.94,1.6,7.95,1],[-6.67,-1.7,-15.74,0.67,8],[-0.47,8.07,18.06,10.43,1],[0.01,17.88,2.56,47.61,7],[-12.27,11.28,-27.36,30.81,2],[-2.96,17.47,1.91,48.46,7],[0.18,17.89,3.97,47.03,7],[-3.52,-24.01,-0.08,-51.3,0],[20.32,1.85,38.77,8.22,4],[-7.4,20.61,8.08,47.07,7],[-17.35,-10.65,-30.18,-19.99,9],[-13.59,9.86,-21.78,26.61,2],[7.4,26.31,7.37,16.48,1],[-8.38,20.51,2.69,44.96,7],[21.02,-1.03,47.54,17.25,4],[-6.69,16.44,-6.26,7.98,8],[-7.92,0.14,-18.22,-16.79,9],[6.31,11.25,15.38,39.54,7],[2.82,14.03,-6.86,10.09,8],[-14.94,-5.34,-21.38,-16.58,9],[5.36,-17.28,0.39,-53.52,0],[-21.54,8.63,-38.14,4.53,3],[22.7,13.28,33.47,5.65,4],[25.16,-0.2,42.29,6.76,4],[-16.89,11.11,-32.23,32.11,2],[-11.1,10.62,-32.43,34.24,2],[8.92,21.08,3.74,51.72,7],[-3.45,11.68,-5.12,7.09,8],[-25.22,2.73,-39.74,0.35,3],[10.33,25.3,4.1,13.62,1],[3.89,18.75,4.63,49.44,7],[-4.56,13.07,-6.55,8.01,8],[-10.11,5.57,-32.9,22.96,2],[-1.8,-21.57,1.99,-60.13,0],[11.22,-16.92,-0.74,-53.39,0],[22.1,8.12,36.46,5.84,4],[-18.63,-7.69,-20.2,-17.33,9],[-1.78,15.46,4.19,-9.93,9],[12.53,-17.75,40.08,-24.9,6],[-3.45,-0.5,-0.01,-16.79,5],[14.5,-13.93,37.51,-16.89,6],[-12.04,-2.34,-18.02,2.34,8],[-17.65,-16.2,-26.47,-23.35,9],[0.52,-16.57,-5.58,-52.95,0],[12.56,20.24,10.69,12.27,1],[-5.53,-4.69,21.66,9.36,1],[-18.01,-13.72,-20.47,-20.37,9],[16.37,-1.76,42.89,18.84,4],[3.86,19.63,4.65,49.86,7],[-0.94,2.17,23.34,19.14,9],[-5.09,-27.38,-0.17,-64.07,0],[1.4,-28.03,-0.06,-64.3,0],[23.4,1.02,44.34,17.98,4],[-15.67,1.23,-40.0,-1.93,3],[-12.56,-6.13,-1.47,-23.17,5],[-3.94,-2.86,-36.18,22.99,2],[10.37,19.54,-1.74,14.51,1],[6.28,2.24,11.19,-11.54,5],[-16.04,-13.87,-27.36,-21.71,9],[21.0,-13.26,47.44,6.7,4],[7.98,8.37,18.48,43.16,7],[23.6,-3.41,40.69,9.55,4],[-1.45,14.99,9.27,39.42,7],[-1.39,11.22,15.85,34.39,7],[26.75,-0.03,48.46,15.59,4],[6.59,4.52,27.89,-19.31,6],[-14.63,-11.36,-29.92,-21.76,9],[-19.19,4.52,-39.03,7.78,3],[-3.14,17.06,11.32,41.69,7],[-18.1,-10.85,-20.57,-22.42,9],[-9.53,-0.88,-17.08,2.49,8],[18.2,-15.43,40.85,-22.88,6],[-19.68,0.11,-39.72,3.27,3],[-22.37,-3.87,-40.97,-6.54,3],[4.94,-19.35,-1.28,-54.9,0],[-9.15,0.4,-23.73,36.04,2],[13.62,3.89,37.96,16.22,4],[0.51,15.78,15.65,28.4,9],[7.51,-16.99,4.48,-49.75,0],[0.03,15.41,11.63,42.97,7],[9.08,-21.02,25.24,-26.22,6],[-14.22,-5.8,-26.65,-3.84,3],[14.17,18.81,2.96,11.0,1],[-0.99,-20.7,0.48,-59.72,0],[-13.61,5.15,-35.34,3.77,3],[25.03,3.71,48.36,17.08,4],[-23.22,-5.12,-36.49,-8.16,3],[-0.03,-23.81,-2.71,-56.5,0],[-0.04,-13.2,-4.83,-54.65,0],[-12.13,10.5,-32.51,26.29,2],[-26.4,-1.39,-41.94,-4.4,3],[-0.4,11.84,-15.95,8.67,8],[8.59,18.3,7.34,45.65,7],[-9.45,17.4,-6.6,7.29,8],[14.57,-9.41,7.51,-52.24,0],[0.21,-22.18,-0.12,-50.92,0],[6.44,-19.48,6.2,-53.21,0],[-17.7,-5.22,-35.27,-6.47,3],[-5.48,20.93,3.76,45.42,7],[5.72,14.6,15.08,10.31,1],[5.35,22.43,1.47,15.32,1],[-10.83,-7.1,-23.48,-10.57,9],[-14.58,-16.42,-19.19,-14.36,9],[-4.27,12.12,-20.53,32.79,2],[19.01,9.5,36.14,3.9,4],[-20.61,14.86,-38.73,5.65,3],[-19.39,-9.7,-23.32,-25.0,9],[2.38,-20.72,7.32,-59.62,0],[-14.73,-12.65,-23.48,-18.58,9],[19.92,19.2,5.11,11.84,1],[7.23,4.73,-4.03,3.88,8],[-2.3,-9.16,-18.24,0.38,8],[1.07,17.77,5.28,46.31,7],[4.27,-18.07,-5.48,-56.95,0],[-28.37,-12.04,-43.71,-3.33,3],[-12.71,5.46,-30.46,26.39,2],[-5.76,1.13,22.1,19.92,9],[18.09,2.96,47.78,19.81,4],[18.36,10.62,35.6,8.36,4],[-8.09,8.81,-28.44,28.69,2],[-8.55,-0.14,-34.62,24.61,2],[6.42,12.74,15.77,8.9,1],[-25.85,-10.81,-44.4,-6.8,3],[-16.43,-12.22,-19.66,-21.27,9],[0.19,15.57,16.73,10.64,1],[13.84,18.48,1.06,9.77,1],[-2.68,-4.84,-15.02,0.99,8],[-0.34,-6.37,-14.08,7.35,8],[2.87,2.32,17.38,33.72,7],[28.86,0.72,49.34,14.31,4],[2.97,-22.71,-4.63,-51.35,0],[-6.83,22.78,7.23,46.92,7],[3.94,-20.88,3.47,-60.99,0],[7.69,23.18,6.29,15.01,1],[-20.62,5.4,-38.8,2.97,3],[-23.35,-13.53,-25.02,-23.73,9],[16.48,9.76,45.3,20.18,4],[14.13,-17.98,35.82,-28.06,6],[-20.54,-0.04,-40.74,-1.61,3],[1.34,1.46,-12.96,-3.99,8],[10.13,9.45,-5.98,3.53,8],[-3.24,-3.49,-15.19,2.81,8],[-8.07,-12.23,-4.03,-26.6,5],[26.8,-2.23,45.55,7.3,4],[2.9,4.03,10.84,-11.21,5],[1.41,19.97,5.93,17.91,1],[-10.9,-7.63,-25.46,-11.11,9],[18.23,-8.14,32.91,-18.39,6],[-22.38,-13.24,-23.82,-22.62,9],[-15.16,-8.48,-34.32,21.94,2],[-14.8,-13.82,-22.12,-26.43,9],[1.62,6.45,-46.35,30.39,1],[-16.82,7.66,-30.77,29.41,2],[-5.28,14.13,15.67,34.5,7],[1.98,-1.71,18.96,9.56,1],[14.67,-18.66,35.12,-27.12,6],[2.16,-4.79,-0.5,-24.93,5],[2.31,-18.23,-3.88,-55.18,0],[-23.03,2.41,-40.69,4.75,3],[-11.49,26.05,-31.45,8.64,3],[-5.48,-8.08,-20.2,-14.83,9],[-11.53,4.25,-27.57,34.04,2],[-4.52,6.71,-34.64,27.55,2],[-1.88,7.0,-44.56,31.09,1],[-5.93,-8.75,-14.08,1.32,8],[-8.15,18.07,3.08,49.93,7],[3.57,-23.55,-2.15,-57.06,0],[-0.92,-10.03,0.73,-25.74,5],[21.07,-9.4,35.55,-17.96,6],[6.88,20.62,13.41,15.27,1],[5.51,9.54,11.76,39.25,7],[1.39,2.26,4.47,-20.66,5],[-13.31,7.33,-30.69,33.95,2],[-9.52,8.61,-23.17,27.63,2],[-5.09,0.97,-11.01,9.54,8],[-2.51,-24.69,1.34,-56.7,0],[-4.96,-5.04,2.63,-22.66,5],[20.14,4.68,33.89,-13.43,6],[0.68,-24.47,1.2,-58.14,0],[-0.14,12.38,7.15,-13.76,5],[20.48,-6.27,31.76,-16.43,6],[0.99,4.46,21.63,16.0,9],[-19.26,-9.03,-40.31,-9.08,3],[16.78,-6.69,38.52,12.48,4],[-2.31,3.41,19.54,11.67,1],[5.01,-20.33,-2.2,-53.85,0],[1.99,9.5,4.84,-16.62,5],[1.67,13.35,-4.95,4.38,8],[1.53,3.92,-7.13,1.44,8],[-15.18,-3.44,-34.58,-6.94,3],[17.81,-12.42,33.3,-21.72,6],[-1.48,18.48,3.18,50.16,7],[11.65,-13.13,6.16,-51.17,0],[1.74,12.01,4.52,-16.86,5],[0.52,-18.0,-1.33,-55.4,0],[-16.02,6.29,-23.74,32.24,2],[-21.33,-6.35,-37.0,-2.14,3],[-3.79,21.45,-31.76,8.65,3],[-3.36,9.67,8.71,-10.13,5],[-15.14,-6.69,-18.83,-18.08,9],[-4.06,-8.4,-21.58,-15.36,9],[14.4,-1.86,29.26,-17.2,6],[9.34,-13.65,7.16,-51.04,0],[-11.27,5.61,-20.82,30.52,2],[-13.77,-8.85,-29.99,-15.53,9],[-9.3,-13.63,-39.5,-11.26,3],[-17.16,-4.15,-37.89,-5.12,3],[9.92,23.71,8.0,14.38,1],[17.36,-15.23,8.73,-52.37,0],[-14.51,-12.32,-30.33,-20.88,9],[-5.55,15.18,6.5,39.44,7],[-11.25,10.81,-31.03,27.89,2],[-19.52,-9.34,-25.17,-14.39,9],[10.28,23.55,7.08,15.01,1],[-13.9,-11.85,-4.7,-26.56,5],[4.5,18.1,5.9,48.1,7],[-17.41,-12.17,-38.4,-10.31,3],[-8.85,17.23,11.78,41.84,7],[-17.13,-0.71,-24.07,-15.41,9],[-0.57,15.91,15.35,46.17,7],[-19.45,-12.57,-21.24,-25.38,9],[7.93,5.84,3.75,-20.3,5],[2.48,-24.06,2.32,-59.32,0],[3.34,8.72,9.41,-12.99,5],[0.33,5.74,-13.79,14.04,8],[-9.12,3.96,-33.38,24.48,2],[15.21,12.6,3.14,9.06,1],[8.84,-0.69,18.21,33.82,7],[17.13,-15.54,35.29,-24.86,6],[5.62,12.93,10.44,43.29,7],[5.38,-19.6,39.15,-27.81,6],[-7.23,6.07,15.43,29.82,9],[-1.4,-18.15,-3.92,-59.92,0],[-1.72,3.54,-11.51,-4.64,8],[-6.5,1.72,-14.03,-0.04,8],[-2.48,-21.23,3.53,-60.03,0],[4.29,-22.58,0.92,-51.0,0],[-16.32,7.04,-40.79,1.89,3],[24.74,2.54,46.82,16.95,4],[-14.67,-17.85,-9.89,-25.03,5],[-14.61,-13.34,-23.81,-17.13,9],[-10.96,-7.78,-25.36,-2.38,3],[-4.32,19.02,1.66,44.31,7],[-0.17,-5.95,-26.45,37.8,2],[19.37,6.43,48.09,19.53,4],[10.62,-20.21,41.36,-25.16,6],[-17.73,-14.97,-28.15,-21.48,9],[-0.02,11.06,4.97,-16.52,5],[23.89,-6.14,46.35,9.67,4],[6.02,1.62,-12.27,15.05,8],[18.2,13.21,38.65,19.95,4],[-15.07,-16.85,-8.21,-25.75,5],[26.84,1.23,42.46,13.72,4],[25.97,-2.57,45.26,17.59,4],[0.35,8.66,-10.12,4.25,8],[-21.23,-6.16,-37.44,-8.66,3],[24.11,-6.09,33.77,-16.72,6],[-17.22,-11.3,-26.06,-15.89,9],[-3.45,-17.16,-5.62,-53.17,0],[-18.07,-15.33,-22.96,-18.52,9],[-6.33,19.13,0.96,45.71,7],[-3.12,23.71,0.33,46.12,7],[-26.07,-3.51,-42.32,4.7,3],[-1.59,5.49,-11.22,-4.66,8],[15.06,4.33,48.36,19.52,4],[10.23,18.49,-0.29,13.64,1],[16.16,-10.17,28.51,-25.2,6],[-12.2,5.97,-30.63,27.52,2],[17.43,-16.01,35.7,-25.27,6],[-4.11,-0.8,22.12,19.57,9],[1.32,5.85,16.87,8.73,1],[25.1,4.11,48.39,17.36,4],[2.8,7.27,19.11,13.21,1],[18.37,-7.27,48.22,6.56,4],[-0.62,9.24,-7.44,6.43,8],[-3.19,9.59,0.24,-13.8,5],[-27.88,-5.62,-40.04,-5.16,3],[-16.63,6.7,-39.15,3.23,3],[25.79,0.54,49.33,15.77,4],[-9.45,-3.47,-2.94,-22.54,5],[-4.52,0.58,-17.27,6.47,8],[22.77,-4.99,40.51,8.59,4],[-13.68,-5.59,-33.85,23.12,2],[0.69,7.61,9.73,-9.99,5],[11.16,-7.33,32.42,-28.19,6],[-5.24,0.78,-12.28,8.53,8],[4.87,20.4,7.45,49.12,7],[11.19,-20.79,6.15,-52.31,0],[9.93,-21.58,37.54,-28.25,6],[22.42,10.87,33.34,5.59,4],[3.26,12.34,12.47,37.88,7],[5.37,-21.46,4.73,-57.24,0],[-18.97,9.24,-26.67,30.09,2],[-1.02,-13.6,3.15,-25.98,5],[25.2,-11.24,44.32,9.06,4],[6.96,26.44,7.28,15.57,1],[-19.08,-13.22,-24.39,-23.84,9],[4.05,12.54,-5.62,13.63,8],[16.21,20.22,5.46,10.08,1],[-6.12,6.86,-10.63,-0.16,8],[21.33,-8.11,34.61,-14.98,6],[7.2,1.92,17.91,33.65,7],[13.69,-11.25,27.06,-24.09,6],[1.36,7.55,-9.77,10.35,8],[-3.83,2.18,-13.72,13.42,8],[13.17,19.23,4.33,11.31,1],[20.02,-6.83,32.72,-16.32,6],[17.03,-17.17,35.22,-27.2,6],[-11.65,8.53,-31.61,30.11,2],[-10.3,-24.08,-2.1,-61.32,0],[-5.16,3.67,-33.67,-4.63,3],[-11.73,-6.72,-44.9,0.8,3],[5.22,3.09,23.26,15.9,9],[-0.34,10.61,16.91,11.49,1],[8.7,13.27,13.26,44.09,7],[-0.87,16.79,13.64,40.16,7],[8.28,25.35,12.92,15.36,1],[25.41,-2.35,50.35,13.58,4],[-15.17,-1.68,-33.75,22.4,2],[-18.39,-3.11,-35.65,-7.76,3],[-2.87,-22.76,-2.83,-56.0,0],[16.47,-6.66,38.17,14.95,4],[17.16,14.91,1.48,11.1,1],[2.84,7.49,-14.55,19.89,2],[-13.06,-12.9,-4.54,-26.6,5],[8.38,15.6,9.09,9.25,1],[-13.24,-10.23,-20.16,-12.98,9],[9.79,-19.85,36.81,-28.66,6],[9.67,-17.12,40.39,-24.92,6],[8.85,17.0,1.1,15.2,1],[-16.94,-12.66,-28.53,-17.61,9],[13.7,16.0,2.29,10.61,1],[-6.44,-22.79,-2.13,-60.41,0],[-4.73,4.67,-7.32,-11.03,3],[14.49,-1.05,38.32,15.89,4],[2.82,13.78,-5.1,5.95,8],[-2.48,-22.92,1.78,-60.9,0],[-12.4,8.59,-21.43,30.26,2],[-23.67,-3.35,-39.04,-4.71,3],[-7.99,15.35,-32.78,7.7,3],[22.43,-10.56,34.77,-16.02,6],[-22.69,-14.44,-26.24,-20.12,9],[17.35,-11.24,34.47,-23.11,6],[0.34,13.09,12.26,38.14,7],[1.08,10.68,17.35,14.58,1],[-2.89,21.3,6.02,46.77,7],[0.52,-3.32,22.93,16.88,9],[-8.39,-12.77,-2.98,-24.46,5],[17.91,-13.46,37.83,-18.07,6],[26.98,0.91,47.57,14.75,4],[-7.08,-1.42,-3.03,-20.44,5]],"night_truth":[0,2,0,0,1,1,1,3,1,1,1,1,0,1,2,0,2,1,1,0,1,0,0,0,2,3,0,0,1,0,1,0,0,0,2,0,1,1,1,0,0,3,1,0,1,1,0,0,2,2,0,0,3,1,1,1,1,1,1,3,1,0,0,1,0,2,1,0,0,0,1,1,0,1,0,2,2,0,0,3,1,0,1,0,0,1,1,1,3,0,1,3,0,0,0,3,1,0,1,0,1,1,0,2,1,1,1,1,0,2,0,1,0,2,1,2,0,3,0,0,1,1,3,2,0,3,1],"fruits_csv":"width,height,weight,fruit\n7.8,7.0,179,lemon\n5.3,8.4,107,lemon\n7.3,7.8,180,lemon\n6.3,7.6,121,lemon\n5.7,8.0,149,orange\n6.3,7.7,132,lemon\n7.0,6.9,140,orange\n7.3,7.5,182,orange\n7.1,7.8,157,lemon\n6.7,7.2,145,orange\n6.1,7.4,120,lemon\n6.1,7.2,102,lemon\n6.9,7.5,132,orange\n7.6,7.5,176,orange\n6.6,8.2,141,lemon\n8.0,7.6,231,orange\n6.3,7.3,119,lemon\n6.7,8.1,156,lemon\n7.6,7.4,161,orange\n5.5,8.1,109,lemon\n7.7,7.8,182,orange\n8.4,7.3,207,orange\n7.8,6.9,170,orange\n8.0,7.8,224,orange\n6.9,6.5,118,orange\n7.2,7.4,154,orange\n7.3,7.6,180,orange\n6.8,7.7,147,lemon\n6.2,7.7,114,lemon\n7.6,7.3,158,orange\n6.3,7.0,115,orange\n8.3,7.5,230,orange\n7.9,7.2,192,orange\n7.7,7.0,150,orange\n6.0,7.0,98,lemon\n7.0,6.6,135,orange\n5.6,7.9,108,lemon\n5.3,8.1,95,lemon\n7.3,7.4,174,orange\n6.6,7.1,127,orange\n6.3,8.2,120,lemon\n6.1,7.9,135,lemon\n7.8,6.4,156,orange\n6.3,8.3,148,lemon\n7.9,7.1,193,orange\n6.3,7.2,109,orange\n6.7,7.9,140,lemon\n7.6,7.7,179,lemon\n6.6,8.1,134,lemon\n6.9,7.9,144,lemon\n7.5,7.2,174,orange\n7.5,6.9,163,orange\n6.0,8.4,115,lemon\n6.6,8.3,163,lemon\n7.5,7.4,160,orange\n6.4,7.6,137,lemon\n7.7,7.4,196,orange\n5.7,7.9,100,lemon\n4.8,7.2,96,lemon\n6.1,7.8,130,lemon\n","queues_csv":"x,y\n67.4,52.3\n63.6,32.0\n38.6,42.9\n39.6,43.1\n49.5,32.6\n57.3,21.7\n45.2,21.3\n45.7,25.3\n60.7,27.7\n43.1,17.4\n47.7,34.0\n40.1,43.9\n56.0,48.4\n50.4,34.2\n45.8,27.5\n67.5,45.9\n35.1,33.0\n52.4,43.4\n47.3,33.1\n35.3,33.1\n53.7,14.5\n53.5,45.7\n60.7,31.4\n65.6,41.4\n38.1,41.6\n59.9,31.9\n36.8,31.7\n65.6,43.9\n48.0,60.7\n47.1,60.7\n37.7,38.9\n44.7,59.5\n52.1,35.2\n44.2,28.2\n40.0,43.6\n55.3,48.4\n49.0,34.7\n55.1,18.7\n40.1,21.1\n68.7,54.1\n52.3,44.9\n36.4,33.7\n34.3,29.8\n54.3,13.8\n47.1,27.7\n63.6,38.0\n43.5,55.7\n59.2,35.7\n42.1,54.4\n54.4,13.8\n34.3,27.1\n37.3,38.4\n68.5,53.3\n58.8,29.2\n47.1,60.1\n64.1,35.8\n66.2,44.3\n53.6,53.9\n47.9,27.4\n34.6,26.5\n56.7,29.0\n56.8,22.5\n59.9,28.4\n56.2,51.0\n57.7,21.2\n36.1,38.5\n38.9,43.8\n61.9,33.4\n42.9,52.3\n56.9,58.7\n41.0,47.1\n39.4,47.1\n37.1,33.9\n48.9,24.9\n36.9,40.6\n31.3,26.8\n50.4,34.6\n51.5,44.9\n62.4,39.3\n55.7,27.0\n47.3,61.5\n38.8,42.6\n64.7,39.3\n67.3,50.7\n30.8,22.9\n46.0,33.7\n52.1,43.4\n37.2,34.7\n67.4,48.0\n58.6,29.6\n46.1,28.3\n32.6,28.4\n53.8,43.8\n59.6,24.5\n30.6,23.5\n54.2,45.8\n57.9,24.0\n54.7,50.8\n42.5,20.8\n69.2,54.4\n66.8,44.0\n46.6,23.5\n48.3,30.0\n59.9,28.8\n51.2,39.6\n53.4,47.3\n54.2,52.0\n57.3,26.1\n44.9,22.5\n45.6,60.6\n61.1,29.1\n45.6,24.5\n46.9,31.7\n40.1,39.7\n44.0,53.2\n41.4,53.0\n62.2,33.7\n32.3,24.0\n62.6,39.5\n41.8,51.5\n","queues_truth":[2,2,0,0,1,2,1,1,2,1,1,0,1,1,1,2,0,1,1,0,2,1,2,2,0,2,0,2,0,0,0,0,1,1,0,1,1,2,1,2,1,0,0,2,1,2,0,2,0,2,0,0,2,2,0,2,2,1,1,0,2,2,2,1,2,0,0,2,0,1,0,0,0,1,0,0,1,1,2,2,0,0,2,2,0,1,1,0,2,2,1,0,1,2,0,1,2,1,1,2,2,1,1,2,1,1,1,2,1,0,2,1,1,0,0,0,2,0,2,0],"density_csv":"x,y\n69.2,36.6\n34.2,36.0\n69.7,37.9\n27.1,43.1\n30.2,42.7\n39.6,33.9\n27.0,43.0\n77.4,30.2\n29.6,42.0\n29.2,43.2\n28.4,41.2\n78.8,30.4\n69.7,40.0\n39.7,13.7\n62.9,28.0\n37.7,37.5\n27.9,40.3\n30.2,41.5\n57.9,25.8\n23.1,38.6\n39.6,35.6\n27.1,39.0\n36.7,36.8\n28.6,40.5\n64.2,31.6\n28.1,43.0\n60.7,40.2\n73.6,21.2\n69.3,34.5\n29.9,37.9\n66.6,33.8\n38.9,35.2\n57.8,39.0\n25.8,41.4\n29.6,43.2\n41.6,36.4\n28.1,41.1\n79.2,26.7\n61.9,48.9\n30.3,43.8\n72.2,33.6\n65.7,39.3\n37.4,34.3\n37.9,36.2\n36.1,37.2\n36.9,36.4\n10.0,42.8\n28.7,42.5\n40.7,33.3\n27.8,41.5\n26.8,43.6\n66.4,28.2\n25.0,42.5\n68.8,17.8\n65.1,39.0\n28.6,39.7\n69.3,33.5\n75.4,36.1\n26.4,39.3\n86.6,50.2\n25.4,42.6\n59.7,39.0\n28.8,42.8\n26.7,41.7\n64.7,37.5\n29.4,42.3\n28.4,42.4\n70.9,24.6\n72.8,32.6\n60.8,21.8\n80.9,35.3\n60.9,32.2\n39.3,37.2\n38.1,36.0\n68.3,43.8\n37.0,33.9\n36.0,38.6\n36.1,34.4\n79.7,12.3\n29.1,43.6\n73.6,28.6\n27.8,43.2\n73.2,40.3\n92.0,32.4\n74.9,37.2\n35.9,36.3\n65.0,34.6\n52.3,58.8\n36.5,35.1\n73.1,36.1\n28.0,41.5\n67.0,36.7\n69.4,32.9\n72.3,21.1\n36.9,35.8\n37.9,35.9\n27.3,45.7\n72.3,23.1\n26.6,41.5\n27.4,39.3\n68.5,32.3\n37.6,36.8\n36.3,41.2\n65.0,42.0\n25.8,40.8\n27.8,42.1\n35.0,37.5\n42.6,34.2\n29.3,41.1\n26.2,40.0\n28.5,43.6\n26.5,43.4\n37.3,36.5\n66.4,25.0\n76.0,28.8\n31.2,41.8\n55.4,12.9\n28.3,42.2\n27.7,41.2\n28.6,43.5\n38.0,34.0\n37.3,38.9\n29.6,42.8\n29.6,40.1\n37.7,34.5\n36.8,36.3\n70.1,29.5\n56.8,24.0\n37.4,37.0\n74.0,28.0\n38.5,33.9\n37.9,36.3\n33.6,37.1\n31.8,40.0\n63.5,37.0\n29.6,42.5\n39.5,34.9\n35.7,37.1\n75.6,32.2\n27.8,42.2\n38.9,36.3\n78.9,33.7\n61.9,38.2\n86.3,31.5\n26.8,42.0\n46.2,63.0\n28.4,43.4\n86.5,29.2\n28.1,42.5\n66.7,29.8\n39.1,38.4\n25.1,39.8\n36.6,36.2\n76.4,25.5\n28.1,41.5\n35.2,36.3\n80.4,46.3\n27.8,41.2\n","density_truth":[2,1,2,0,0,1,0,2,0,0,0,2,2,3,2,1,0,0,2,0,1,0,1,0,2,0,2,2,2,0,2,1,2,0,0,1,0,2,2,0,2,2,1,1,1,1,3,0,1,0,0,2,0,2,2,0,2,2,0,2,0,2,0,0,2,0,0,2,2,3,2,2,1,1,2,1,1,1,2,0,2,0,2,3,2,1,2,2,1,2,0,2,2,2,1,1,0,2,0,0,2,1,1,2,0,0,1,1,0,0,0,0,1,2,2,0,3,0,0,0,1,1,0,0,1,1,2,3,1,2,1,1,1,0,2,0,1,1,2,0,1,2,2,2,0,3,0,2,0,2,1,0,1,2,0,1,3,0],"festival_truth":[0,2,1,0,3,1,0,2,2,0,0,1,3,3,1,0,0,0,2,0,2,1,0,2,2,0,3,1,1,2,0,0,0,0,3,0,1,2,2,1,0,3,3,0,0,3,1,2,1,1,0,2,1,3,0,0,0,1,1,3,2,0,0,2,3,1,0,1,1,0,1,2,1,0,2,0,2,1,0,1,1,0,2,3,3,0,3,3,3,0,2,1,0,2,0,0,0,2,0,0,0,1,0,2,1,0,2,0,1,1,3,1,3,1,0,3,2,2,1,1,1,0,1,2,2,1,1,2,0,0,0,2,0,1,0,0,2,0,1,0,1,0,0,3,1],"small":[[12.0,52.0],[18.0,58.0],[15.0,44.0],[24.0,50.0],[22.0,62.0],[55.0,58.0],[62.0,52.0],[58.0,46.0],[66.0,60.0],[40.0,18.0],[48.0,14.0],[44.0,24.0],[78.0,20.0],[84.0,26.0]],"small_link":{"single":[[1.0,4.0,5.657,2.0],[6.0,7.0,7.211,2.0],[9.0,11.0,7.211,2.0],[0.0,14.0,8.485,3.0],[12.0,13.0,8.485,2.0],[2.0,17.0,8.544,4.0],[8.0,15.0,8.944,3.0],[10.0,16.0,8.944,3.0],[5.0,20.0,9.22,4.0],[3.0,19.0,10.0,5.0],[21.0,22.0,26.077,7.0],[18.0,24.0,30.594,9.0],[23.0,25.0,32.016,14.0]],"complete":[[1.0,4.0,5.657,2.0],[6.0,7.0,7.211,2.0],[9.0,11.0,7.211,2.0],[12.0,13.0,8.485,2.0],[0.0,2.0,8.544,2.0],[10.0,16.0,10.77,3.0],[5.0,8.0,11.18,2.0],[3.0,18.0,12.166,3.0],[15.0,20.0,16.125,4.0],[14.0,21.0,19.313,5.0],[17.0,22.0,44.418,6.0],[19.0,24.0,49.396,9.0],[23.0,25.0,76.551,14.0]],"average":[[1.0,4.0,5.657,2.0],[6.0,7.0,7.211,2.0],[9.0,11.0,7.211,2.0],[12.0,13.0,8.485,2.0],[0.0,2.0,8.544,2.0],[10.0,16.0,9.857,3.0],[5.0,15.0,10.794,3.0],[3.0,14.0,11.083,3.0],[8.0,20.0,12.083,4.0],[18.0,21.0,13.207,5.0],[17.0,19.0,37.6,5.0],[22.0,24.0,38.722,9.0],[23.0,25.0,49.178,14.0]],"ward":[[1.0,4.0,5.657,2.0],[6.0,7.0,7.211,2.0],[9.0,11.0,7.211,2.0],[12.0,13.0,8.485,2.0],[0.0,2.0,8.544,2.0],[10.0,16.0,10.646,3.0],[5.0,8.0,11.18,2.0],[3.0,18.0,12.342,3.0],[15.0,20.0,14.16,4.0],[14.0,21.0,18.162,5.0],[17.0,19.0,57.712,5.0],[22.0,24.0,70.901,9.0],[23.0,25.0,113.964,14.0]]},"night_link":{"single":[[18.0,121.0,0.316,2.0],[57.0,58.0,0.316,2.0],[51.0,64.0,0.316,2.0],[55.0,70.0,0.361,2.0],[28.0,106.0,0.4,2.0],[93.0,118.0,0.424,2.0],[107.0,130.0,0.424,3.0],[4.0,133.0,0.447,4.0],[76.0,113.0,0.5,2.0],[80.0,104.0,0.51,2.0],[35.0,47.0,0.608,2.0],[81.0,132.0,0.632,3.0],[3.0,89.0,0.671,2.0],[50.0,84.0,0.707,2.0],[38.0,101.0,0.707,2.0],[48.0,65.0,0.721,2.0],[99.0,129.0,0.728,3.0],[24.0,142.0,0.762,3.0],[90.0,96.0,0.781,2.0],[112.0,138.0,0.894,4.0],[13.0,105.0,0.922,2.0],[95.0,111.0,0.922,2.0],[43.0,77.0,0.922,2.0],[22.0,72.0,0.943,2.0],[69.0,83.0,0.949,2.0],[109.0,123.0,1.0,2.0],[140.0,143.0,1.0,5.0],[66.0,98.0,1.0,2.0],[73.0,136.0,1.005,3.0],[30.0,128.0,1.02,3.0],[27.0,29.0,1.03,2.0],[67.0,151.0,1.044,3.0],[5.0,44.0,1.105,2.0],[11.0,37.0,1.105,2.0],[86.0,159.0,1.14,3.0],[32.0,146.0,1.217,5.0],[115.0,144.0,1.221,4.0],[63.0,141.0,1.253,3.0],[23.0,108.0,1.253,2.0],[153.0,158.0,1.253,8.0],[127.0,131.0,1.265,4.0],[21.0,150.0,1.273,3.0],[56.0,148.0,1.3,3.0],[116.0,162.0,1.3,6.0],[114.0,167.0,1.3,5.0],[78.0,166.0,1.345,9.0],[26.0,172.0,1.36,10.0],[74.0,165.0,1.36,3.0],[33.0,92.0,1.393,2.0],[46.0,137.0,1.421,3.0],[20.0,53.0,1.432,2.0],[61.0,97.0,1.456,2.0],[14.0,103.0,1.456,2.0],[160.0,177.0,1.503,4.0],[12.0,139.0,1.523,3.0],[1.0,135.0,1.556,3.0],[102.0,174.0,1.562,4.0],[173.0,178.0,1.565,12.0],[9.0,155.0,1.612,4.0],[100.0,164.0,1.616,4.0],[154.0,186.0,1.649,6.0],[39.0,119.0,1.655,2.0],[179.0,182.0,1.697,5.0],[54.0,87.0,1.7,2.0],[17.0,147.0,1.712,3.0],[45.0,161.0,1.72,4.0],[170.0,183.0,1.803,10.0],[15.0,181.0,1.825,4.0],[152.0,163.0,1.838,6.0],[188.0,193.0,1.844,12.0],[126.0,187.0,1.897,7.0],[10.0,134.0,1.897,5.0],[157.0,184.0,1.91,14.0],[62.0,168.0,1.942,4.0],[49.0,195.0,1.985,7.0],[124.0,199.0,2.01,15.0],[16.0,201.0,2.01,8.0],[31.0,196.0,2.062,13.0],[176.0,204.0,2.102,16.0],[171.0,190.0,2.119,7.0],[149.0,200.0,2.121,6.0],[191.0,198.0,2.121,8.0],[120.0,208.0,2.283,9.0],[8.0,156.0,2.354,4.0],[202.0,205.0,2.377,31.0],[194.0,211.0,2.47,35.0],[189.0,203.0,2.524,13.0],[82.0,197.0,2.55,8.0],[2.0,94.0,2.617,2.0],[40.0,212.0,2.625,36.0],[60.0,214.0,2.683,9.0],[19.0,216.0,2.693,37.0],[206.0,217.0,2.879,16.0],[180.0,185.0,2.907,8.0],[71.0,169.0,2.941,4.0],[36.0,210.0,3.081,5.0],[75.0,213.0,3.081,14.0],[41.0,52.0,3.214,2.0],[207.0,218.0,3.302,43.0],[122.0,209.0,3.311,10.0],[34.0,223.0,3.338,15.0],[85.0,221.0,3.406,5.0],[110.0,215.0,3.517,3.0],[220.0,222.0,3.585,13.0],[192.0,228.0,3.711,9.0],[225.0,229.0,3.722,46.0],[175.0,232.0,3.78,48.0],[25.0,88.0,3.982,2.0],[42.0,231.0,4.294,10.0],[226.0,235.0,4.366,20.0],[224.0,236.0,4.455,22.0],[6.0,145.0,4.61,3.0],[0.0,233.0,4.952,49.0],[230.0,237.0,5.346,35.0],[68.0,239.0,5.544,50.0],[234.0,240.0,5.63,37.0],[219.0,242.0,6.762,53.0],[91.0,241.0,6.794,51.0],[125.0,243.0,7.467,54.0],[244.0,245.0,8.092,105.0],[238.0,246.0,8.45,108.0],[79.0,247.0,10.661,109.0],[59.0,248.0,11.809,110.0],[227.0,249.0,13.463,125.0],[117.0,250.0,13.497,126.0],[7.0,251.0,14.856,127.0]],"complete":[[18.0,121.0,0.316,2.0],[57.0,58.0,0.316,2.0],[51.0,64.0,0.316,2.0],[55.0,70.0,0.361,2.0],[28.0,106.0,0.4,2.0],[93.0,118.0,0.424,2.0],[4.0,107.0,0.447,2.0],[76.0,113.0,0.5,2.0],[80.0,104.0,0.51,2.0],[35.0,47.0,0.608,2.0],[3.0,89.0,0.671,2.0],[50.0,84.0,0.707,2.0],[38.0,101.0,0.707,2.0],[48.0,65.0,0.721,2.0],[90.0,96.0,0.781,2.0],[130.0,133.0,0.86,4.0],[81.0,132.0,0.906,3.0],[13.0,105.0,0.922,2.0],[95.0,111.0,0.922,2.0],[43.0,77.0,0.922,2.0],[22.0,72.0,0.943,2.0],[69.0,83.0,0.949,2.0],[109.0,123.0,1.0,2.0],[66.0,98.0,1.0,2.0],[27.0,29.0,1.03,2.0],[99.0,129.0,1.044,3.0],[73.0,135.0,1.082,3.0],[5.0,44.0,1.105,2.0],[11.0,37.0,1.105,2.0],[30.0,128.0,1.208,3.0],[32.0,112.0,1.217,2.0],[24.0,115.0,1.221,2.0],[23.0,108.0,1.253,2.0],[26.0,78.0,1.36,2.0],[33.0,92.0,1.393,2.0],[20.0,53.0,1.432,2.0],[61.0,97.0,1.456,2.0],[14.0,103.0,1.456,2.0],[114.0,131.0,1.5,3.0],[74.0,102.0,1.562,2.0],[63.0,100.0,1.616,2.0],[12.0,137.0,1.628,3.0],[39.0,119.0,1.655,2.0],[54.0,87.0,1.7,2.0],[86.0,154.0,1.72,3.0],[21.0,147.0,1.746,3.0],[127.0,165.0,1.746,5.0],[116.0,143.0,1.78,4.0],[17.0,144.0,1.86,3.0],[67.0,148.0,1.9,3.0],[46.0,136.0,1.972,3.0],[1.0,134.0,2.052,3.0],[9.0,153.0,2.102,4.0],[138.0,152.0,2.138,5.0],[56.0,145.0,2.209,3.0],[10.0,120.0,2.283,2.0],[140.0,158.0,2.3,4.0],[126.0,167.0,2.419,3.0],[45.0,171.0,2.581,4.0],[124.0,176.0,2.594,4.0],[155.0,162.0,2.608,4.0],[2.0,94.0,2.617,2.0],[60.0,82.0,2.683,2.0],[15.0,19.0,2.693,2.0],[159.0,166.0,2.846,4.0],[160.0,163.0,2.86,4.0],[8.0,156.0,2.864,4.0],[41.0,52.0,3.214,2.0],[164.0,178.0,3.324,5.0],[139.0,184.0,3.406,5.0],[71.0,85.0,3.406,2.0],[149.0,183.0,3.441,6.0],[62.0,172.0,3.441,4.0],[40.0,169.0,3.624,3.0],[157.0,174.0,3.801,6.0],[110.0,151.0,3.833,3.0],[31.0,177.0,3.956,4.0],[25.0,88.0,3.982,2.0],[146.0,190.0,4.238,4.0],[16.0,198.0,4.305,7.0],[142.0,182.0,4.501,6.0],[170.0,173.0,4.623,7.0],[180.0,192.0,4.717,9.0],[6.0,141.0,5.016,3.0],[75.0,195.0,5.248,6.0],[42.0,207.0,5.459,7.0],[150.0,196.0,5.532,7.0],[36.0,193.0,5.547,5.0],[181.0,197.0,5.686,5.0],[49.0,206.0,5.991,8.0],[186.0,200.0,6.054,7.0],[34.0,211.0,6.263,7.0],[188.0,202.0,6.595,5.0],[168.0,203.0,6.689,7.0],[0.0,199.0,6.851,5.0],[179.0,187.0,6.86,8.0],[122.0,175.0,7.485,4.0],[161.0,191.0,7.916,6.0],[189.0,213.0,8.066,9.0],[212.0,223.0,8.67,11.0],[201.0,217.0,8.857,13.0],[125.0,185.0,8.968,5.0],[209.0,220.0,9.334,16.0],[68.0,219.0,9.356,6.0],[194.0,204.0,10.572,4.0],[205.0,229.0,10.756,20.0],[216.0,218.0,10.959,15.0],[214.0,222.0,12.702,13.0],[91.0,227.0,12.714,14.0],[215.0,228.0,13.372,10.0],[224.0,232.0,14.368,26.0],[7.0,59.0,14.856,2.0],[208.0,225.0,15.339,16.0],[79.0,210.0,15.438,4.0],[221.0,230.0,15.878,11.0],[117.0,240.0,16.992,5.0],[226.0,236.0,21.44,21.0],[237.0,241.0,22.629,37.0],[235.0,244.0,23.755,51.0],[231.0,239.0,23.786,20.0],[234.0,238.0,28.195,15.0],[233.0,243.0,40.143,36.0],[242.0,246.0,42.97,25.0],[247.0,248.0,48.6,51.0],[245.0,249.0,52.592,76.0],[250.0,251.0,88.305,127.0]],"average":[[18.0,121.0,0.316,2.0],[57.0,58.0,0.316,2.0],[51.0,64.0,0.316,2.0],[55.0,70.0,0.361,2.0],[28.0,106.0,0.4,2.0],[93.0,118.0,0.424,2.0],[4.0,107.0,0.447,2.0],[76.0,113.0,0.5,2.0],[80.0,104.0,0.51,2.0],[35.0,47.0,0.608,2.0],[130.0,133.0,0.648,4.0],[3.0,89.0,0.671,2.0],[50.0,84.0,0.707,2.0],[38.0,101.0,0.707,2.0],[48.0,65.0,0.721,2.0],[81.0,132.0,0.769,3.0],[90.0,96.0,0.781,2.0],[99.0,129.0,0.886,3.0],[13.0,105.0,0.922,2.0],[95.0,111.0,0.922,2.0],[43.0,77.0,0.922,2.0],[22.0,72.0,0.943,2.0],[69.0,83.0,0.949,2.0],[109.0,123.0,1.0,2.0],[66.0,98.0,1.0,2.0],[27.0,29.0,1.03,2.0],[73.0,135.0,1.043,3.0],[5.0,44.0,1.105,2.0],[11.0,37.0,1.105,2.0],[30.0,128.0,1.114,3.0],[24.0,141.0,1.119,3.0],[32.0,112.0,1.217,2.0],[23.0,108.0,1.253,2.0],[26.0,78.0,1.36,2.0],[33.0,92.0,1.393,2.0],[114.0,131.0,1.4,3.0],[86.0,154.0,1.43,3.0],[20.0,53.0,1.432,2.0],[61.0,97.0,1.456,2.0],[14.0,103.0,1.456,2.0],[67.0,149.0,1.472,3.0],[21.0,148.0,1.51,3.0],[127.0,162.0,1.532,5.0],[139.0,144.0,1.548,5.0],[74.0,102.0,1.562,2.0],[12.0,138.0,1.576,3.0],[63.0,140.0,1.597,3.0],[116.0,142.0,1.62,4.0],[39.0,119.0,1.655,2.0],[46.0,136.0,1.697,3.0],[54.0,87.0,1.7,2.0],[56.0,146.0,1.755,3.0],[115.0,157.0,1.756,4.0],[17.0,145.0,1.786,3.0],[1.0,134.0,1.804,3.0],[9.0,153.0,1.805,4.0],[100.0,151.0,1.888,3.0],[159.0,171.0,2.064,4.0],[155.0,164.0,2.119,4.0],[158.0,174.0,2.192,6.0],[45.0,163.0,2.245,4.0],[10.0,120.0,2.283,2.0],[124.0,167.0,2.336,4.0],[160.0,165.0,2.367,4.0],[126.0,183.0,2.556,4.0],[8.0,156.0,2.589,4.0],[166.0,181.0,2.611,5.0],[2.0,94.0,2.617,2.0],[150.0,179.0,2.619,6.0],[60.0,82.0,2.683,2.0],[15.0,172.0,2.692,4.0],[62.0,168.0,2.861,4.0],[170.0,190.0,3.027,9.0],[175.0,186.0,3.102,8.0],[31.0,176.0,3.137,4.0],[16.0,195.0,3.168,7.0],[41.0,52.0,3.214,2.0],[137.0,188.0,3.263,6.0],[147.0,198.0,3.338,6.0],[40.0,189.0,3.361,5.0],[169.0,177.0,3.393,7.0],[71.0,85.0,3.406,2.0],[173.0,191.0,3.547,7.0],[110.0,152.0,3.777,3.0],[180.0,204.0,3.806,9.0],[49.0,193.0,3.975,6.0],[25.0,88.0,3.982,2.0],[36.0,192.0,4.06,5.0],[19.0,205.0,4.22,7.0],[199.0,206.0,4.25,14.0],[202.0,212.0,4.406,13.0],[178.0,208.0,4.471,5.0],[184.0,201.0,4.617,8.0],[6.0,143.0,4.813,3.0],[182.0,185.0,4.864,8.0],[42.0,187.0,4.989,5.0],[196.0,209.0,5.201,9.0],[194.0,210.0,5.214,5.0],[34.0,75.0,5.758,2.0],[161.0,219.0,6.269,10.0],[122.0,211.0,6.517,10.0],[217.0,225.0,6.683,15.0],[197.0,215.0,6.938,11.0],[216.0,224.0,7.132,19.0],[218.0,222.0,7.173,10.0],[214.0,221.0,7.603,13.0],[200.0,226.0,7.725,18.0],[203.0,213.0,8.057,4.0],[229.0,230.0,8.64,30.0],[207.0,223.0,9.809,16.0],[233.0,235.0,9.88,48.0],[125.0,231.0,10.108,11.0],[79.0,220.0,12.473,4.0],[68.0,91.0,12.689,2.0],[227.0,238.0,13.003,21.0],[0.0,237.0,13.824,49.0],[240.0,242.0,14.249,51.0],[7.0,59.0,14.856,2.0],[117.0,239.0,15.008,5.0],[234.0,236.0,16.662,20.0],[232.0,244.0,18.743,15.0],[241.0,247.0,21.143,36.0],[245.0,246.0,25.391,25.0],[228.0,248.0,26.074,51.0],[243.0,249.0,27.673,76.0],[250.0,251.0,50.692,127.0]],"ward":[[18.0,121.0,0.316,2.0],[57.0,58.0,0.316,2.0],[51.0,64.0,0.316,2.0],[55.0,70.0,0.361,2.0],[28.0,106.0,0.4,2.0],[93.0,118.0,0.424,2.0],[4.0,107.0,0.447,2.0],[76.0,113.0,0.5,2.0],[80.0,104.0,0.51,2.0],[35.0,47.0,0.608,2.0],[3.0,89.0,0.671,2.0],[50.0,84.0,0.707,2.0],[38.0,101.0,0.707,2.0],[48.0,65.0,0.721,2.0],[90.0,96.0,0.781,2.0],[130.0,133.0,0.863,4.0],[81.0,132.0,0.868,3.0],[13.0,105.0,0.922,2.0],[95.0,111.0,0.922,2.0],[43.0,77.0,0.922,2.0],[22.0,72.0,0.943,2.0],[69.0,83.0,0.949,2.0],[109.0,123.0,1.0,2.0],[66.0,98.0,1.0,2.0],[99.0,129.0,1.023,3.0],[27.0,29.0,1.03,2.0],[5.0,44.0,1.105,2.0],[11.0,37.0,1.105,2.0],[73.0,135.0,1.169,3.0],[32.0,112.0,1.217,2.0],[24.0,115.0,1.221,2.0],[23.0,108.0,1.253,2.0],[30.0,128.0,1.278,3.0],[26.0,78.0,1.36,2.0],[33.0,92.0,1.393,2.0],[20.0,53.0,1.432,2.0],[61.0,97.0,1.456,2.0],[14.0,103.0,1.456,2.0],[86.0,153.0,1.56,3.0],[74.0,102.0,1.562,2.0],[114.0,131.0,1.604,3.0],[63.0,100.0,1.616,2.0],[39.0,119.0,1.655,2.0],[21.0,147.0,1.678,3.0],[67.0,148.0,1.683,3.0],[54.0,87.0,1.7,2.0],[12.0,137.0,1.779,3.0],[116.0,143.0,1.945,4.0],[46.0,136.0,1.954,3.0],[17.0,144.0,1.994,3.0],[56.0,145.0,2.024,3.0],[1.0,134.0,2.082,3.0],[140.0,157.0,2.132,4.0],[9.0,155.0,2.133,4.0],[127.0,167.0,2.137,5.0],[10.0,120.0,2.283,2.0],[138.0,151.0,2.322,5.0],[126.0,168.0,2.33,3.0],[2.0,94.0,2.617,2.0],[45.0,165.0,2.619,4.0],[60.0,82.0,2.683,2.0],[158.0,166.0,2.688,4.0],[15.0,19.0,2.693,2.0],[124.0,171.0,2.71,4.0],[154.0,162.0,2.797,4.0],[8.0,159.0,3.112,4.0],[160.0,163.0,3.118,4.0],[41.0,52.0,3.214,2.0],[71.0,85.0,3.406,2.0],[16.0,149.0,3.433,3.0],[62.0,170.0,3.465,4.0],[156.0,174.0,3.524,6.0],[139.0,184.0,3.641,5.0],[164.0,178.0,3.767,5.0],[49.0,179.0,3.791,5.0],[31.0,175.0,3.822,4.0],[25.0,88.0,3.982,2.0],[40.0,190.0,4.05,5.0],[110.0,152.0,4.321,3.0],[122.0,182.0,4.722,3.0],[146.0,189.0,4.751,4.0],[169.0,198.0,4.879,8.0],[36.0,192.0,5.058,5.0],[172.0,181.0,5.538,7.0],[6.0,141.0,5.544,3.0],[196.0,201.0,5.745,8.0],[34.0,75.0,5.758,2.0],[183.0,193.0,5.783,9.0],[42.0,142.0,5.852,5.0],[150.0,199.0,5.871,7.0],[177.0,195.0,6.402,5.0],[200.0,213.0,6.557,7.0],[0.0,185.0,6.943,3.0],[173.0,202.0,7.726,7.0],[197.0,207.0,7.998,8.0],[176.0,206.0,8.49,6.0],[187.0,216.0,8.652,9.0],[215.0,222.0,8.726,11.0],[180.0,191.0,9.52,8.0],[205.0,219.0,9.695,6.0],[204.0,214.0,9.797,14.0],[125.0,186.0,10.415,5.0],[68.0,226.0,10.656,7.0],[91.0,208.0,10.713,9.0],[161.0,188.0,10.846,6.0],[194.0,203.0,11.102,4.0],[212.0,218.0,12.765,15.0],[220.0,231.0,14.043,13.0],[217.0,228.0,14.594,10.0],[7.0,59.0,14.856,2.0],[79.0,211.0,15.24,4.0],[117.0,237.0,17.634,5.0],[209.0,225.0,18.17,13.0],[227.0,229.0,22.653,21.0],[221.0,240.0,23.905,29.0],[210.0,223.0,27.29,16.0],[230.0,234.0,30.836,22.0],[236.0,239.0,32.188,15.0],[232.0,235.0,34.401,14.0],[241.0,243.0,40.864,51.0],[224.0,245.0,46.913,25.0],[238.0,242.0,65.47,21.0],[244.0,247.0,89.429,40.0],[233.0,249.0,117.708,55.0],[246.0,248.0,123.152,72.0],[250.0,251.0,383.938,127.0]]},"hdb_density":[0,1,0,2,2,1,2,0,2,2,2,0,0,-1,0,1,2,2,0,-1,1,2,1,2,0,2,0,0,0,-1,0,1,0,2,2,1,2,0,0,2,0,0,1,1,1,1,-1,2,1,2,2,0,2,0,0,2,0,0,2,-1,2,0,2,2,0,2,2,0,0,0,0,0,1,1,0,1,1,1,-1,2,0,2,0,-1,0,1,0,-1,1,0,2,0,0,0,1,1,2,0,2,2,0,1,-1,0,2,2,1,-1,2,2,2,2,1,0,0,2,-1,2,2,2,1,1,2,2,1,1,0,0,1,0,1,1,1,2,0,2,1,1,0,2,1,0,0,0,2,-1,2,0,2,0,1,2,1,0,2,1,0,2],"gmm_queues_kmeans_start":[1,2,0,0,2,2,2,2,2,2,2,0,1,2,2,1,0,1,2,0,2,1,2,1,0,2,0,1,0,0,0,0,2,2,0,1,2,2,2,1,1,0,0,2,2,2,0,2,0,2,0,0,1,2,0,2,1,1,2,0,2,2,2,1,2,0,0,2,0,1,0,0,0,2,0,0,2,1,1,2,0,0,1,1,0,2,1,0,1,2,2,0,1,2,0,1,2,1,2,1,1,2,2,2,2,1,1,2,2,0,2,2,2,0,0,0,2,0,1,0],"grid":{"festival":{"k-means":[1,0,3,1,2,3,1,0,0,1,1,3,2,2,3,1,1,1,0,1,0,3,1,0,0,1,2,3,3,0,1,1,1,1,2,1,3,0,0,3,1,2,2,1,1,2,3,0,3,3,1,0,3,2,1,1,1,3,3,2,0,1,1,0,2,3,1,3,3,1,3,0,3,1,0,1,0,3,1,3,3,1,0,2,2,1,2,2,2,1,0,3,1,0,1,1,1,0,1,1,1,3,1,0,3,1,0,1,3,3,2,3,2,3,1,2,0,0,3,3,3,1,3,0,0,3,3,0,1,1,1,0,1,3,1,1,0,1,3,1,3,1,1,2,3],"hierarchical":[0,1,2,0,3,2,0,1,1,0,0,2,3,3,2,0,0,0,1,0,1,2,0,1,1,0,3,2,2,1,0,0,0,0,1,0,2,1,1,2,0,3,3,0,0,3,2,1,2,2,0,1,2,3,0,0,0,2,2,3,1,0,0,1,3,2,0,2,2,0,2,1,2,0,1,0,1,2,0,2,2,0,1,3,3,0,3,3,3,0,1,2,0,1,0,0,0,1,0,0,0,2,0,1,2,0,1,0,2,2,3,2,3,2,0,3,1,1,2,2,2,0,2,1,1,2,2,1,0,0,0,1,0,2,0,0,1,0,2,0,2,0,0,3,2],"DBSCAN":[-1,3,0,1,2,0,1,3,3,1,1,0,2,2,0,1,1,1,-1,1,3,0,1,3,3,1,2,0,0,3,1,1,1,1,-1,1,0,3,3,0,1,2,2,1,1,2,0,3,0,0,1,3,0,2,1,1,1,0,0,2,3,1,1,3,2,0,1,0,0,1,0,3,0,1,3,1,3,0,1,0,0,1,3,2,2,1,2,2,2,1,3,0,1,3,-1,1,1,3,1,1,1,0,1,3,0,1,3,1,0,0,2,0,2,0,1,2,3,3,0,0,0,1,0,3,-1,0,0,3,1,1,1,3,1,0,1,1,3,1,0,1,0,1,1,2,0],"HDBSCAN":[1,2,0,1,3,0,1,2,2,1,1,0,3,3,0,1,1,1,2,1,2,0,1,2,2,1,3,0,0,2,1,1,1,1,2,1,0,2,2,0,1,3,3,1,1,3,0,2,0,0,1,2,0,3,1,1,1,0,0,3,2,1,1,2,3,0,1,0,0,1,0,2,0,1,2,1,2,0,1,0,0,1,2,3,3,1,3,3,3,1,2,0,1,2,1,1,1,2,1,1,1,0,1,2,0,1,2,1,0,0,3,0,3,0,1,3,2,2,0,0,0,1,0,2,2,0,0,2,1,1,1,2,1,0,1,1,2,1,0,1,0,1,1,3,0],"Gaussian mixture":[0,2,1,0,3,1,0,2,2,0,0,1,3,3,1,0,0,0,2,0,2,1,0,2,2,0,3,1,1,2,0,0,0,0,3,0,1,2,2,1,0,3,3,0,0,3,1,2,1,1,0,2,1,3,0,0,0,1,1,3,2,0,0,2,3,1,0,1,1,0,1,2,1,0,2,0,2,1,0,1,1,0,2,3,3,0,3,3,3,0,2,1,0,2,0,0,0,2,0,0,0,1,0,2,1,0,2,0,1,1,3,1,3,1,0,3,2,2,1,1,1,0,1,2,2,1,1,2,0,0,0,2,0,1,0,0,2,0,1,0,1,0,0,3,1]},"night":{"k-means":[1,2,1,1,2,0,0,2,2,2,2,2,1,2,2,1,2,2,0,1,2,1,1,1,2,0,1,1,0,1,2,1,1,1,2,1,2,2,0,1,1,0,2,1,2,2,1,1,2,2,1,1,0,2,0,2,0,2,2,2,0,1,1,0,1,2,0,1,1,1,2,0,1,2,1,2,2,1,1,0,2,1,0,1,1,0,0,0,0,1,0,1,1,1,1,0,0,1,0,1,0,0,1,2,2,2,0,2,1,2,1,0,1,2,0,2,1,1,1,1,2,0,2,2,1,2,0],"hierarchical":[2,0,2,2,0,0,1,0,0,0,0,0,2,0,0,2,0,0,1,2,0,2,2,2,0,0,2,2,1,2,0,2,2,2,0,2,0,0,1,2,2,0,0,2,0,0,2,2,0,0,2,2,0,0,1,0,0,0,0,0,1,2,2,1,2,0,1,2,2,2,0,0,2,0,2,0,0,2,2,1,0,2,1,2,2,0,0,1,0,2,1,2,2,2,2,0,1,2,1,2,1,1,2,0,0,0,1,0,2,0,2,0,2,0,1,0,2,1,2,2,0,1,0,0,2,0,1],"DBSCAN":[0,1,0,0,2,2,-1,-1,2,2,2,2,0,2,1,0,1,2,2,0,2,0,0,0,1,-1,0,0,2,0,2,0,0,0,1,0,2,2,2,0,0,2,2,0,2,2,0,0,1,1,0,0,2,2,2,2,2,2,2,-1,2,0,0,2,0,1,2,0,0,0,2,2,0,2,0,1,1,0,0,-1,2,0,2,0,0,2,2,2,-1,0,-1,0,0,0,0,2,-1,0,2,0,2,2,0,1,2,2,2,2,0,1,0,2,0,1,2,1,0,-1,0,0,2,2,2,1,0,-1,2],"HDBSCAN":[-1,0,1,1,2,2,-1,-1,2,-1,2,2,1,2,0,1,0,2,2,1,2,1,1,1,0,-1,1,1,-1,1,2,1,1,1,0,1,2,2,-1,1,1,-1,2,1,-1,2,1,1,0,0,1,1,-1,2,2,2,2,2,2,-1,1,1,1,2,1,0,2,1,-1,1,2,-1,1,-1,1,0,0,1,1,-1,-1,1,-1,1,1,2,2,2,-1,1,-1,-1,1,1,-1,2,-1,1,2,1,2,2,1,0,-1,2,-1,2,1,0,1,2,1,0,2,0,1,-1,1,1,2,2,2,0,1,-1,2],"Gaussian mixture":[0,2,0,0,2,2,2,1,1,1,2,1,0,1,2,0,2,1,2,0,1,0,0,0,2,2,0,0,2,0,1,0,0,0,2,0,1,1,2,0,0,2,2,0,2,2,0,0,2,2,0,0,2,1,2,2,2,1,1,1,2,0,0,2,0,2,2,0,0,0,2,2,0,1,0,2,2,0,0,2,1,0,2,0,0,2,2,2,2,0,2,0,0,0,0,2,2,0,2,0,2,2,0,2,1,1,2,2,0,2,0,2,0,2,2,2,0,2,0,0,2,2,2,2,0,2,2]},"queues":{"k-means":[0,1,2,2,1,1,1,1,1,1,1,2,0,1,1,0,2,0,1,2,1,0,1,0,2,1,2,0,0,0,2,0,1,1,2,0,1,1,1,0,0,2,2,1,1,0,0,1,0,1,2,2,0,1,0,1,0,0,1,2,1,1,1,0,1,2,2,1,0,0,2,2,2,1,2,2,1,0,0,1,0,2,0,0,2,1,0,2,0,1,1,2,0,1,2,0,1,0,1,0,0,1,1,1,0,0,0,1,1,0,1,1,1,2,0,0,1,2,0,0],"hierarchical":[0,0,2,2,1,1,1,1,1,1,1,2,0,1,1,0,2,0,1,2,1,0,0,0,2,0,2,0,0,0,2,0,1,1,2,0,1,1,1,0,0,2,2,1,1,0,0,0,0,1,2,2,0,1,0,0,0,0,1,2,1,1,1,0,1,2,2,0,0,0,2,2,2,1,2,2,1,0,0,1,0,2,0,0,2,1,0,2,0,1,1,2,0,1,2,0,1,0,1,0,0,1,1,1,0,0,0,1,1,0,1,1,1,2,0,0,0,2,0,0],"DBSCAN":[0,0,1,1,2,0,2,2,0,2,2,1,2,2,2,0,1,2,2,1,0,2,0,0,1,0,1,0,1,1,1,1,2,2,1,2,2,0,2,0,2,1,1,0,2,0,1,0,1,0,1,1,0,0,1,0,0,2,2,1,0,0,0,2,0,1,1,0,1,-1,1,1,1,2,1,1,2,2,0,0,1,1,0,0,1,2,2,1,0,0,2,1,2,0,1,2,0,2,2,0,0,2,2,0,2,2,2,0,2,1,0,2,2,1,1,1,0,1,0,1],"HDBSCAN":[-1,1,0,0,2,-1,2,2,1,-1,2,0,2,2,2,-1,0,2,2,0,-1,2,1,1,0,1,0,1,-1,-1,0,0,2,2,0,2,2,-1,-1,-1,2,0,0,-1,2,1,0,1,0,-1,0,0,-1,1,-1,1,1,-1,2,0,1,1,1,-1,-1,0,0,1,-1,-1,0,0,0,2,0,0,2,2,1,1,-1,0,1,1,-1,2,2,0,1,1,2,0,2,1,-1,2,1,2,-1,-1,1,2,2,1,2,2,-1,1,2,-1,1,2,2,0,0,-1,1,-1,1,0],"Gaussian mixture":[2,2,0,0,1,2,1,1,2,1,1,0,1,1,1,2,0,1,1,0,2,1,2,2,0,2,0,2,0,0,0,0,1,1,0,1,1,2,1,2,1,0,0,2,1,2,0,2,0,2,0,0,2,2,0,2,2,1,1,0,2,2,2,1,2,0,0,2,0,1,0,0,0,1,0,0,1,1,2,2,0,0,2,2,0,1,1,0,2,2,1,0,1,2,0,1,2,1,1,2,2,1,1,2,1,1,1,2,1,0,2,1,1,0,0,0,2,0,2,0]},"density":{"k-means":[1,2,1,0,0,2,0,1,0,0,0,1,1,2,1,2,0,0,1,0,2,0,2,0,1,0,1,1,1,0,1,2,1,0,0,2,0,1,1,0,1,1,2,2,2,2,0,0,2,0,0,1,0,1,1,0,1,1,0,1,0,1,0,0,1,0,0,1,1,1,1,1,2,2,1,2,2,2,1,0,1,0,1,1,1,2,1,2,2,1,0,1,1,1,2,2,0,1,0,0,1,2,2,1,0,0,2,2,0,0,0,0,2,1,1,0,1,0,0,0,2,2,0,0,2,2,1,1,2,1,2,2,2,0,1,0,2,2,1,0,2,1,1,1,0,2,0,1,0,1,2,0,2,1,0,2,1,0],"hierarchical":[0,1,0,2,2,1,2,0,2,2,2,0,0,0,0,1,2,2,0,2,1,2,1,2,0,2,0,0,0,2,0,1,0,2,2,1,2,0,0,2,0,0,1,1,1,1,2,2,1,2,2,0,2,0,0,2,0,0,2,0,2,0,2,2,0,2,2,0,0,0,0,0,1,1,0,1,1,1,0,2,0,2,0,0,0,1,0,1,1,0,2,0,0,0,1,1,2,0,2,2,0,1,1,0,2,2,1,1,2,2,2,2,1,0,0,2,0,2,2,2,1,1,2,2,1,1,0,0,1,0,1,1,1,2,0,2,1,1,0,2,1,0,0,0,2,1,2,0,2,0,1,2,1,0,2,1,0,2],"DBSCAN":[2,0,2,1,1,0,1,-1,1,1,1,-1,-1,-1,-1,0,1,1,-1,1,0,1,0,1,-1,1,2,-1,2,1,2,0,-1,1,1,0,1,-1,-1,1,2,2,0,0,0,0,-1,1,0,1,1,-1,1,-1,2,1,2,-1,1,-1,1,2,1,1,2,1,1,-1,2,-1,-1,-1,0,0,-1,0,0,0,-1,1,-1,1,-1,-1,-1,0,2,-1,0,2,1,2,2,-1,0,0,1,-1,1,1,2,0,0,2,1,1,0,0,1,1,1,1,0,-1,-1,1,-1,1,1,1,0,0,1,1,0,0,-1,-1,0,-1,0,0,0,1,2,1,0,0,-1,1,0,-1,2,-1,1,-1,1,-1,1,-1,0,1,0,-1,1,0,-1,1],"HDBSCAN":[0,1,0,2,2,1,2,0,2,2,2,0,0,-1,0,1,2,2,0,-1,1,2,1,2,0,2,0,0,0,-1,0,1,0,2,2,1,2,0,0,2,0,0,1,1,1,1,-1,2,1,2,2,0,2,0,0,2,0,0,2,-1,2,0,2,2,0,2,2,0,0,0,0,0,1,1,0,1,1,1,-1,2,0,2,0,-1,0,1,0,-1,1,0,2,0,0,0,1,1,2,0,2,2,0,1,-1,0,2,2,1,-1,2,2,2,2,1,0,0,2,-1,2,2,2,1,1,2,2,1,1,0,0,1,0,1,1,1,2,0,2,1,1,0,2,1,0,0,0,2,-1,2,0,2,0,1,2,1,0,2,1,0,2],"Gaussian mixture":[2,0,2,1,1,0,1,2,1,1,1,2,2,2,2,0,1,1,2,0,0,0,0,1,2,1,2,2,2,0,2,0,2,1,1,0,1,2,2,1,2,2,0,0,0,0,0,1,0,1,1,2,1,2,2,1,2,2,0,2,1,2,1,1,2,1,1,2,2,2,2,2,0,0,2,0,0,0,2,1,2,1,2,2,2,0,2,2,0,2,1,2,2,2,0,0,1,2,1,1,2,0,0,2,1,1,0,0,1,1,1,1,0,2,2,1,2,1,1,1,0,0,1,1,0,0,2,2,0,2,0,0,0,0,2,1,0,0,2,1,0,2,2,2,1,2,1,2,1,2,0,0,0,2,1,0,2,1]}},"queues_link":{"single":[[43.0,49.0,0.1,2.0],[16.0,19.0,0.224,2.0],[78.0,118.0,0.283,2.0],[17.0,86.0,0.3,2.0],[11.0,34.0,0.316,2.0],[2.0,81.0,0.361,2.0],[13.0,76.0,0.4,2.0],[62.0,103.0,0.4,2.0],[67.0,116.0,0.424,2.0],[53.0,89.0,0.447,2.0],[39.0,99.0,0.583,2.0],[29.0,54.0,0.6,2.0],[84.0,94.0,0.632,2.0],[3.0,124.0,0.64,3.0],[5.0,64.0,0.64,2.0],[30.0,51.0,0.64,2.0],[56.0,100.0,0.671,2.0],[50.0,59.0,0.671,2.0],[12.0,35.0,0.7,2.0],[21.0,95.0,0.707,2.0],[27.0,136.0,0.721,3.0],[41.0,72.0,0.728,2.0],[40.0,77.0,0.8,2.0],[7.0,111.0,0.806,2.0],[87.0,141.0,0.806,3.0],[80.0,131.0,0.825,3.0],[52.0,130.0,0.825,3.0],[44.0,58.0,0.854,2.0],[14.0,90.0,0.854,2.0],[28.0,145.0,0.9,4.0],[20.0,120.0,0.922,3.0],[61.0,134.0,0.943,3.0],[22.0,25.0,0.943,2.0],[125.0,133.0,0.943,5.0],[66.0,153.0,0.949,6.0],[10.0,18.0,0.985,2.0],[8.0,127.0,1.063,3.0],[147.0,148.0,1.166,4.0],[129.0,156.0,1.17,5.0],[65.0,135.0,1.204,3.0],[24.0,154.0,1.221,7.0],[6.0,108.0,1.237,2.0],[110.0,158.0,1.237,6.0],[121.0,144.0,1.253,5.0],[97.0,106.0,1.3,2.0],[68.0,119.0,1.36,2.0],[36.0,126.0,1.404,3.0],[101.0,143.0,1.414,3.0],[31.0,109.0,1.421,2.0],[114.0,165.0,1.421,3.0],[85.0,155.0,1.432,3.0],[139.0,142.0,1.442,4.0],[92.0,123.0,1.456,3.0],[112.0,170.0,1.456,4.0],[166.0,173.0,1.476,7.0],[0.0,146.0,1.487,4.0],[171.0,172.0,1.503,7.0],[149.0,168.0,1.503,6.0],[63.0,164.0,1.513,3.0],[115.0,169.0,1.552,4.0],[74.0,160.0,1.562,8.0],[48.0,179.0,1.565,5.0],[70.0,71.0,1.6,2.0],[105.0,176.0,1.603,8.0],[83.0,175.0,1.603,5.0],[45.0,82.0,1.703,2.0],[33.0,157.0,1.746,5.0],[122.0,185.0,1.769,4.0],[117.0,132.0,1.772,3.0],[93.0,96.0,1.772,2.0],[32.0,174.0,1.803,8.0],[79.0,107.0,1.836,2.0],[4.0,190.0,1.836,9.0],[151.0,189.0,1.86,5.0],[159.0,180.0,1.879,11.0],[46.0,181.0,1.91,6.0],[161.0,167.0,1.972,5.0],[60.0,162.0,1.992,7.0],[57.0,178.0,1.992,4.0],[15.0,140.0,2.025,4.0],[26.0,163.0,2.04,6.0],[75.0,91.0,2.062,2.0],[88.0,199.0,2.102,5.0],[137.0,201.0,2.14,4.0],[191.0,193.0,2.184,7.0],[138.0,183.0,2.195,10.0],[42.0,203.0,2.202,5.0],[102.0,192.0,2.202,10.0],[186.0,196.0,2.202,10.0],[1.0,128.0,2.202,3.0],[197.0,204.0,2.236,14.0],[55.0,187.0,2.256,5.0],[23.0,211.0,2.285,6.0],[152.0,209.0,2.332,5.0],[210.0,213.0,2.335,19.0],[38.0,98.0,2.419,2.0],[198.0,205.0,2.474,14.0],[202.0,212.0,2.5,11.0],[113.0,194.0,2.53,12.0],[207.0,208.0,2.594,20.0],[73.0,219.0,2.693,21.0],[184.0,217.0,2.702,16.0],[215.0,220.0,2.746,23.0],[214.0,221.0,2.832,35.0],[188.0,206.0,2.973,8.0],[200.0,224.0,3.14,14.0],[182.0,218.0,3.276,14.0],[9.0,222.0,3.453,24.0],[47.0,223.0,3.547,36.0],[37.0,228.0,3.607,37.0],[225.0,226.0,3.701,28.0],[104.0,216.0,3.905,15.0],[177.0,195.0,3.985,12.0],[150.0,229.0,4.427,40.0],[230.0,232.0,4.472,40.0],[227.0,231.0,4.491,39.0],[69.0,235.0,5.825,40.0],[233.0,236.0,7.117,80.0],[234.0,237.0,7.708,120.0]],"complete":[[43.0,49.0,0.1,2.0],[16.0,19.0,0.224,2.0],[78.0,118.0,0.283,2.0],[17.0,86.0,0.3,2.0],[11.0,34.0,0.316,2.0],[2.0,81.0,0.361,2.0],[13.0,76.0,0.4,2.0],[62.0,103.0,0.4,2.0],[67.0,116.0,0.424,2.0],[53.0,89.0,0.447,2.0],[39.0,99.0,0.583,2.0],[29.0,54.0,0.6,2.0],[84.0,94.0,0.632,2.0],[5.0,64.0,0.64,2.0],[30.0,51.0,0.64,2.0],[56.0,100.0,0.671,2.0],[50.0,59.0,0.671,2.0],[12.0,35.0,0.7,2.0],[21.0,95.0,0.707,2.0],[41.0,72.0,0.728,2.0],[40.0,77.0,0.8,2.0],[7.0,111.0,0.806,2.0],[44.0,58.0,0.854,2.0],[14.0,90.0,0.854,2.0],[3.0,124.0,0.943,3.0],[22.0,25.0,0.943,2.0],[10.0,18.0,0.985,2.0],[20.0,120.0,0.99,3.0],[28.0,80.0,1.063,2.0],[66.0,125.0,1.204,3.0],[27.0,135.0,1.204,3.0],[6.0,108.0,1.237,2.0],[87.0,139.0,1.281,3.0],[97.0,106.0,1.3,2.0],[52.0,130.0,1.304,3.0],[68.0,119.0,1.36,2.0],[8.0,127.0,1.36,3.0],[131.0,148.0,1.414,4.0],[31.0,109.0,1.421,2.0],[110.0,156.0,1.456,4.0],[36.0,126.0,1.487,3.0],[24.0,74.0,1.562,2.0],[48.0,115.0,1.565,2.0],[61.0,133.0,1.581,3.0],[70.0,71.0,1.6,2.0],[0.0,83.0,1.603,2.0],[65.0,134.0,1.649,3.0],[105.0,138.0,1.7,3.0],[45.0,82.0,1.703,2.0],[85.0,146.0,1.726,3.0],[92.0,123.0,1.746,3.0],[93.0,96.0,1.772,2.0],[79.0,107.0,1.836,2.0],[144.0,149.0,1.838,6.0],[117.0,132.0,1.86,3.0],[33.0,143.0,1.903,3.0],[101.0,141.0,2.012,3.0],[75.0,91.0,2.062,2.0],[15.0,88.0,2.102,2.0],[60.0,129.0,2.11,3.0],[26.0,121.0,2.14,3.0],[4.0,160.0,2.193,4.0],[102.0,112.0,2.202,2.0],[1.0,128.0,2.202,3.0],[63.0,153.0,2.236,3.0],[122.0,168.0,2.3,4.0],[38.0,98.0,2.419,2.0],[140.0,170.0,2.55,5.0],[46.0,114.0,2.55,2.0],[155.0,162.0,2.915,4.0],[23.0,150.0,2.961,4.0],[152.0,180.0,3.027,6.0],[136.0,177.0,3.314,4.0],[73.0,176.0,3.324,4.0],[113.0,161.0,3.324,3.0],[157.0,158.0,3.511,6.0],[32.0,181.0,3.677,5.0],[137.0,167.0,3.68,5.0],[145.0,183.0,3.701,5.0],[142.0,175.0,3.785,5.0],[163.0,171.0,3.808,5.0],[172.0,179.0,3.895,5.0],[57.0,184.0,3.895,4.0],[55.0,185.0,3.992,5.0],[154.0,165.0,4.159,5.0],[166.0,194.0,4.176,6.0],[42.0,192.0,4.243,5.0],[169.0,182.0,4.357,5.0],[188.0,189.0,4.531,6.0],[9.0,186.0,4.763,3.0],[37.0,147.0,4.965,4.0],[164.0,173.0,5.009,8.0],[151.0,193.0,5.162,6.0],[104.0,187.0,5.413,6.0],[47.0,198.0,5.749,6.0],[159.0,201.0,5.794,9.0],[196.0,207.0,6.44,10.0],[178.0,190.0,6.841,6.0],[199.0,212.0,7.058,11.0],[174.0,206.0,7.737,8.0],[197.0,202.0,8.201,9.0],[200.0,215.0,8.601,14.0],[203.0,214.0,8.855,11.0],[205.0,211.0,9.898,14.0],[209.0,218.0,11.305,14.0],[195.0,208.0,11.413,12.0],[69.0,204.0,13.121,6.0],[191.0,219.0,13.424,14.0],[213.0,220.0,14.5,15.0],[210.0,221.0,16.743,18.0],[217.0,222.0,17.901,17.0],[224.0,227.0,18.353,28.0],[216.0,223.0,19.277,24.0],[225.0,228.0,22.245,27.0],[226.0,230.0,27.563,23.0],[231.0,232.0,29.93,52.0],[233.0,234.0,33.793,50.0],[229.0,235.0,36.522,70.0],[236.0,237.0,49.667,120.0]],"average":[[43.0,49.0,0.1,2.0],[16.0,19.0,0.224,2.0],[78.0,118.0,0.283,2.0],[17.0,86.0,0.3,2.0],[11.0,34.0,0.316,2.0],[2.0,81.0,0.361,2.0],[13.0,76.0,0.4,2.0],[62.0,103.0,0.4,2.0],[67.0,116.0,0.424,2.0],[53.0,89.0,0.447,2.0],[39.0,99.0,0.583,2.0],[29.0,54.0,0.6,2.0],[84.0,94.0,0.632,2.0],[5.0,64.0,0.64,2.0],[30.0,51.0,0.64,2.0],[56.0,100.0,0.671,2.0],[50.0,59.0,0.671,2.0],[12.0,35.0,0.7,2.0],[21.0,95.0,0.707,2.0],[41.0,72.0,0.728,2.0],[3.0,124.0,0.792,3.0],[40.0,77.0,0.8,2.0],[7.0,111.0,0.806,2.0],[44.0,58.0,0.854,2.0],[14.0,90.0,0.854,2.0],[22.0,25.0,0.943,2.0],[20.0,120.0,0.956,3.0],[27.0,135.0,0.963,3.0],[10.0,18.0,0.985,2.0],[28.0,131.0,0.991,3.0],[87.0,139.0,1.043,3.0],[52.0,130.0,1.064,3.0],[66.0,125.0,1.076,3.0],[80.0,149.0,1.101,4.0],[8.0,127.0,1.212,3.0],[6.0,108.0,1.237,2.0],[61.0,133.0,1.262,3.0],[97.0,106.0,1.3,2.0],[140.0,152.0,1.338,6.0],[68.0,119.0,1.36,2.0],[110.0,154.0,1.361,4.0],[31.0,109.0,1.421,2.0],[65.0,134.0,1.427,3.0],[36.0,126.0,1.445,3.0],[24.0,74.0,1.562,2.0],[48.0,115.0,1.565,2.0],[85.0,148.0,1.579,3.0],[123.0,141.0,1.595,4.0],[70.0,71.0,1.6,2.0],[0.0,83.0,1.603,2.0],[143.0,144.0,1.649,4.0],[105.0,138.0,1.652,3.0],[45.0,82.0,1.703,2.0],[101.0,142.0,1.713,3.0],[93.0,96.0,1.772,2.0],[117.0,132.0,1.816,3.0],[79.0,107.0,1.836,2.0],[63.0,157.0,1.875,3.0],[92.0,167.0,1.903,5.0],[129.0,160.0,1.991,6.0],[122.0,172.0,1.995,4.0],[121.0,150.0,2.013,5.0],[112.0,166.0,2.028,4.0],[75.0,91.0,2.062,2.0],[4.0,163.0,2.063,4.0],[159.0,165.0,2.093,4.0],[15.0,88.0,2.102,2.0],[1.0,128.0,2.202,3.0],[114.0,185.0,2.264,5.0],[26.0,181.0,2.296,6.0],[38.0,98.0,2.419,2.0],[153.0,161.0,2.42,6.0],[33.0,170.0,2.594,5.0],[60.0,176.0,2.599,3.0],[32.0,184.0,2.648,5.0],[162.0,164.0,2.68,5.0],[171.0,178.0,2.753,8.0],[23.0,147.0,2.775,4.0],[136.0,183.0,2.807,4.0],[155.0,173.0,2.811,5.0],[145.0,187.0,2.86,5.0],[151.0,169.0,2.862,5.0],[156.0,174.0,2.986,5.0],[137.0,177.0,3.059,5.0],[42.0,198.0,3.115,5.0],[46.0,188.0,3.173,6.0],[113.0,195.0,3.175,6.0],[102.0,192.0,3.204,6.0],[55.0,180.0,3.423,5.0],[182.0,194.0,3.696,9.0],[73.0,199.0,3.814,6.0],[179.0,193.0,3.872,9.0],[186.0,197.0,3.873,6.0],[158.0,168.0,3.995,8.0],[9.0,190.0,4.108,3.0],[57.0,203.0,4.187,6.0],[47.0,200.0,4.264,6.0],[37.0,146.0,4.781,4.0],[207.0,210.0,4.935,12.0],[175.0,204.0,4.993,8.0],[206.0,213.0,5.184,14.0],[104.0,196.0,5.621,9.0],[211.0,216.0,5.735,15.0],[208.0,212.0,7.034,11.0],[215.0,221.0,7.037,15.0],[202.0,222.0,7.949,20.0],[214.0,218.0,8.005,15.0],[189.0,219.0,8.233,14.0],[191.0,205.0,8.303,12.0],[209.0,226.0,9.941,24.0],[201.0,223.0,11.668,16.0],[69.0,224.0,12.319,16.0],[220.0,227.0,13.911,28.0],[217.0,225.0,14.118,24.0],[228.0,231.0,14.409,28.0],[229.0,233.0,14.415,48.0],[230.0,234.0,19.304,44.0],[232.0,235.0,20.824,76.0],[236.0,237.0,25.358,120.0]],"ward":[[43.0,49.0,0.1,2.0],[16.0,19.0,0.224,2.0],[78.0,118.0,0.283,2.0],[17.0,86.0,0.3,2.0],[11.0,34.0,0.316,2.0],[2.0,81.0,0.361,2.0],[13.0,76.0,0.4,2.0],[62.0,103.0,0.4,2.0],[67.0,116.0,0.424,2.0],[53.0,89.0,0.447,2.0],[39.0,99.0,0.583,2.0],[29.0,54.0,0.6,2.0],[84.0,94.0,0.632,2.0],[5.0,64.0,0.64,2.0],[30.0,51.0,0.64,2.0],[56.0,100.0,0.671,2.0],[50.0,59.0,0.671,2.0],[12.0,35.0,0.7,2.0],[21.0,95.0,0.707,2.0],[41.0,72.0,0.728,2.0],[40.0,77.0,0.8,2.0],[7.0,111.0,0.806,2.0],[44.0,58.0,0.854,2.0],[14.0,90.0,0.854,2.0],[3.0,124.0,0.913,3.0],[22.0,25.0,0.943,2.0],[10.0,18.0,0.985,2.0],[28.0,80.0,1.063,2.0],[27.0,135.0,1.079,3.0],[20.0,120.0,1.103,3.0],[87.0,139.0,1.162,3.0],[52.0,130.0,1.214,3.0],[66.0,125.0,1.234,3.0],[6.0,108.0,1.237,2.0],[131.0,147.0,1.259,4.0],[97.0,106.0,1.3,2.0],[68.0,119.0,1.36,2.0],[8.0,127.0,1.39,3.0],[31.0,109.0,1.421,2.0],[61.0,133.0,1.457,3.0],[110.0,157.0,1.506,4.0],[24.0,74.0,1.562,2.0],[48.0,115.0,1.565,2.0],[70.0,71.0,1.6,2.0],[0.0,83.0,1.603,2.0],[65.0,134.0,1.626,3.0],[36.0,126.0,1.653,3.0],[45.0,82.0,1.703,2.0],[85.0,146.0,1.741,3.0],[93.0,96.0,1.772,2.0],[79.0,107.0,1.836,2.0],[92.0,123.0,1.848,3.0],[105.0,138.0,1.864,3.0],[101.0,141.0,1.954,3.0],[33.0,143.0,2.05,3.0],[75.0,91.0,2.062,2.0],[117.0,132.0,2.066,3.0],[63.0,155.0,2.073,3.0],[144.0,152.0,2.102,6.0],[15.0,88.0,2.102,2.0],[102.0,112.0,2.202,2.0],[60.0,129.0,2.355,3.0],[4.0,166.0,2.387,4.0],[26.0,121.0,2.417,3.0],[38.0,98.0,2.419,2.0],[114.0,156.0,2.426,3.0],[140.0,171.0,2.507,5.0],[1.0,128.0,2.531,3.0],[122.0,167.0,2.563,4.0],[162.0,185.0,2.767,5.0],[32.0,182.0,3.239,5.0],[150.0,183.0,3.291,6.0],[23.0,148.0,3.348,4.0],[142.0,174.0,3.378,5.0],[113.0,161.0,3.41,3.0],[42.0,136.0,3.468,3.0],[73.0,173.0,3.638,4.0],[57.0,177.0,3.672,4.0],[175.0,195.0,3.808,5.0],[154.0,158.0,3.809,6.0],[55.0,187.0,3.874,4.0],[46.0,189.0,3.889,6.0],[165.0,194.0,4.211,6.0],[168.0,180.0,4.361,5.0],[151.0,164.0,4.388,5.0],[159.0,169.0,4.437,5.0],[137.0,172.0,4.478,5.0],[9.0,184.0,4.596,3.0],[160.0,181.0,4.606,7.0],[47.0,145.0,4.846,3.0],[153.0,196.0,5.098,6.0],[200.0,209.0,5.745,7.0],[37.0,149.0,5.837,4.0],[104.0,186.0,5.994,6.0],[179.0,192.0,6.232,6.0],[170.0,208.0,6.485,9.0],[163.0,178.0,6.723,8.0],[190.0,203.0,7.855,10.0],[69.0,197.0,9.02,5.0],[176.0,198.0,9.261,8.0],[193.0,210.0,9.701,11.0],[206.0,213.0,10.303,11.0],[202.0,216.0,13.095,14.0],[188.0,211.0,13.207,11.0],[205.0,215.0,14.23,14.0],[207.0,220.0,15.632,14.0],[204.0,214.0,19.964,11.0],[199.0,201.0,20.124,12.0],[191.0,219.0,21.276,14.0],[218.0,221.0,22.12,16.0],[212.0,224.0,29.577,18.0],[217.0,225.0,33.188,24.0],[223.0,226.0,46.031,22.0],[227.0,229.0,48.483,28.0],[222.0,228.0,51.729,28.0],[230.0,231.0,52.628,42.0],[232.0,233.0,88.196,50.0],[234.0,235.0,102.212,70.0],[236.0,237.0,156.618,120.0]]}};
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const FG = "#111111", BLUE = "#1a56db", RED = "#c5221f", GREEN = "#137333", MUTED = "#5f6368", LINE = "#d9dce1", SOFT = "#f3f4f6";
+const ORANGE = "#e8590c", LEMON = "#b88a00", OR_SOFT = "#fde3d2", LE_SOFT = "#f8eec2", BLUE_SOFT = "#dbe6fc", GREY_SOFT = "#eceef1", RED_SOFT = "#fce8e6";
+const SVGNS = "http://www.w3.org/2000/svg";
+function S(tag, attrs = {}, text){
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs){
+    if (k === "font-size") e.style.fontSize = attrs[k] + "px"; // the stylesheet sets svg text size, so this has to be a style
+    else e.setAttribute(k, attrs[k]);
+  }
+  if (text != null) e.textContent = text;
+  return e;
+}
+const fmt = (x, d = 1) => { const s = Number(x).toFixed(d); return (+s === 0 ? Math.abs(+s).toFixed(d) : s).replace("-", "−"); };
+const pct = x => Math.round(x * 100) + "%";
+let clipN = 0;
+
+/* axes + clipped drawing area, returns scales */
+function plot(svg, o){
+  svg.innerHTML = "";
+  const H = +svg.getAttribute("viewBox").split(" ")[3];
+  const L = o.L ?? 68, R = o.R ?? 624, T = 16, B = H - (o.bot ?? 50);
+  const X = v => L + (v - o.x0) / (o.x1 - o.x0) * (R - L);
+  const Y = v => B - (v - o.y0) / (o.y1 - o.y0) * (B - T);
+  const Xi = p => o.x0 + (p - L) / (R - L) * (o.x1 - o.x0);
+  const Yi = p => o.y0 + (B - p) / (B - T) * (o.y1 - o.y0);
+  const ax = S("g"); svg.append(ax);
+  (o.yt || []).forEach(t => {
+    ax.append(S("line", {x1:L, x2:R, y1:Y(t), y2:Y(t), stroke:LINE}));
+    ax.append(S("text", {x:L - 8, y:Y(t) + 4, "text-anchor":"end"}, o.yf ? o.yf(t) : t));
+  });
+  (o.xt || []).forEach(t => {
+    ax.append(S("line", {x1:X(t), x2:X(t), y1:B, y2:B + 5, stroke:FG}));
+    ax.append(S("text", {x:X(t), y:B + 20, "text-anchor":"middle"}, o.xf ? o.xf(t) : t));
+  });
+  ax.append(S("line", {x1:L, x2:R, y1:B, y2:B, stroke:FG}));
+  if (o.xlab) ax.append(S("text", {x:(L + R) / 2, y:B + 42, "text-anchor":"middle"}, o.xlab));
+  if (o.ylab) ax.append(S("text", {x:14, y:(T + B) / 2, "text-anchor":"middle", transform:`rotate(-90 14 ${(T + B) / 2})`}, o.ylab));
+  const id = "clip" + (clipN++);
+  const defs = S("defs"), cp = S("clipPath", {id});
+  cp.append(S("rect", {x:L, y:T - 8, width:R - L, height:B - T + 8}));
+  defs.append(cp); svg.append(defs);
+  const under = S("g", {"clip-path":`url(#${id})`}); svg.insertBefore(under, ax);
+  const clip = S("g", {"clip-path":`url(#${id})`}); svg.append(clip);
+  const top = S("g"); svg.append(top);
+  return { X, Y, Xi, Yi, L, R, T, B, under, clip, top, o, svg };
+}
+function svgPoint(svg, e){
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function bindSlider(id, fmtFn, cb){
+  const s = $("#" + id), n = $("#n" + id.slice(1));
+  const upd = () => { n.textContent = fmtFn(+s.value); cb(+s.value); };
+  s.addEventListener("input", upd);
+  return { el: s, upd, set: v => { s.value = v; upd(); } };
+}
+function range(a, b, s = 1){ const r = []; for (let v = a; v <= b + 1e-9; v += s) r.push(+v.toFixed(6)); return r; }
+function eqAxes(svg, bounds, xlab, ylab, step = 1){
+  const H = +svg.getAttribute("viewBox").split(" ")[3], Wp = 624 - 68, Hp = H - 66;
+  const [a, b, c, d] = bounds, sc = Math.min(Wp / (b - a), Hp / (d - c));
+  const xm = (a + b) / 2, ym = (c + d) / 2, xs = Wp / sc / 2, ys = Hp / sc / 2;
+  const x0 = xm - xs, x1 = xm + xs, y0 = ym - ys, y1 = ym + ys;
+  return plot(svg, { x0, x1, y0, y1, xt: range(Math.ceil(x0 / step) * step, Math.floor(x1 / step) * step, step), yt: range(Math.ceil(y0 / step) * step, Math.floor(y1 / step) * step, step), xlab, ylab });
+}
+const visGrid = (P, nx = 110) => ({ x0:P.o.x0, x1:P.o.x1, y0:P.o.y0, y1:P.o.y1, nx, ny: Math.round(nx * (P.B - P.T) / (P.R - P.L)) });
+
+/* shade a grid of classes, merging runs into a single rect */
+function shade(P, g, f, cols, layer){
+  const grp = S("g", {"shape-rendering":"crispEdges"});
+  const cw = (g.x1 - g.x0) / g.nx, ch = (g.y1 - g.y0) / g.ny;
+  const v = new Int8Array(g.nx * g.ny);
+  for (let j = 0; j < g.ny; j++) for (let i = 0; i < g.nx; i++) v[j * g.nx + i] = f(i, j, g.x0 + (i + .5) * cw, g.y0 + (j + .5) * ch);
+  for (let j = 0; j < g.ny; j++){
+    let i = 0;
+    while (i < g.nx){
+      const c = v[j * g.nx + i];
+      let k = i + 1;
+      while (k < g.nx && v[j * g.nx + k] === c) k++;
+      if (cols[c]){
+        const x = P.X(g.x0 + i * cw), y = P.Y(g.y0 + (j + 1) * ch);
+        grp.append(S("rect", {x, y, width:P.X(g.x0 + k * cw) - x + .6, height:P.Y(g.y0 + j * ch) - y + .6, fill:cols[c]}));
+      }
+      i = k;
+    }
+  }
+  (layer || P.under).append(grp);
+  return grp;
+}
+/* where the line nx*x + ny*y = c crosses a box [x0,x1,y0,y1] */
+function lineInBox(nx, ny, c, [x0, x1, y0, y1]){
+  const pts = [];
+  if (Math.abs(ny) > 1e-9){ [x0, x1].forEach(x => { const y = (c - nx * x) / ny; if (y >= y0 - 1e-9 && y <= y1 + 1e-9) pts.push([x, y]); }); }
+  if (Math.abs(nx) > 1e-9){ [y0, y1].forEach(y => { const x = (c - ny * y) / nx; if (x >= x0 - 1e-9 && x <= x1 + 1e-9) pts.push([x, y]); }); }
+  if (pts.length < 2) return null;
+  let best = [pts[0], pts[1]], bd = -1;
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++){
+    const d = Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]); if (d > bd){ bd = d; best = [pts[i], pts[j]]; }
+  }
+  return best;
+}
+
+/* legends */
+function fruitMark(g, x, y, c, o = {}){
+  const e = c ? S("ellipse", {cx:x, cy:y, rx:4.8, ry:6.8}) : S("circle", {cx:x, cy:y, r:6.2});
+  if (o.hollow){ e.setAttribute("fill", "#fff"); e.setAttribute("stroke", c ? LEMON : ORANGE); e.setAttribute("stroke-width", 2.4); }
+  else { e.setAttribute("fill", c ? LEMON : ORANGE); e.setAttribute("stroke", "#fff"); e.setAttribute("stroke-width", 1.2); }
+  g.append(e); return e;
+}
+const icon = (c, hollow) => `<svg width="14" height="16" viewBox="0 0 14 16">${c
+  ? `<ellipse cx="7" cy="8" rx="4.8" ry="6.8" fill="${hollow ? "#fff" : LEMON}" stroke="${hollow ? LEMON : "none"}" stroke-width="2"/>`
+  : `<circle cx="7" cy="8" r="6" fill="${hollow ? "#fff" : ORANGE}" stroke="${hollow ? ORANGE : "none"}" stroke-width="2"/>`}</svg>`;
+const dotI = (col, hollow) => `<svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="${hollow ? "#fff" : col}" stroke="${col}" stroke-width="2"/></svg>`;
+const lineI = (col, dash, w = 3) => `<svg width="26" height="14"><line x1="1" y1="7" x2="25" y2="7" stroke="${col}" stroke-width="${w}" ${dash ? `stroke-dasharray="${dash}"` : ""}/></svg>`;
+function dotMark(g, x, y, c, r = 5){
+  g.append(c ? S("circle", {cx:x, cy:y, r, fill:BLUE, stroke:"#fff", "stroke-width":1}) : S("circle", {cx:x, cy:y, r:r - .6, fill:"#fff", stroke:FG, "stroke-width":1.8}));
+}
+
+/* buttons in a group that behave like tabs */
+function tabs(sel, attr, cb){
+  const box = $(sel);
+  const set = v => { $$("button[data-" + attr + "]", box).forEach(b => b.classList.toggle("on", b.dataset[attr] === String(v))); cb(v); };
+  box.addEventListener("click", e => { const b = e.target.closest("button[data-" + attr + "]"); if (b) set(b.dataset[attr]); });
+  return set;
+}
+
+/* ---------- colors for clusters ---------- */
+const PURPLE = "#7b3fc4", TEAL = "#0b7285", PINK = "#c2255c", BROWN = "#7a4a1d";
+const CL = [BLUE, ORANGE, GREEN, PURPLE, LEMON, RED, TEAL, PINK];
+const CL_SOFT = ["#dbe6fc", "#fde3d2", "#dcefe2", "#ebe0f7", "#f8eec2", "#fce8e6", "#d5ecef", "#f9dde8"];
+const DIG = [BLUE, ORANGE, GREEN, PURPLE, LEMON, RED, TEAL, PINK, BROWN, FG];
+
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const d2 = (a, b) => (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2;
+const dist = (a, b) => Math.sqrt(d2(a, b));
+const fmtN = x => Math.round(x).toLocaleString("en-US");
+
+/* ---------- data ---------- */
+const parse = csv => { const [h, ...ls] = csv.trim().split("\n"); const c = h.split(","); return ls.map(l => { const v = l.split(","), o = {}; c.forEach((k,i) => o[k] = isNaN(+v[i]) ? v[i] : +v[i]); return o; }); };
+const FEST = parse(D.festival_csv).map(p => [p.x, p.y]);
+const NIGHT = parse(D.night_csv).map(p => [p.x, p.y]);
+const FR = parse(D.fruits_csv).map((r, i) => ({ ...r, i, c: r.fruit === "lemon" ? 1 : 0 }));
+
+/* ---------- k-means ---------- */
+function assign(P, C){ return P.map(p => { let b = 0, bd = Infinity; C.forEach((c, j) => { const d = d2(p, c); if (d < bd){ bd = d; b = j; } }); return b; }); }
+function centers(P, lab, C){
+  return C.map((c, j) => {
+    let sx = 0, sy = 0, n = 0;
+    P.forEach((p, i) => { if (lab[i] === j){ sx += p[0]; sy += p[1]; n++; } });
+    return n ? [sx / n, sy / n] : c.slice();
+  });
+}
+function inertia(P, lab, C){ let s = 0; P.forEach((p, i) => s += d2(p, C[lab[i]])); return s; }
+/* random start: k different points picked at random */
+function randomStart(P, k, seed){
+  const r = rng(seed), idx = [];
+  while (idx.length < k){ const i = Math.floor(r() * P.length); if (!idx.includes(i)) idx.push(i); }
+  return idx.map(i => P[i].slice());
+}
+/* spread-out start (k-means++) */
+function ppStart(P, k, seed){
+  const r = rng(seed), C = [P[Math.floor(r() * P.length)].slice()];
+  while (C.length < k){
+    const w = P.map(p => Math.min(...C.map(c => d2(p, c))));
+    let t = r() * w.reduce((a, b) => a + b, 0), i = 0;
+    while (t > w[i] && i < P.length - 1){ t -= w[i]; i++; }
+    C.push(P[i].slice());
+  }
+  return C;
+}
+function runKM(P, C){
+  let lab = assign(P, C), rounds = 1;
+  for (; rounds < 100; rounds++){
+    C = centers(P, lab, C);
+    const nl = assign(P, C);
+    if (nl.every((v, i) => v === lab[i])) break;
+    lab = nl;
+  }
+  return { C, lab, inertia: inertia(P, lab, C), rounds };
+}
+/* the best of several k-means++ runs, like scikit-learn */
+function bestKM(P, k, nInit = 10, seed = 1){
+  let best = null;
+  for (let s = 0; s < nInit; s++){ const r = runKM(P, ppStart(P, k, seed * 100 + s)); if (!best || r.inertia < best.inertia - 1e-9) best = r; }
+  return relabel(best, P);
+}
+/* number clusters from left to right so colors stay steady */
+function relabel(r, P){
+  const order = r.C.map((c, j) => [c[0] + c[1] * .01, j]).sort((a, b) => a[0] - b[0]).map(a => a[1]);
+  const map = []; order.forEach((j, n) => map[j] = n);
+  return { ...r, C: order.map(j => r.C[j]), lab: r.lab.map(l => map[l]) };
+}
+function silhouette(P, lab, k){
+  const n = P.length, D2 = P.map(p => P.map(q => dist(p, q)));
+  return P.map((p, i) => {
+    const sum = new Array(k).fill(0), cnt = new Array(k).fill(0);
+    for (let j = 0; j < n; j++){ if (j !== i){ sum[lab[j]] += D2[i][j]; cnt[lab[j]]++; } }
+    if (!cnt[lab[i]]) return { a: 0, b: 0, s: 0, nb: -1 };
+    const a = sum[lab[i]] / cnt[lab[i]];
+    let b = Infinity, nb = -1;
+    for (let c = 0; c < k; c++) if (c !== lab[i] && cnt[c]){ const v = sum[c] / cnt[c]; if (v < b){ b = v; nb = c; } }
+    return { a, b, s: (b - a) / Math.max(a, b), nb };
+  });
+}
+
+/* ---------- DBSCAN ---------- */
+function dbscan(P, eps, minS){
+  const n = P.length, e2 = eps * eps;
+  const nb = P.map(p => P.map((q, j) => d2(p, q) <= e2 ? j : -1).filter(j => j >= 0));
+  const core = nb.map(l => l.length >= minS);
+  const lab = new Array(n).fill(-1);
+  let c = 0;
+  for (let i = 0; i < n; i++){
+    if (!core[i] || lab[i] !== -1) continue;
+    const q = [i]; lab[i] = c;
+    while (q.length){
+      const j = q.pop();
+      if (!core[j]) continue;
+      nb[j].forEach(m => { if (lab[m] === -1){ lab[m] = c; q.push(m); } });
+    }
+    c++;
+  }
+  // biggest cluster first, so colors stay steady
+  const size = new Array(c).fill(0); lab.forEach(l => { if (l >= 0) size[l]++; });
+  const order = size.map((s, j) => [s, j]).sort((a, b) => b[0] - a[0]).map(a => a[1]);
+  const map = []; order.forEach((j, r) => map[j] = r);
+  return { lab: lab.map(l => l < 0 ? -1 : map[l]), core, nb, n: c };
+}
+
+/* ---------- drawing ---------- */
+function cdot(g, x, y, c, r = 5){
+  if (c == null || c < 0) g.append(S("circle", {cx:x, cy:y, r:r - .8, fill:"#fff", stroke:MUTED, "stroke-width":1.6}));
+  else g.append(S("circle", {cx:x, cy:y, r, fill:CL[c % CL.length], stroke:"#fff", "stroke-width":1}));
+}
+function centerMark(g, x, y, c, label){
+  const grp = S("g", {transform:`translate(${x} ${y})`});
+  grp.append(S("circle", {r:11, fill:c == null ? "#fff" : CL[c], stroke:FG, "stroke-width":2.5}));
+  grp.append(S("path", {d:"M -5 0 L 5 0 M 0 -5 L 0 5", stroke:c == null ? FG : "#fff", "stroke-width":2.5}));
+  if (label) grp.append(S("text", {y:-16, "text-anchor":"middle", "font-weight":700}, label));
+  g.append(grp); return grp;
+}
+const festAxes = (svg, bounds = [0, 100, 0, 68]) => eqAxes(svg, bounds, "meters", "", 10);
+/* shade the plot by closest center */
+function voronoi(P, C, layer){
+  return shade(P, visGrid(P, 90), (i, j, x, y) => { let b = 0, bd = Infinity; C.forEach((c, k) => { const d = (x - c[0]) ** 2 + (y - c[1]) ** 2; if (d < bd){ bd = d; b = k; } }); return b; }, CL_SOFT, layer);
+}
+
+/* ---------- slide navigation ---------- */
+const slides = $$(".slide");
+const onEnter = {};
+let cur = 0;
+function show(i){
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle("active", k === cur));
+  $("#count").textContent = `${cur + 1} / ${slides.length}`;
+  $("#prev").disabled = cur === 0;
+  $("#next").disabled = cur === slides.length - 1;
+  slides[cur].scrollTop = 0;
+  try { history.replaceState(null, "", "#" + (cur + 1)); } catch (e) {}
+  const st = $("#sr-status"), h = slides[cur].querySelector("h1");
+  if (st) st.textContent = `Slide ${cur + 1} of ${slides.length}: ${h ? h.textContent : ""}`;
+  if (onEnter[cur + 1]) onEnter[cur + 1]();
+}
+$("#prev").onclick = () => show(cur - 1);
+$("#next").onclick = () => show(cur + 1);
+document.addEventListener("keydown", e => {
+  const t = e.target.tagName;
+  if (t === "TEXTAREA" || t === "INPUT") return;
+  if (["ArrowRight","PageDown"].includes(e.key) || (e.key === " " && t !== "BUTTON")) { e.preventDefault(); show(cur + 1); }
+  if (["ArrowLeft","PageUp"].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+});
+
+/* the best answer for each k on the festival data, used on several slides */
+const FEST_KM = {};
+for (let k = 1; k <= 8; k++) FEST_KM[k] = bestKM(FEST, k);
+
+/* random starts that end well, and ones that get stuck */
+const goodRun = r => r.inertia < FEST_KM[4].inertia * 1.02;
+
+/* ---------- 1: finding groups ---------- */
+(function(){
+  const svg = $("#v-1"), out = $("#r-1"), btn = $("#b-1");
+  let seed = 1; while (!(goodRun(runKM(FEST, randomStart(FEST, 4, seed))) && runKM(FEST, randomStart(FEST, 4, seed)).rounds >= 4)) seed++;
+  let C, lab, round, timer = 0;
+  function draw(){
+    const P = festAxes(svg);
+    FEST.forEach((p, i) => cdot(P.clip, P.X(p[0]), P.Y(p[1]), lab ? lab[i] : -1, 5));
+    if (C) C.forEach((c, j) => centerMark(P.top, P.X(c[0]), P.Y(c[1]), j));
+  }
+  function reset(){
+    clearTimeout(timer); C = null; lab = null; round = 0; btn.disabled = false;
+    draw();
+    out.textContent = "145 people, and no labels saying who is with which crowd";
+  }
+  btn.onclick = () => {
+    btn.disabled = true;
+    C = randomStart(FEST, 4, seed); lab = assign(FEST, C); round = 1; draw();
+    out.textContent = "Starting with 4 centers in random spots";
+    const tick = () => {
+      C = centers(FEST, lab, C);
+      const nl = assign(FEST, C);
+      const same = nl.every((v, i) => v === lab[i]);
+      lab = nl; round++; draw();
+      if (same){ out.innerHTML = `Done after ${round} rounds. k-means found <b>4 groups</b> without ever seeing a label.`; return; }
+      out.textContent = `Round ${round}: the centers move toward the middle of the crowds`;
+      timer = setTimeout(tick, 500);
+    };
+    timer = setTimeout(tick, 700);
+  };
+  $("#b-1r").onclick = reset;
+  reset();
+})();
+
+/* ---------- 2: supervised or unsupervised ---------- */
+function sorter(box, say, labels, items){
+  let done = 0, right = 0;
+  items.forEach(it => {
+    const c = document.createElement("div"); c.className = "card";
+    c.innerHTML = `<div class="q">${it.q}</div><div class="pick">${labels.map((l, i) => `<button data-i="${i}">${l}</button>`).join("")}</div><div class="why"><b>${labels[it.a]}.</b> ${it.why}</div>`;
+    c.querySelector(".pick").onclick = e => {
+      const b = e.target.closest("button"); if (!b || c.classList.contains("done")) return;
+      const ok = +b.dataset.i === it.a;
+      c.classList.add("done", ok ? "right" : "wrong");
+      b.classList.add("on");
+      $$("button", c).forEach(x => x.disabled = true);
+      done++; if (ok) right++;
+      say.textContent = done < items.length ? `${right} of ${done} right so far` : `You got ${right} of ${items.length} right`;
+    };
+    box.append(c);
+  });
+  say.textContent = "Pick an answer for each";
+}
+/* ---------- 3: food trucks ---------- */
+(function(){
+  const svg = $("#v-3"), out = $("#r-3");
+  const START = [[12, 62], [50, 40], [90, 62]];
+  let T = START.map(t => t.slice());
+  const P = festAxes(svg);
+  const lines = S("g"), dots = S("g"), trucks = S("g");
+  P.clip.append(lines, dots); P.top.append(trucks);
+  const tg = T.map((t, j) => {
+    const g = S("g", {style:"cursor:grab;touch-action:none"});
+    g.append(S("rect", {x:-16, y:-12, width:32, height:24, rx:4, fill:CL[j], stroke:FG, "stroke-width":2}));
+    g.append(S("text", {y:5, "text-anchor":"middle", "font-weight":700, style:"fill:#fff"}, j + 1));
+    g.append(S("circle", {r:26, fill:"transparent"}));
+    trucks.append(g);
+    g.addEventListener("pointerdown", e => {
+      e.preventDefault(); g.setPointerCapture(e.pointerId);
+      const move = ev => { const q = svgPoint(svg, ev); T[j] = [Math.max(0, Math.min(100, P.Xi(q.x))), Math.max(0, Math.min(68, P.Yi(q.y)))]; draw(); };
+      const up = () => { g.removeEventListener("pointermove", move); g.removeEventListener("pointerup", up); g.removeEventListener("pointercancel", up); };
+      g.addEventListener("pointermove", move); g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
+    });
+    return g;
+  });
+  function draw(note){
+    lines.innerHTML = ""; dots.innerHTML = "";
+    const lab = assign(FEST, T);
+    let tot = 0;
+    FEST.forEach((p, i) => {
+      const t = T[lab[i]]; tot += dist(p, t);
+      lines.append(S("line", {x1:P.X(p[0]), y1:P.Y(p[1]), x2:P.X(t[0]), y2:P.Y(t[1]), stroke:CL[lab[i]], "stroke-opacity":.22, "stroke-width":1.2}));
+    });
+    FEST.forEach((p, i) => cdot(dots, P.X(p[0]), P.Y(p[1]), lab[i], 4.6));
+    tg.forEach((g, j) => g.setAttribute("transform", `translate(${P.X(T[j][0])} ${P.Y(T[j][1])})`));
+    out.innerHTML = `Average walk: <b>${fmt(tot / FEST.length)} m</b>${note || ""}`;
+  }
+  $("#b-3").onclick = () => { T = FEST_KM[3].C.map(c => c.slice()); draw(". This is where k-means puts the 3 centers."); };
+  $("#b-3r").onclick = () => { T = START.map(t => t.slice()); draw(); };
+  draw();
+})();
+
+/* ---------- 4: k-means step by step ---------- */
+(function(){
+  const svg = $("#v-4"), out = $("#r-4"), btn = $("#b-4"), endB = $("#b-4e");
+  let seed = 3; while (!(goodRun(runKM(FEST, randomStart(FEST, 4, seed))) && runKM(FEST, randomStart(FEST, 4, seed)).rounds >= 5)) seed++;
+  let C, lab, phase, round, trail, done;
+  function draw(){
+    const P = festAxes(svg);
+    FEST.forEach((p, i) => cdot(P.clip, P.X(p[0]), P.Y(p[1]), lab ? lab[i] : -1, 5));
+    trail.forEach((tr, j) => { if (tr.length > 1) P.top.append(S("polyline", {points:tr.map(c => `${P.X(c[0])},${P.Y(c[1])}`).join(" "), fill:"none", stroke:FG, "stroke-width":1.5, "stroke-dasharray":"4 3"})); });
+    C.forEach((c, j) => centerMark(P.top, P.X(c[0]), P.Y(c[1]), j));
+  }
+  function step(){
+    if (done) return;
+    if (phase === "assign"){
+      const nl = assign(FEST, C);
+      const same = lab && nl.every((v, i) => v === lab[i]);
+      lab = nl; round++;
+      if (same){
+        done = true; btn.disabled = endB.disabled = true;
+        out.innerHTML = `Nobody changed centers, so k-means is <b>done after ${round - 1} rounds</b>`;
+      } else out.innerHTML = `Round ${round}, step 2: everyone goes to their closest center`;
+      phase = "move";
+    } else {
+      C = centers(FEST, lab, C); C.forEach((c, j) => trail[j].push(c.slice()));
+      out.innerHTML = `Round ${round}, step 3: each center moves to the middle of its points`;
+      phase = "assign";
+    }
+    draw();
+  }
+  function reset(s){
+    seed = s; C = randomStart(FEST, 4, seed); lab = null; phase = "assign"; round = 0; done = false;
+    trail = C.map(c => [c.slice()]); btn.disabled = endB.disabled = false;
+    draw();
+    out.textContent = "Step 1: 4 centers in random spots. Press Next step.";
+  }
+  btn.onclick = step;
+  endB.onclick = () => { let n = 0; while (!done && n++ < 200) step(); };
+  $("#b-4n").onclick = () => reset(seed + 1);
+  reset(seed);
+})();
+
+/* ---------- 5: many runs, random starts and k-means++ starts ---------- */
+(function(){
+  const box = $("#v-5"), out = $("#r-5");
+  const START = { random: randomStart, pp: ppStart };
+  let mode = "random", base = 1;
+  const run = (m, s) => runKM(FEST, START[m](FEST, 4, s));
+  // how often each kind of start gets stuck, over 200 runs
+  const rate = {}; ["random", "pp"].forEach(m => { let n = 0; for (let s = 1000; s < 1200; s++) if (!goodRun(run(m, s))) n++; rate[m] = n / 200; });
+  // start on a set of 10 random starts with a few bad runs in it
+  const count = b => { let n = 0; for (let s = b; s < b + 10; s++) if (!goodRun(run("random", s))) n++; return n; };
+  while (count(base) < 3 || count(base) > 4) base += 10;
+  function draw(){
+    const runs = []; for (let s = base; s < base + 10; s++) runs.push(relabel(run(mode, s), FEST));
+    const bi = runs.reduce((b, r, i) => r.inertia < runs[b].inertia ? i : b, 0);
+    box.innerHTML = "";
+    runs.forEach((r, i) => {
+      const cell = document.createElement("div"); cell.className = "run" + (i === bi ? " best" : "") + (goodRun(r) ? "" : " stuck");
+      const svg = S("svg", {viewBox:"0 0 200 140"});
+      const X = v => 6 + v * 1.88, Y = v => 134 - v * 1.88;
+      FEST.forEach((p, k) => svg.append(S("circle", {cx:X(p[0]), cy:Y(p[1]), r:2.6, fill:CL[r.lab[k]]})));
+      r.C.forEach((c, j) => { svg.append(S("circle", {cx:X(c[0]), cy:Y(c[1]), r:5.5, fill:CL[j], stroke:FG, "stroke-width":2})); });
+      cell.append(svg);
+      const cap = document.createElement("div"); cap.className = "cap";
+      cap.innerHTML = `run ${i + 1}: <b>${fmtN(r.inertia)}</b>`;
+      cell.append(cap); box.append(cell);
+    });
+    const stuck = runs.filter(r => !goodRun(r)).length;
+    out.innerHTML = (stuck ? `${stuck} of these 10 runs got stuck. ` : "None of these 10 runs got stuck. ") + `scikit-learn would keep <b>run ${bi + 1}</b>, which has the lowest inertia.`
+      + ` Over 200 runs, ${mode === "random" ? "random starts" : "k-means++ starts"} got stuck ${pct(rate[mode])} of the time.`;
+  }
+  $("#b-5").onclick = () => { base += 10; draw(); };
+  draw();
+})();
+
+/* ---------- 6: the elbow ---------- */
+(function(){
+  const svg = $("#v-6"), esv = $("#v-6e"), out = $("#r-6");
+  let k = 2;
+  function draw(){
+    const r = FEST_KM[k];
+    const P = festAxes(svg, [0, 100, 0, 68]);
+    FEST.forEach((p, i) => cdot(P.clip, P.X(p[0]), P.Y(p[1]), r.lab[i], 4.6));
+    r.C.forEach((c, j) => centerMark(P.top, P.X(c[0]), P.Y(c[1]), j));
+    const E = plot(esv, { x0:.6, x1:8.4, y0:0, y1:125000, xt:[1,2,3,4,5,6,7,8], yt:[0, 50000, 100000], yf:v => v ? (v / 1000) + "k" : "0", xlab:"k", ylab:"inertia", bot:46 });
+    const pts = [1,2,3,4,5,6,7,8].map(j => [E.X(j), E.Y(FEST_KM[j].inertia)]);
+    E.clip.append(S("polyline", {points:pts.map(p => p.join(",")).join(" "), fill:"none", stroke:FG, "stroke-width":2.5}));
+    pts.forEach((p, j) => E.clip.append(S("circle", {cx:p[0], cy:p[1], r:j + 1 === k ? 7 : 4, fill:j + 1 === k ? BLUE : FG})));
+    const prev = k > 1 ? FEST_KM[k - 1].inertia : null;
+    out.innerHTML = `With k = ${k} the inertia is <b>${fmtN(r.inertia)}</b>` + (prev ? `. Going from ${k - 1} to ${k} clusters lowered it by ${pct(1 - r.inertia / prev)}.` : ". Everyone shares a single center.");
+  }
+  bindSlider("s6", v => v, v => { k = v; draw(); }).upd();
+})();
+
+/* ---------- 7: silhouette ---------- */
+(function(){
+  const svg = $("#v-7"), calc = $("#c-7"), bars = $("#r-7b");
+  const SIL = {}; for (let k = 2; k <= 6; k++) SIL[k] = silhouette(FEST, FEST_KM[k].lab, k);
+  const avg = k => SIL[k].reduce((s, v) => s + v.s, 0) / FEST.length;
+  let k = 3, sel = FEST.reduce((b, p, i) => Math.abs(p[0] - 47) + Math.abs(p[1] - 30) < Math.abs(FEST[b][0] - 47) + Math.abs(FEST[b][1] - 30) ? i : b, 0);
+  let P;
+  function draw(){
+    const r = FEST_KM[k], s = SIL[k][sel];
+    P = festAxes(svg);
+    const p = FEST[sel];
+    FEST.forEach((q, i) => {
+      if (i === sel) return;
+      if (r.lab[i] === r.lab[sel]) P.under.append(S("line", {x1:P.X(p[0]), y1:P.Y(p[1]), x2:P.X(q[0]), y2:P.Y(q[1]), stroke:CL[r.lab[i]], "stroke-opacity":.3, "stroke-width":1}));
+      else if (r.lab[i] === s.nb) P.under.append(S("line", {x1:P.X(p[0]), y1:P.Y(p[1]), x2:P.X(q[0]), y2:P.Y(q[1]), stroke:MUTED, "stroke-opacity":.25, "stroke-width":1, "stroke-dasharray":"3 3"}));
+    });
+    FEST.forEach((q, i) => cdot(P.clip, P.X(q[0]), P.Y(q[1]), r.lab[i], 4.6));
+    P.top.append(S("circle", {cx:P.X(p[0]), cy:P.Y(p[1]), r:10, fill:"none", stroke:FG, "stroke-width":2.5}));
+    calc.textContent = `a = ${fmt(s.a)} m\nb = ${fmt(s.b)} m\nsilhouette = (${fmt(s.b)} − ${fmt(s.a)}) / ${fmt(Math.max(s.a, s.b))} = ${fmt(s.s, 2)}`;
+    let best = 2; for (let j = 3; j <= 6; j++) if (avg(j) > avg(best)) best = j;
+    bars.innerHTML = [2,3,4,5,6].map(j => `<span class="lab">k = ${j}</span><div class="track"><div class="fill${j === k ? " b" : ""}" style="width:${Math.max(0, avg(j)) * 100}%"></div></div><span class="n">${fmt(avg(j), 2)}</span>`).join("")
+      + `<span></span><span class="note" style="margin:0">silhouette score, best at k = ${best}</span><span></span>`;
+  }
+  tabs("#p-7", "k", v => { k = +v; draw(); })(3);
+  svg.addEventListener("click", e => {
+    const q = svgPoint(svg, e), x = P.Xi(q.x), y = P.Yi(q.y);
+    let b = 0, bd = Infinity; FEST.forEach((p, i) => { const d = d2(p, [x, y]); if (d < bd){ bd = d; b = i; } });
+    sel = b; draw();
+  });
+})();
+
+/* ---------- 11: where k-means struggles ---------- */
+(function(){
+  const svg = $("#v-11"), out = $("#r-11");
+  const KM = {}; for (let k = 2; k <= 5; k++) KM[k] = bestKM(NIGHT, k);
+  const T = D.night_truth;
+  function draw(k){
+    const r = KM[k];
+    const P = festAxes(svg, [0, 100, 8, 68]);
+    voronoi(P, r.C);
+    NIGHT.forEach((p, i) => cdot(P.clip, P.X(p[0]), P.Y(p[1]), r.lab[i], 4.6));
+    r.C.forEach((c, j) => centerMark(P.top, P.X(c[0]), P.Y(c[1]), j));
+    const pathParts = new Set(r.lab.filter((l, i) => T[i] === 1)).size;
+    const mixed = r.lab.some((l, i) => T[i] === 0 && r.lab.some((m, j) => m === l && T[j] === 1));
+    out.innerHTML = (pathParts > 1 ? `The path is split across <b>${pathParts} clusters</b>` : `The path is in a single cluster`) + (mixed ? ", and part of it is joined with the stage crowd" : "") + `. All ${T.filter(t => t === 3).length} wanderers are in a cluster.`;
+  }
+  tabs("#p-11", "k", v => draw(+v))(3);
+})();
+
+/* ---------- 12: DBSCAN ---------- */
+(function(){
+  const svg = $("#v-12"), out = $("#r-12");
+  $("#l-12").innerHTML = `<span><svg width="14" height="14"><circle cx="7" cy="7" r="5.5" fill="${BLUE}"/></svg> crowded</span><span><svg width="14" height="14"><circle cx="7" cy="7" r="3.5" fill="${BLUE}"/></svg> near a crowd</span><span>${dotI(MUTED, true)} noise</span>`;
+  let eps = 7, minS = 4, sel = null, P;
+  function draw(){
+    const r = dbscan(NIGHT, eps, minS);
+    P = festAxes(svg, [0, 100, 8, 68]);
+    if (sel != null){
+      const p = NIGHT[sel];
+      P.under.append(S("circle", {cx:P.X(p[0]), cy:P.Y(p[1]), r:P.X(eps) - P.X(0), fill:SOFT, stroke:FG, "stroke-width":1.5, "stroke-dasharray":"5 4"}));
+    }
+    NIGHT.forEach((p, i) => cdot(P.clip, P.X(p[0]), P.Y(p[1]), r.lab[i], r.lab[i] < 0 ? 5 : r.core[i] ? 5.5 : 3.6));
+    if (sel != null){
+      const p = NIGHT[sel];
+      P.top.append(S("circle", {cx:P.X(p[0]), cy:P.Y(p[1]), r:9, fill:"none", stroke:FG, "stroke-width":2.5}));
+    }
+    const noise = r.lab.filter(l => l < 0).length;
+    let txt = `<b>${r.n} cluster${r.n === 1 ? "" : "s"}</b> and <b>${noise}</b> noise point${noise === 1 ? "" : "s"}`;
+    if (sel != null){
+      const n = r.nb[sel].length;
+      txt += `. The circled point has ${n} point${n === 1 ? "" : "s"} within eps, counting itself, so it's ` + (r.core[sel] ? "in a crowded spot." : r.lab[sel] >= 0 ? "not in a crowded spot, but it's close to one, so it joins that cluster." : "noise.");
+    }
+    out.innerHTML = txt;
+  }
+  bindSlider("s12e", v => fmt(v), v => { eps = v; draw(); });
+  bindSlider("s12m", v => v, v => { minS = v; draw(); }).upd();
+  $("#n12e").textContent = fmt(eps);
+  svg.addEventListener("click", e => {
+    const q = svgPoint(svg, e), x = P.Xi(q.x), y = P.Yi(q.y);
+    let b = 0, bd = Infinity; NIGHT.forEach((p, i) => { const d = d2(p, [x, y]); if (d < bd){ bd = d; b = i; } });
+    sel = b; draw();
+  });
+})();
+
+/* ---------- 14: the curse of dimensionality ---------- */
+(function(){
+  const svg = $("#v-14"), out = $("#r-14");
+  const DIMS = [1, 2, 3, 5, 10, 20, 50, 100, 200, 500, 1000];
+  const cache = {};
+  function dists(d){
+    if (cache[d]) return cache[d];
+    const r = rng(42 + d), N = 200;
+    const pts = Array.from({length:N}, () => Array.from({length:d}, r));
+    const ds = pts.slice(1).map(p => { let s = 0; for (let j = 0; j < d; j++) s += (p[j] - pts[0][j]) ** 2; return Math.sqrt(s); });
+    const mx = Math.max(...ds);
+    return cache[d] = ds.map(v => v / mx);
+  }
+  function draw(i){
+    const d = DIMS[i], ds = dists(d), B = 25;
+    const h = new Array(B).fill(0); ds.forEach(v => h[Math.min(B - 1, Math.floor(v * B))]++);
+    const P = plot(svg, { x0:0, x1:1, y0:0, y1:Math.max(60, Math.max(...h) * 1.1), xt:[0, .25, .5, .75, 1], xf:pct, yt:[0, 20, 40, 60, 80, 100, 120, 140, 160, 180].filter(t => t <= Math.max(60, Math.max(...h) * 1.1)), xlab:"distance from the first point, as a share of the farthest", ylab:"points", bot:48 });
+    h.forEach((n, b) => { if (n) P.clip.append(S("rect", {x:P.X(b / B) + 1, y:P.Y(n), width:P.X(1 / B) - P.X(0) - 2, height:P.Y(0) - P.Y(n), fill:BLUE})); });
+    const mn = Math.min(...ds);
+    const share = mn < .01 ? "less than 1%" : pct(mn);
+    out.innerHTML = `With ${d} feature${d === 1 ? "" : "s"}, the closest point is <b>${share}</b> as far away as the farthest one` + (d >= 100 ? ". Everything is about the same distance away." : "");
+  }
+  bindSlider("s14", i => DIMS[i], draw).set(0);
+})();
+
+/* ---------- 15: squashing onto a line ---------- */
+const PEOPLE = D.people;
+const PM = [0, 1].map(j => PEOPLE.reduce((s, p) => s + p[j], 0) / PEOPLE.length);
+const PCOV = (() => { let a = 0, b = 0, c = 0; PEOPLE.forEach(p => { const x = p[0] - PM[0], y = p[1] - PM[1]; a += x * x; b += x * y; c += y * y; }); const n = PEOPLE.length; return [a / n, b / n, c / n]; })();
+const PC_ANG = .5 * Math.atan2(2 * PCOV[1], PCOV[0] - PCOV[2]);   // angle of the first component
+const PTOT = PCOV[0] + PCOV[2];
+const keepAt = a => (Math.cos(a) ** 2 * PCOV[0] + 2 * Math.sin(a) * Math.cos(a) * PCOV[1] + Math.sin(a) ** 2 * PCOV[2]) / PTOT;
+(function(){
+  const svg = $("#v-15"), out = $("#r-15");
+  function draw(deg){
+    const a = deg * Math.PI / 180, u = [Math.cos(a), Math.sin(a)];
+    const P = eqAxes(svg, [148, 196, 148, 196], "height (cm)", "arm span (cm)", 10);
+    P.under.append(S("line", {x1:P.X(PM[0] - u[0] * 80), y1:P.Y(PM[1] - u[1] * 80), x2:P.X(PM[0] + u[0] * 80), y2:P.Y(PM[1] + u[1] * 80), stroke:FG, "stroke-width":2}));
+    PEOPLE.forEach(p => {
+      const t = (p[0] - PM[0]) * u[0] + (p[1] - PM[1]) * u[1], f = [PM[0] + t * u[0], PM[1] + t * u[1]];
+      P.under.append(S("line", {x1:P.X(p[0]), y1:P.Y(p[1]), x2:P.X(f[0]), y2:P.Y(f[1]), stroke:MUTED, "stroke-opacity":.45}));
+      P.clip.append(S("circle", {cx:P.X(f[0]), cy:P.Y(f[1]), r:4, fill:BLUE}));
+    });
+    PEOPLE.forEach(p => P.clip.append(S("circle", {cx:P.X(p[0]), cy:P.Y(p[1]), r:4.4, fill:"#fff", stroke:FG, "stroke-width":1.8})));
+    const k = keepAt(a), best = keepAt(PC_ANG);
+    out.innerHTML = `This line keeps <b>${pct(k)}</b> of the spread` + (k > best - .003 ? ". This is the best line." : "");
+  }
+  const s = bindSlider("s15", v => v + "°", draw);
+  $("#b-15").onclick = () => s.set(Math.round(((PC_ANG * 180 / Math.PI) + 180) % 180));
+  s.upd();
+})();
+
+/* ---------- 17: how many components ---------- */
+const EVR = D.dig_evr, CUM = EVR.reduce((a, v) => (a.push((a.length ? a[a.length - 1] : 0) + v), a), []);
+(function(){
+  const svg = $("#v-17"), out = $("#r-17");
+  function draw(k){
+    const P = plot(svg, { x0:0, x1:65, y0:0, y1:1, xt:[1, 10, 20, 30, 40, 50, 64], yt:[0, .25, .5, .75, 1], yf:pct, xlab:"component", bot:48 });
+    EVR.forEach((v, i) => P.clip.append(S("rect", {x:P.X(i + .6), y:P.Y(v), width:P.X(.8) - P.X(0), height:P.Y(0) - P.Y(v), fill:i < k ? BLUE : LINE})));
+    P.clip.append(S("polyline", {points:CUM.map((c, i) => `${P.X(i + 1)},${P.Y(c)}`).join(" "), fill:"none", stroke:FG, "stroke-width":2.5}));
+    P.clip.append(S("circle", {cx:P.X(k), cy:P.Y(CUM[k - 1]), r:6, fill:FG}));
+    P.top.append(S("text", {x:P.X(k) + (k > 50 ? -10 : 10), y:P.Y(CUM[k - 1]) + 20, "text-anchor":k > 50 ? "end" : "start", "font-weight":700}, `${pct(CUM[k - 1])} kept`));
+    out.innerHTML = `Keeping <b>${k}</b> of the 64 components keeps <b>${pct(CUM[k - 1])}</b> of the spread`;
+  }
+  window.drawEVR = draw;
+})();
+
+/* ---------- 18: rebuilding digits ---------- */
+(function(){
+  const svg = $("#v-18");
+  const M = D.dig_mean, W = D.dig_comp, EX = D.dig_ex;
+  const SC = EX.map(x => W.map(w => w.reduce((s, v, j) => s + v * (x[j] - M[j]), 0)));
+  const cell = 9, gap = 26, x0 = (640 - (6 * 8 * cell + 5 * gap)) / 2;
+  function grid(g, px, ox, oy){
+    px.forEach((v, j) => {
+      const c = Math.max(0, Math.min(16, v)) / 16, sh = Math.round(255 * (1 - c));
+      g.append(S("rect", {x:ox + (j % 8) * cell, y:oy + Math.floor(j / 8) * cell, width:cell + .3, height:cell + .3, fill:`rgb(${sh},${sh},${sh})`}));
+    });
+    g.append(S("rect", {x:ox, y:oy, width:8 * cell, height:8 * cell, fill:"none", stroke:LINE}));
+  }
+  function draw(k){
+    svg.innerHTML = "";
+    const g = S("g", {"shape-rendering":"crispEdges"}); svg.append(g);
+    svg.append(S("text", {x:x0, y:22, "font-weight":700}, "real"));
+    svg.append(S("text", {x:x0, y:142, "font-weight":700}, `rebuilt from ${k} component${k === 1 ? "" : "s"}`));
+    EX.forEach((x, e) => {
+      const ox = x0 + e * (8 * cell + gap);
+      grid(g, x, ox, 32);
+      const rb = M.map((m, j) => { let s = m; for (let i = 0; i < k; i++) s += SC[e][i] * W[i][j]; return s; });
+      grid(g, rb, ox, 152);
+    });
+  }
+  bindSlider("s17", v => v, k => { drawEVR(k); draw(k); }).upd();
+})();
+
+/* ---------- 19: digits in 2D ---------- */
+(function(){
+  const svg = $("#v-19"), out = $("#r-19");
+  const PTS = D.dig_pts;
+  function draw(m){
+    const xi = m === "pca" ? 0 : 2, yi = xi + 1;
+    const xs = PTS.map(p => p[xi]), ys = PTS.map(p => p[yi]);
+    const pad = (a, b) => [a - (b - a) * .04, b + (b - a) * .04];
+    const [x0, x1] = pad(Math.min(...xs), Math.max(...xs)), [y0, y1] = pad(Math.min(...ys), Math.max(...ys));
+    const P = plot(svg, { x0, x1, y0, y1, xt:[], yt:[], xlab:m === "pca" ? "first component" : "t-SNE x", ylab:m === "pca" ? "second component" : "t-SNE y", L:30, bot:46 });
+    PTS.forEach(p => P.clip.append(S("text", {x:P.X(p[xi]), y:P.Y(p[yi]) + 5, "text-anchor":"middle", style:`fill:${DIG[p[4]]}`, "font-weight":700, "font-size":14}, p[4])));
+    out.textContent = m === "pca"
+      ? "500 of the digits on the first two components. Some digits form groups, and others pile on top of each other."
+      : "The same 500 digits with t-SNE. Most digits get their own group.";
+  }
+  tabs("#p-19", "m", draw)("pca");
+})();
+
+
+/* ---------- more data ---------- */
+const QUE = parse(D.queues_csv).map(p => [p.x, p.y]);
+const DENS = parse(D.density_csv).map(p => [p.x, p.y]);
+const SMALL = D.small, LETTERS = "ABCDEFGHIJKLMN".split("");
+
+/* number clusters from left to right so colors stay steady, noise stays -1 */
+function relabelX(lab, P){
+  const ids = [...new Set(lab)].filter(l => l >= 0);
+  const mx = ids.map(c => { let s = 0, n = 0; lab.forEach((l, i) => { if (l === c){ s += P[i][0] + P[i][1] * .01; n++; } }); return [s / n, c]; }).sort((a, b) => a[0] - b[0]);
+  const map = {}; mx.forEach(([_, c], r) => map[c] = r);
+  return lab.map(l => l < 0 ? -1 : map[l]);
+}
+/* adjusted Rand index */
+function ari(a, b){
+  const c2 = n => n * (n - 1) / 2, n = a.length;
+  const T = {}, A = {}, B = {};
+  a.forEach((x, i) => { const k = x + "|" + b[i]; T[k] = (T[k] || 0) + 1; A[x] = (A[x] || 0) + 1; B[b[i]] = (B[b[i]] || 0) + 1; });
+  const sij = Object.values(T).reduce((s, v) => s + c2(v), 0), sa = Object.values(A).reduce((s, v) => s + c2(v), 0), sb = Object.values(B).reduce((s, v) => s + c2(v), 0);
+  const exp = sa * sb / c2(n), mx = (sa + sb) / 2;
+  return mx === exp ? 1 : (sij - exp) / (mx - exp);
+}
+/* how many pairs two labelings agree on */
+function pairAgree(a, b){ let s = 0, t = 0; for (let i = 0; i < a.length; i++) for (let j = i + 1; j < a.length; j++){ t++; if ((a[i] === a[j]) === (b[i] === b[j])) s++; } return [s, t]; }
+
+/* ---------- trees from scipy's linkage matrix ---------- */
+function treeLabels(Z, n, steps){
+  const par = Array.from({length: 2 * n - 1}, (_, i) => i);
+  const find = x => par[x] === x ? x : (par[x] = find(par[x]));
+  for (let m = 0; m < steps; m++){ par[find(Z[m][0])] = n + m; par[find(Z[m][1])] = n + m; }
+  return Array.from({length: n}, (_, i) => find(i));
+}
+const cutK = (Z, n, k) => treeLabels(Z, n, n - k);
+const cutH = (Z, n, h) => { let m = 0; while (m < n - 1 && Z[m][2] <= h) m++; return treeLabels(Z, n, m); };
+function leafOrder(Z, n){ const go = i => i < n ? [i] : [...go(Z[i - n][0]), ...go(Z[i - n][1])]; return go(2 * n - 2); }
+function members(Z, n, i){ return i < n ? [i] : [...members(Z, n, Z[i - n][0]), ...members(Z, n, Z[i - n][1])]; }
+/* draw a dendrogram: o.upto merges, o.cut height, o.col(leaf) for branches under the cut */
+function dendro(svg, Z, n, o = {}){
+  const upto = o.upto ?? n - 1, top = o.top ?? Z[n - 2][2] * 1.08;
+  const step = top > 20 ? 10 : 5;
+  const P = plot(svg, { x0:-.6, x1:n - .4, y0:0, y1:top, xt:[], yt:range(0, top, step), ylab:"height", bot:30 });
+  const ord = leafOrder(Z, n), pos = []; ord.forEach((l, i) => pos[l] = i);
+  const X = [], H = [];
+  for (let i = 0; i < n; i++){ X[i] = pos[i]; H[i] = 0; }
+  for (let m = 0; m < n - 1; m++){ X[n + m] = (X[Z[m][0]] + X[Z[m][1]]) / 2; H[n + m] = Z[m][2]; }
+  const colOf = i => { if (o.cut == null || H[i] > o.cut) return FG; const ms = members(Z, n, i); return o.col ? o.col(ms[0]) : FG; };
+  for (let m = 0; m < upto; m++){
+    const [a, b, h] = Z[m];
+    [a, b].forEach(c => P.clip.append(S("line", {x1:P.X(X[c]), x2:P.X(X[c]), y1:P.Y(H[c]), y2:P.Y(h), stroke:o.cut != null && h > o.cut ? FG : colOf(c), "stroke-width":2.2})));
+    P.clip.append(S("line", {x1:P.X(X[a]), x2:P.X(X[b]), y1:P.Y(h), y2:P.Y(h), stroke:o.cut != null && h <= o.cut ? colOf(n + m) : FG, "stroke-width":2.2}));
+  }
+  if (o.labels) for (let i = 0; i < n; i++) P.top.append(S("text", {x:P.X(X[i]), y:P.B + 18, "text-anchor":"middle", "font-weight":700}, o.labels[i]));
+  if (o.cut != null) P.top.append(S("line", {x1:P.L, x2:P.R, y1:P.Y(o.cut), y2:P.Y(o.cut), stroke:RED, "stroke-width":2, "stroke-dasharray":"7 5"}));
+  return P;
+}
+const smallAxes = svg => eqAxes(svg, [5, 90, 8, 68], "", "", 10);
+
+/* ---------- Gaussian mixtures in 2D ---------- */
+function gpdf(x, m, Cv){
+  const det = Cv[0] * Cv[2] - Cv[1] * Cv[1], dx = x[0] - m[0], dy = x[1] - m[1];
+  const q = (Cv[2] * dx * dx - 2 * Cv[1] * dx * dy + Cv[0] * dy * dy) / det;
+  return Math.exp(-q / 2) / (2 * Math.PI * Math.sqrt(det));
+}
+function gmmStart(P, k, seed){
+  const mu = randomStart(P, k, seed);
+  const mx = P.reduce((s, p) => [s[0] + p[0], s[1] + p[1]], [0, 0]).map(v => v / P.length);
+  const v = P.reduce((s, p) => s + (p[0] - mx[0]) ** 2 + (p[1] - mx[1]) ** 2, 0) / P.length / 2 / k;
+  return { mu, S: mu.map(() => [v, 0, v]), w: mu.map(() => 1 / k), resp: null };
+}
+function eStep(P, g){
+  let ll = 0;
+  g.resp = P.map(p => { const r = g.mu.map((m, j) => g.w[j] * gpdf(p, m, g.S[j])); const t = r.reduce((a, b) => a + b, 0) || 1e-300; ll += Math.log(t); return r.map(v => v / t); });
+  g.ll = ll / P.length;
+  return g;
+}
+function mStep(P, g){
+  const k = g.mu.length;
+  for (let j = 0; j < k; j++){
+    let n = 0, sx = 0, sy = 0;
+    P.forEach((p, i) => { const r = g.resp[i][j]; n += r; sx += r * p[0]; sy += r * p[1]; });
+    if (n < 1e-6) continue;
+    const m = [sx / n, sy / n]; let a = 0, b = 0, c = 0;
+    P.forEach((p, i) => { const r = g.resp[i][j], dx = p[0] - m[0], dy = p[1] - m[1]; a += r * dx * dx; b += r * dx * dy; c += r * dy * dy; });
+    g.mu[j] = m; g.S[j] = [a / n + 1e-2, b / n, c / n + 1e-2]; g.w[j] = n / P.length;
+  }
+  return g;
+}
+function gmmRun(P, k, seed){
+  const g = gmmStart(P, k, seed); let last = -Infinity, it = 0;
+  for (; it < 500; it++){ eStep(P, g); if (Math.abs(g.ll - last) < 1e-7) break; last = g.ll; mStep(P, g); }
+  g.iters = it; return g;
+}
+function bestGMM(P, k, nInit = 10, seed = 1){ let b = null; for (let s = 0; s < nInit; s++){ const g = gmmRun(P, k, seed * 100 + s); if (!b || g.ll > b.ll) b = g; } return b; }
+const gLab = g => g.resp.map(r => r.indexOf(Math.max(...r)));
+/* ellipses at 1 and 2 standard deviations */
+function ellipse(Pl, m, Cv, col, sds = [1, 2]){
+  const a = Cv[0], b = Cv[1], c = Cv[2], t = (a + c) / 2, d = Math.sqrt(((a - c) / 2) ** 2 + b * b);
+  const l1 = t + d, l2 = Math.max(1e-9, t - d), ang = .5 * Math.atan2(2 * b, a - c) * 180 / Math.PI;
+  const u = Pl.X(1) - Pl.X(0);
+  sds.forEach((k, i) => { const e = S("ellipse", {cx:Pl.X(m[0]), cy:Pl.Y(m[1]), rx:k * Math.sqrt(l1) * u, ry:k * Math.sqrt(l2) * u, transform:`rotate(${-ang} ${Pl.X(m[0])} ${Pl.Y(m[1])})`, fill:"none", stroke:col, "stroke-width":i ? 1.5 : 2.5}); if (i) e.setAttribute("stroke-dasharray", "5 4"); Pl.top.append(e); });
+}
+const queueAxes = svg => eqAxes(svg, [26, 74, 8, 68], "meters", "", 10);
+const QUE_GM = bestGMM(QUE, 3, 10, 7);
+
+/* ---------- merging step by step ---------- */
+(function(){
+  const svg = $("#v-h1"), dsv = $("#v-h1d"), out = $("#r-h1");
+  const Z = D.small_link.single, n = SMALL.length;
+  let m = 0;
+  const name = i => { const ms = members(Z, n, i).map(j => LETTERS[j]).sort(); return ms.length === 1 ? ms[0] : "the group " + ms.slice(0, -1).join(", ") + " and " + ms[ms.length - 1]; };
+  function draw(){
+    const P = smallAxes(svg);
+    const root = treeLabels(Z, n, m), size = {}; root.forEach(r => size[r] = (size[r] || 0) + 1);
+    const lab = relabelX(root.map(r => size[r] > 1 ? r : -1), SMALL);
+    // a line for each merge, between the closest pair of points
+    for (let s = 0; s < m; s++){
+      const A = members(Z, n, Z[s][0]), B = members(Z, n, Z[s][1]);
+      let best = null, bd = Infinity; A.forEach(a => B.forEach(b => { const d = d2(SMALL[a], SMALL[b]); if (d < bd){ bd = d; best = [a, b]; } }));
+      const [a, b] = best;
+      P.under.append(S("line", {x1:P.X(SMALL[a][0]), y1:P.Y(SMALL[a][1]), x2:P.X(SMALL[b][0]), y2:P.Y(SMALL[b][1]), stroke:s === m - 1 ? RED : FG, "stroke-width":s === m - 1 ? 3 : 1.8}));
+    }
+    SMALL.forEach((p, i) => { cdot(P.clip, P.X(p[0]), P.Y(p[1]), lab[i], 7); P.top.append(S("text", {x:P.X(p[0]) + 10, y:P.Y(p[1]) - 8, "font-weight":700}, LETTERS[i])); });
+    dendro(dsv, Z, n, { upto:m, labels:LETTERS, top:34 });
+    const clusters = n - m;
+    if (m === 0) out.textContent = "14 points, so 14 clusters of one. Press Merge.";
+    else if (m < n - 1) out.innerHTML = `Merge ${m}: <b>${name(Z[m - 1][0])}</b> and <b>${name(Z[m - 1][1])}</b>, which were ${fmt(Z[m - 1][2])} apart. ${clusters} clusters left.`;
+    else out.innerHTML = `Merge ${m}: the last two clusters join at a height of ${fmt(Z[m - 1][2])}. Everything is a single cluster now.`;
+    $("#b-h1").disabled = $("#b-h1a").disabled = m >= n - 1;
+  }
+  $("#b-h1").onclick = () => { m = Math.min(n - 1, m + 1); draw(); };
+  $("#b-h1a").onclick = () => { m = n - 1; draw(); };
+  $("#b-h1r").onclick = () => { m = 0; draw(); };
+  draw();
+})();
+
+/* ---------- cutting the tree ---------- */
+(function(){
+  const svg = $("#v-h2"), dsv = $("#v-h2d"), out = $("#r-h2");
+  const Z = D.small_link.single, n = SMALL.length;
+  const gaps = []; for (let m = 0; m < n - 1; m++) gaps.push([m ? Z[m - 1][2] : 0, Z[m][2], n - m]);  // [low, high, k]
+  const tallest = gaps.slice(0, -1).reduce((b, g) => g[1] - g[0] > b[1] - b[0] ? g : b);
+  function draw(h){
+    const lab = relabelX(cutH(Z, n, h), SMALL);
+    dendro(dsv, Z, n, { cut:h, col:i => CL[lab[i] % CL.length], labels:LETTERS, top:34 });
+    const P = smallAxes(svg);
+    SMALL.forEach((p, i) => { cdot(P.clip, P.X(p[0]), P.Y(p[1]), lab[i], 7); P.top.append(S("text", {x:P.X(p[0]) + 10, y:P.Y(p[1]) - 8, "font-weight":700}, LETTERS[i])); });
+    const k = new Set(lab).size;
+    let lo = 0, hi = Z[n - 2][2]; Z.forEach(z => { if (z[2] <= h) lo = Math.max(lo, z[2]); else hi = Math.min(hi, z[2]); });
+    out.innerHTML = `Cutting at ${fmt(h)} gives <b>${k} cluster${k === 1 ? "" : "s"}</b>` + (k > 1 ? `. Any cut from ${fmt(lo)} to ${fmt(hi)} gives the same clusters.` : "")
+      + (k === tallest[2] ? " This is the tallest gap." : "");
+  }
+  bindSlider("s-h2", v => fmt(v), draw).upd();
+})();
+
+/* ---------- linkage ---------- */
+(function(){
+  const asv = $("#v-h3a"), svg = $("#v-h3"), out = $("#r-h3");
+  const LA = [[70, 75], [110, 40], [130, 100], [95, 115]], LB = [[330, 45], [370, 95], [410, 60], [450, 110]];
+  const LINK = { queues: D.queues_link, night: D.night_link }, DATA = { queues: QUE, night: NIGHT };
+  let l = "single", d = "queues";
+  function sketch(){
+    asv.innerHTML = "";
+    const g = S("g"); asv.append(g);
+    let best = null;
+    if (l === "single" || l === "complete"){
+      let bd = l === "single" ? Infinity : -1;
+      LA.forEach(a => LB.forEach(b => { const v = d2(a, b); if (l === "single" ? v < bd : v > bd){ bd = v; best = [a, b]; } }));
+      g.append(S("line", {x1:best[0][0], y1:best[0][1], x2:best[1][0], y2:best[1][1], stroke:RED, "stroke-width":3}));
+    } else if (l === "average"){
+      LA.forEach(a => LB.forEach(b => g.append(S("line", {x1:a[0], y1:a[1], x2:b[0], y2:b[1], stroke:RED, "stroke-opacity":.35, "stroke-width":1.5}))));
+    } else {
+      const all = [...LA, ...LB], c = all.reduce((s, p) => [s[0] + p[0] / 8, s[1] + p[1] / 8], [0, 0]);
+      all.forEach(p => g.append(S("line", {x1:p[0], y1:p[1], x2:c[0], y2:c[1], stroke:RED, "stroke-opacity":.5, "stroke-width":1.5, "stroke-dasharray":"4 3"})));
+      centerMark(g, c[0], c[1], null);
+    }
+    LA.forEach(p => cdot(g, p[0], p[1], 0, 7)); LB.forEach(p => cdot(g, p[0], p[1], 1, 7));
+    const TXT = { single:"the closest pair", complete:"the farthest pair", average:"the average of all 16 pairs", ward:"how far every point would be from the merged center" };
+    g.append(S("text", {x:560, y:70, "text-anchor":"middle", "font-weight":700}, l === "ward" ? "Ward" : l));
+    g.append(S("text", {x:560, y:92, "text-anchor":"middle", style:`fill:${MUTED}`}, "measures"));
+    const words = TXT[l].split(" "), half = Math.ceil(words.length / 2);
+    [words.slice(0, half).join(" "), words.slice(half).join(" ")].forEach((t, i) => g.append(S("text", {x:560, y:112 + i * 18, "text-anchor":"middle", style:`fill:${MUTED}`}, t)));
+  }
+  function draw(){
+    sketch();
+    const X = DATA[d], Z = LINK[d][l], n = X.length;
+    const lab = relabelX(cutK(Z, n, 3), X);
+    const P = d === "queues" ? queueAxes(svg) : festAxes(svg, [0, 100, 8, 68]);
+    X.forEach((p, i) => cdot(P.clip, P.X(p[0]), P.Y(p[1]), lab[i], 4.6));
+    const sizes = [0, 1, 2].map(c => lab.filter(v => v === c).length).sort((a, b) => b - a);
+    out.innerHTML = `Cut into 3 clusters, the sizes are <b>${sizes.join(", ")}</b>` + (d === "queues" ? ". Each queue has 40 people." : "");
+  }
+  tabs("#p-h3", "l", v => { l = v; draw(); });
+  tabs("#p-h3d", "d", v => { d = v; draw(); })("queues");
+})();
+
+/* ---------- crowds with different density ---------- */
+(function(){
+  const svg = $("#v-d2"), out = $("#r-d2"), sl = $("#s-d2");
+  let mode = "db", eps = 3;
+  function draw(){
+    let lab, core = null;
+    if (mode === "db"){ const r = dbscan(DENS, eps, 5); lab = r.lab; core = r.core; }
+    else lab = D.hdb_density;
+    lab = relabelX(lab, DENS);
+    const P = festAxes(svg, [0, 100, 8, 68]);
+    DENS.forEach((p, i) => cdot(P.clip, P.X(p[0]), P.Y(p[1]), lab[i], lab[i] < 0 ? 4.6 : 4.6));
+    const k = new Set(lab.filter(v => v >= 0)).size, noise = lab.filter(v => v < 0).length;
+    const lawn = D.density_truth.filter((t, i) => t === 2 && lab[i] < 0).length;
+    out.innerHTML = (mode === "db" ? `DBSCAN with eps = ${fmt(eps)} finds ` : "HDBSCAN finds ") + `<b>${k} cluster${k === 1 ? "" : "s"}</b> and <b>${noise}</b> noise points. ${lawn} of the 55 people on the lawn are called noise.`;
+    sl.disabled = mode !== "db";
+  }
+  bindSlider("s-d2", v => fmt(v), v => { eps = v; draw(); });
+  tabs("#p-d2", "m", v => { mode = v; draw(); });
+  $("#n-d2").textContent = fmt(eps);
+  draw();
+})();
+
+/* ---------- stretched clusters ---------- */
+(function(){
+  const svg = $("#v-g1"), out = $("#r-g1"), T = D.queues_truth;
+  const KM = bestKM(QUE, 3);
+  function draw(m){
+    const P = queueAxes(svg);
+    const lab = relabelX(m === "km" ? KM.lab : gLab(QUE_GM), QUE);
+    if (m === "km") voronoi(P, KM.C);
+    QUE.forEach((p, i) => cdot(P.clip, P.X(p[0]), P.Y(p[1]), lab[i], 4.8));
+    if (m === "km") KM.C.forEach((c, j) => centerMark(P.top, P.X(c[0]), P.Y(c[1]), relabelX(KM.lab, QUE)[KM.lab.indexOf(j)]));
+    else { const gl = gLab(QUE_GM), rl = relabelX(gl, QUE); QUE_GM.mu.forEach((mu, j) => ellipse(P, mu, QUE_GM.S[j], CL[rl[gl.indexOf(j)]])); }
+    const whole = [0, 1, 2].filter(q => new Set(lab.filter((l, i) => T[i] === q)).size === 1).length;
+    out.innerHTML = m === "km"
+      ? `k-means cuts across the lines. ` + (whole ? `Only <b>${whole} of the 3 queues</b> ends up in a single cluster.` : `<b>None of the 3 queues</b> ends up in a single cluster.`)
+      : `The Gaussian mixture fits a long, tilted cloud to each queue, and ` + (whole === 3 ? `<b>each queue</b> is its own cluster` : `${whole} of the 3 queues are a single cluster`);
+  }
+  tabs("#p-g1", "m", draw)("km");
+})();
+
+/* ---------- soft clustering ---------- */
+(function(){
+  const svg = $("#v-g3"), out = $("#r-g3"), bars = $("#r-g3b");
+  const X = FR.map(f => [f.width, f.height]);
+  const g = bestGMM(X, 2, 10, 3);
+  // cluster 1 is the one on the left
+  const left = g.mu[0][0] < g.mu[1][0] ? 0 : 1, order = [left, 1 - left];
+  const prob = i => order.map(j => g.resp[i][j]);
+  const unsure = X.filter((_, i) => Math.max(...prob(i)) < .9).length;
+  let sel = X.reduce((b, _, i) => Math.max(...prob(i)) < Math.max(...prob(b)) ? i : b, 0), P;
+  function draw(){
+    P = eqAxes(svg, [4.5, 8.7, 6.2, 8.7], "width (cm)", "height (cm)", .5);
+    order.forEach((j, c) => ellipse(P, g.mu[j], g.S[j], CL[c], [1]));
+    X.forEach((p, i) => { const q = prob(i), c = q[0] > q[1] ? 0 : 1; P.clip.append(S("circle", {cx:P.X(p[0]), cy:P.Y(p[1]), r:6, fill:CL[c], "fill-opacity":Math.max(.12, (Math.max(...q) - .5) * 2), stroke:CL[c], "stroke-width":1.5})); });
+    const p = X[sel];
+    P.top.append(S("circle", {cx:P.X(p[0]), cy:P.Y(p[1]), r:11, fill:"none", stroke:FG, "stroke-width":2.5}));
+    const q = prob(sel);
+    bars.innerHTML = q.map((v, c) => `<span class="lab">cluster ${c + 1}</span><div class="track"><div class="fill" style="width:${v * 100}%;background:${CL[c]}"></div></div><span class="n">${pct(v)}</span>`).join("");
+    out.innerHTML = `The circled fruit is ${fmt(p[0])} cm wide and ${fmt(p[1])} cm tall. The model is less than 90% sure about ${unsure} of the 60 fruits.`;
+  }
+  svg.addEventListener("click", e => { const q = svgPoint(svg, e), x = P.Xi(q.x), y = P.Yi(q.y); let b = 0, bd = Infinity; X.forEach((p, i) => { const d = d2(p, [x, y]); if (d < bd){ bd = d; b = i; } }); sel = b; draw(); });
+  draw();
+})();
+
+/* ---------- comparing the methods ---------- */
+(function(){
+  const box = $("#v-cmp");
+  const SETS = {
+    festival: { P:FEST, T:D.festival_truth, b:[0, 100, 0, 68] },
+    night: { P:NIGHT, T:D.night_truth.map(t => t === 3 ? -1 : t), b:[0, 100, 8, 68] },
+    queues: { P:QUE, T:D.queues_truth, b:[22, 78, 8, 68] },
+    density: { P:DENS, T:D.density_truth.map(t => t === 3 ? -1 : t), b:[0, 100, 8, 68] },
+  };
+  const NAMES = ["k-means", "hierarchical", "DBSCAN", "HDBSCAN", "Gaussian mixture"];
+  const SHOW = { "hierarchical":"Ward" };
+  function cell(P, lab, b, cap, cls){
+    const c = document.createElement("div"); c.className = "run" + cls;
+    const w = b[1] - b[0], h = b[3] - b[2], sc = Math.min(192 / w, 132 / h);
+    const s = S("svg", {viewBox:"0 0 200 140"});
+    P.forEach((p, i) => { const x = 4 + (p[0] - b[0]) * sc, y = 136 - (p[1] - b[2]) * sc; if (lab[i] < 0) s.append(S("circle", {cx:x, cy:y, r:2.2, fill:"#fff", stroke:MUTED, "stroke-width":1})); else s.append(S("circle", {cx:x, cy:y, r:2.6, fill:CL[lab[i] % CL.length]})); });
+    c.append(s);
+    const t = document.createElement("div"); t.className = "cap"; t.innerHTML = cap; c.append(t);
+    return c;
+  }
+  function draw(d){
+    const { P, T, b } = SETS[d];
+    box.innerHTML = "";
+    box.append(cell(P, relabelX(T, P), b, "real groups", " truth"));
+    const scores = NAMES.map(m => ari(T, D.grid[d][m]));
+    const best = Math.max(...scores);
+    NAMES.forEach((m, i) => box.append(cell(P, relabelX(D.grid[d][m], P), b, `${SHOW[m] || m}: <b>${fmt(scores[i], 2)}</b>`, scores[i] > best - .005 ? " best" : "")));
+  }
+  tabs("#p-cmp", "d", draw)("festival");
+})();
+
+/* ---------- pick a method ---------- */
+sorter($("#v-pick"), $("#r-pick"), ["k-means", "Hierarchical", "DBSCAN", "Gaussian mixture"], [
+  { q:"Splitting 2 million customers into 5 groups for different marketing emails", a:0, why:"With millions of rows you need something fast, and you already know you want 5 groups. Hierarchical clustering would need trillions of distances." },
+  { q:"Finding crime hotspots on a city map, where most crimes aren't part of any hotspot", a:2, why:"Hotspots can be any shape, and the scattered crimes should be left out as noise instead of forced into a hotspot." },
+  { q:"Grouping 60 kinds of animals by their features, to see which groups sit inside bigger groups", a:1, why:"The dendrogram shows groups inside groups, like a family tree, and 60 rows is small." },
+  { q:"Sorting patients into groups, where the doctor needs to know how sure the model is about each patient", a:3, why:"A Gaussian mixture gives every patient a chance of being in each group." },
+]);
+
+/* ---------- no double-tap zoom ---------- */
+/* the css touch-action rules stop it on current phones, and this catches older ones.
+   a second tap within 350 ms is turned into a normal click instead of a zoom */
+(function(){
+  let last = 0;
+  document.addEventListener("touchend", e => {
+    const now = e.timeStamp;
+    if (now - last < 350 && e.changedTouches.length === 1 && !e.target.closest("input, textarea, select")){
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      e.target.dispatchEvent(new MouseEvent("click", { bubbles:true, cancelable:true, view:window, clientX:t.clientX, clientY:t.clientY }));
+    }
+    last = now;
+  }, { passive:false });
+})();
+
+/* ---------- Python in the browser (Pyodide) ---------- */
+const PY_HELPER = `
+import ast, io, sys, warnings
+import pandas as pd
+warnings.filterwarnings("ignore")
+pd.set_option("display.width", 160)
+pd.set_option("display.max_columns", 30)
+pd.set_option("display.max_rows", 60)
+
+def _run(code):
+    ns = {"pd": pd}
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        tree = ast.parse(code)
+        last = None
+        if tree.body and isinstance(tree.body[-1], ast.Expr):
+            last = ast.Expression(tree.body.pop().value)
+        exec(compile(tree, "<code>", "exec"), ns)
+        if last is not None:
+            result = eval(compile(last, "<code>", "eval"), ns)
+            if result is not None:
+                print(repr(result) if isinstance(result, str) else result)
+    except Exception as e:
+        print(type(e).__name__ + ": " + str(e))
+    finally:
+        sys.stdout = old
+    return buf.getvalue()
+`;
+
+let pyPromise = null;
+const pystat = $("#pystat");
+function loadPy(){
+  if (pyPromise) return pyPromise;
+  pystat.textContent = "Python: loading"; pystat.classList.remove("ready");
+  pyPromise = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+    s.onload = res;
+    s.onerror = () => rej(new Error("Could not load Python. Check the internet connection and press Run again."));
+    document.head.appendChild(s);
+  }).then(() => loadPyodide())
+    .then(async py => {
+      await py.loadPackage(["pandas", "scikit-learn"]);
+      py.runPython(PY_HELPER);
+      pystat.textContent = "Python: ready"; pystat.classList.add("ready");
+      return py;
+    })
+    .catch(e => { pyPromise = null; pystat.textContent = "Python: not loaded"; throw e; });
+  return pyPromise;
+}
+function writeFiles(py){
+  py.FS.writeFile("festival.csv", D.festival_csv);
+  py.FS.writeFile("night.csv", D.night_csv);
+  py.FS.writeFile("fruits.csv", D.fruits_csv);
+  py.FS.writeFile("queues.csv", D.queues_csv);
+  py.FS.writeFile("density.csv", D.density_csv);
+}
+
+$$(".runner").forEach(r => {
+  const ta = $("textarea", r), orig = ta.value;
+  const fit = () => { ta.rows = Math.max(ta.value.split("\n").length, 2); };
+  fit();
+  ta.addEventListener("input", fit);
+  const bar = document.createElement("div"); bar.className = "run-bar";
+  bar.innerHTML = `<button class="primary run">Run</button><button class="reset">Reset code</button><span class="hint">Ctrl+Enter runs</span>`;
+  const out = document.createElement("pre"); out.className = "out"; out.hidden = true;
+  r.append(bar, out);
+  async function run(){
+    out.hidden = false;
+    out.textContent = "Running... (the first run loads Python, it can take a few seconds)";
+    try {
+      const py = await loadPy();
+      writeFiles(py);
+      out.textContent = py.globals.get("_run")(ta.value) || "(no output)";
+    } catch (e) { out.textContent = e.message || String(e); }
+  }
+  $(".run", bar).onclick = run;
+  $(".reset", bar).onclick = () => { ta.value = orig; fit(); out.hidden = true; };
+  ta.addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); run(); }
+    if (e.key === "Tab" && !e.shiftKey){
+      e.preventDefault();
+      const s = ta.selectionStart; ta.setRangeText("    ", s, ta.selectionEnd, "end");
+    }
+  });
+});
+
+/* ---------- accessibility ---------- */
+(function(){
+  const SVG = {
+    "v-1": "People at a festival by where their phone was, colored by the group k-means put them in",
+    "v-3": "People at the festival with three food trucks you can drag, each person colored by their closest truck",
+    "v-4": "People at the festival with four k-means centers and the paths the centers have taken",
+    "v-6": "People at the festival colored by cluster for the chosen k",
+    "v-6e": "Inertia for k from 1 to 8",
+    "v-7": "People at the festival colored by cluster, with lines from the chosen person to the others",
+    "v-8": "Lemons and oranges by weight and height, shaded by the cluster k-means gives each spot",
+    "v-11": "People at night, shaded by the k-means cluster for each spot",
+    "v-12": "People at night colored by their DBSCAN cluster, with noise points hollow",
+    "v-c1": "People at night colored by the clusters each kind of method finds",
+    "v-h1": "14 lettered points, with a line for each merge so far",
+    "v-h1d": "Dendrogram of the merges so far",
+    "v-h2d": "Dendrogram with a dashed line where it's cut",
+    "v-h2": "14 lettered points colored by the clusters below the cut",
+    "v-h3a": "Two small clusters, showing the distance the chosen linkage measures",
+    "v-h3": "Points colored by the 3 clusters from the chosen linkage",
+    "v-d2": "Two tight crowds and a loose group, colored by cluster, with noise hollow",
+    "v-g1": "Three long queues of people, colored by cluster",
+    "v-g2": "Three queues with the Gaussian mixture's ellipses at the current step",
+    "v-g3": "Fruits by width and height, faded when the model is unsure of their cluster",
+    "v-a1": "12 points, shaped by their real group and colored by a clustering",
+    "v-14": "Histogram of distances from the first point to the other 199",
+    "v-15": "Height and arm span of 50 people, each moved onto a line through the middle",
+    "v-16": "Height and arm span of 50 people with arrows for the two principal components",
+    "v-17": "Explained variance of each of the 64 components, with a line adding them up",
+    "v-18": "Six handwritten digits, real and rebuilt from the chosen number of components",
+    "v-19": "500 handwritten digits plotted in 2D, each drawn as its digit",
+  };
+  Object.entries(SVG).forEach(([id, label]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.setAttribute("role", "img"); el.setAttribute("aria-label", label);
+    const say = el.closest(".slide").querySelector(".say");
+    if (say){ if (!say.id) say.id = id + "-say"; el.setAttribute("aria-describedby", say.id); }
+  });
+  // results under each demo are read out when they change, except the ones that update every frame
+  const QUIET = new Set(["r-1", "r-3", "r-15", "r-16"]);
+  $$(".say").forEach(p => { if (!QUIET.has(p.id)) p.setAttribute("aria-live", "polite"); });
+  // toggle and tab buttons say whether they're on
+  const sync = b => b.setAttribute("aria-pressed", b.classList.contains("on") ? "true" : "false");
+  const toggles = $$(".ctrls button").filter(b => b.classList.contains("tog") || b.dataset.k || b.dataset.v || b.dataset.m || b.dataset.s || b.dataset.l || b.dataset.d || b.dataset.c);
+  toggles.forEach(b => { sync(b); new MutationObserver(() => sync(b)).observe(b, { attributes:true, attributeFilter:["class"] }); });
+  // slides
+  slides.forEach((s, i) => { s.setAttribute("role", "group"); s.setAttribute("aria-roledescription", "slide"); s.setAttribute("aria-label", `${i + 1} of ${slides.length}`); });
+  // code boxes
+  $$(".runner").forEach(r => { $("textarea", r).setAttribute("aria-label", "Python code"); const o = $(".out", r); o.setAttribute("aria-live", "polite"); o.setAttribute("tabindex", "0"); });
+})();
+
+show((parseInt(location.hash.slice(1)) || 1) - 1);
+window.addEventListener("load", () => setTimeout(() => loadPy().catch(() => {}), 400));
+
+</script>
+</body>
+</html>
