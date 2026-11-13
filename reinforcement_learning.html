@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reinforcement Learning</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#111111; --muted:#5f6368; --line:#d9dce1; --soft:#f3f4f6;
+  --accent:#1a56db; --accent-soft:#e1eafd;
+  --bad:#c5221f; --bad-soft:#fce8e6; --good:#137333; --good-soft:#e6f4ea;
+  --orange:#e8590c; --orange-soft:#fde3d2; --lemon:#b88a00; --lemon-soft:#f8eec2;
+  --mono: ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:18px;line-height:1.5}
+.deck{height:100%;display:flex;flex-direction:column}
+#slides{flex:1;min-height:0}
+.slide{display:none;height:100%;overflow-y:auto;box-sizing:border-box;padding:36px clamp(16px,5vw,64px) 40px}
+.slide.active{display:block}
+.inner{max-width:1200px;margin:0 auto}
+h1{font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;margin:0 0 28px;text-wrap:balance}
+.kicker{font-size:.85rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:44px;align-items:start}
+.cols > *{min-width:0}
+.cols.cols-recap{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+@media (max-width:900px){.cols,.cols.cols-recap{grid-template-columns:minmax(0,1fr)}}
+.txt{font-size:1.15rem;line-height:1.6;max-width:62ch;margin:0 0 22px}
+.txt p{margin:0 0 .9em}
+.txt p:last-child{margin-bottom:0}
+.txt ol,.txt ul{margin:0 0 .9em;padding-left:1.3em}
+.txt li{margin:0 0 .35em}
+.big{font-size:1.25rem;font-weight:600;line-height:1.45;border-left:4px solid var(--fg);padding:2px 0 2px 14px;margin:0 0 22px;max-width:52ch}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.08em .35em;border-radius:4px}
+pre.code{font-family:var(--mono);font-size:1rem;background:var(--soft);padding:14px 16px;border-radius:6px;margin:0 0 22px;overflow-x:auto;white-space:pre}
+.note{color:var(--muted);font-size:1rem;margin:0 0 16px}
+button{font:inherit;font-size:.95rem;padding:7px 14px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);border-radius:6px;cursor:pointer}
+button:hover{background:var(--soft)}
+button:disabled{opacity:.4;cursor:default}
+button.on,button.primary{background:var(--fg);color:var(--bg)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.readout{font-family:var(--mono);font-size:1rem}
+.say{font-size:1.05rem;line-height:1.55;min-height:3.1em;margin:12px 0 0}
+.viz{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto}
+svg text{fill:var(--fg);font-family:var(--sans);font-size:13px}
+svg.click{cursor:crosshair}
+input[type=range]{width:200px;accent-color:var(--fg)}
+.slider{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin:8px 0;max-width:460px}
+.slider label{font-family:var(--mono);min-width:6ch}
+.slider input{width:100%}
+.slider .readout{min-width:6ch;text-align:right}
+.ok{color:var(--good);font-weight:700}
+.no{color:var(--bad);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:.92rem;color:var(--muted);margin:6px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{display:inline-block}
+
+/* tables */
+.tbl{border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:4px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:pre}
+.tbl th{border-bottom:2px solid var(--fg)}
+.tbl.sm th,.tbl.sm td{padding:2px 10px;font-size:.85rem}
+.tbl .num{text-align:right}
+
+/* bars */
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center;max-width:520px;margin:10px 0}
+.bars .lab{font-family:var(--mono);white-space:pre;text-align:right}
+.bars .track{height:22px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bars .fill{height:100%;background:var(--fg);width:0;transition:width .25s}
+.bars .fill.b{background:var(--accent)}
+.bars .n{font-variant-numeric:tabular-nums;min-width:4ch;font-weight:700;font-family:var(--mono)}
+
+/* recap */
+.recap{display:grid;gap:12px}
+.recap div{border:1.5px solid var(--line);border-radius:8px;padding:10px 14px}
+.recap b{display:block;font-size:1.05rem}
+.recap span{color:var(--muted);font-size:.98rem}
+.recap code{font-size:.85em}
+
+/* code runner */
+.runner{border:1.5px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 18px;background:var(--bg)}
+.runner textarea{display:block;width:100%;box-sizing:border-box;border:0;resize:vertical;font-family:var(--mono);font-size:1rem;line-height:1.5;padding:12px 14px;background:var(--soft);color:var(--fg);white-space:pre;overflow-x:auto;tab-size:4}
+.run-bar{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.run-bar .hint{color:var(--muted);font-size:.85rem;margin-left:auto}
+.out{margin:0;padding:12px 14px;font-family:var(--mono);font-size:.86rem;line-height:1.45;border-top:1px solid var(--line);max-height:360px;overflow:auto;white-space:pre}
+
+/* nav */
+.bar{display:flex;align-items:center;gap:12px;padding:10px clamp(16px,5vw,64px) calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg)}
+#count{font-variant-numeric:tabular-nums;color:var(--muted);min-width:5ch;text-align:center}
+#pystat{color:var(--muted);font-size:.85rem;margin-right:auto}
+#pystat.ready{color:var(--good)}
+@media (max-width:700px){
+  #pystat,#count{display:none}
+  .bar{justify-content:space-between}
+}
+@media (max-width:700px){svg text{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* sorting cards (birds and planes, when to use a network) */
+.sort{display:grid;gap:8px;margin:4px 0 10px}
+.sort .card{border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
+.sort .card .q{font-size:1rem;line-height:1.4}
+.sort .card .pick{display:flex;gap:6px}
+.sort .card .pick button{font-size:.85rem;padding:4px 10px}
+.sort .card .why{grid-column:1 / -1;font-size:.92rem;color:var(--muted);display:none}
+.sort .card.done .why{display:block}
+.sort .card.right{border-color:var(--good);background:var(--good-soft)}
+.sort .card.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.sort .card .why b{color:var(--fg)}
+@media (max-width:520px){.sort .card{grid-template-columns:1fr}}
+
+/* toggles that show on/off state */
+button.tog{min-width:9ch}
+button.tog.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* formula readout */
+.calc{font-family:var(--mono);font-size:.95rem;background:var(--soft);border-radius:6px;padding:10px 14px;margin:10px 0 0;white-space:pre-wrap;line-height:1.55}
+
+/* small stat row */
+.stats{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--mono);font-size:.98rem;margin:8px 0 0}
+.stats b{font-weight:700}
+
+/* touch: no double-tap zoom, no sideways swiping of the page, pinch zoom still works */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overscroll-behavior:none}
+.deck{height:100vh;height:100dvh}
+.slide{touch-action:pan-y pinch-zoom;overscroll-behavior:contain}
+.viz,.runner textarea,.out,.tbl-wrap{touch-action:pan-x pan-y pinch-zoom}
+button,input,textarea,label{touch-action:manipulation}
+button{min-height:40px}
+@media (pointer:coarse){button{min-height:44px}input[type=range]{min-height:32px}}
+
+/* screen reader only text */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* small screens */
+@media (max-width:420px){
+  .slider{grid-template-columns:auto minmax(0,1fr) auto;gap:8px}
+  .slider label{min-width:0}
+  .bars{grid-template-columns:auto minmax(0,1fr) auto}
+  h1{font-size:1.5rem}
+  .txt{font-size:1.05rem}
+}
+/* short screens, like a phone on its side */
+@media (max-height:520px){
+  .viz svg{max-height:78vh;margin:0 auto}
+  .slide{padding-top:18px}
+}
+
+/* ten runs of k-means */
+.runs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:6px 0 4px}
+.run{border:1.5px solid var(--line);border-radius:8px;padding:4px 4px 2px}
+.run.best{border-color:var(--accent);background:var(--accent-soft)}
+.run .cap{font-family:var(--mono);font-size:.8rem;text-align:center;color:var(--muted)}
+.run .cap b{color:var(--fg)}
+.run.stuck .cap b{color:var(--bad)}
+.runs.cmp{grid-template-columns:repeat(3,minmax(0,1fr))}
+.run.truth{background:var(--soft)}
+@media (max-width:520px){.runs,.runs.cmp{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* four answers per card */
+.sort.sort4 .card{grid-template-columns:1fr}
+.recap.wide{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* long inline code can wrap on small phones */
+.txt code{overflow-wrap:anywhere}
+/* no double-tap zoom on anything */
+svg,svg *,.txt,.txt *,h1,.kicker,.say,.calc,.bars,.runs,.run,.legend,.sort,.sort *{touch-action:manipulation}
+@media (max-width:900px){.recap.wide{grid-template-columns:minmax(0,1fr)}}
+.sort.sort4 .pick{flex-wrap:wrap}
+
+/* this week */
+svg.lake{max-width:min(100%,430px)}
+svg.lake.click{cursor:pointer}
+.pad{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.pad button{min-width:9ch}
+.nb{white-space:nowrap}
+/* more room between paragraphs */
+.txt{line-height:1.55;max-width:56ch}
+.txt p{margin:0 0 1.35em}
+.txt ol,.txt ul{margin:0 0 1.35em}
+.txt li{margin:0 0 .7em}
+pre.code{margin:0 0 1.5em;line-height:1.7}
+.tbl-wrap{overflow-x:auto;margin:12px 0 0}
+.parts{display:grid;gap:10px}
+.parts div{border:1.5px solid var(--line);border-radius:8px;padding:10px 14px;display:grid;grid-template-columns:9ch 1fr;gap:14px;align-items:baseline}
+.parts b{font-size:1.02rem}
+.parts span{color:var(--muted);font-size:1rem}
+@media (max-width:520px){.parts div{grid-template-columns:1fr;gap:2px}}
+</style>
+</head>
+<body>
+<div class="deck">
+<main id="slides">
+
+<!-- 1 -->
+<section class="slide"><div class="inner">
+<h1>Reinforcement learning</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>Supervised learning uses examples that already have answers. Unsupervised learning looks for patterns without answers. In <b>reinforcement learning</b>, an agent tries something, sees what happens and gets a reward. Over time, it learns which choices tend to work.</p><p>Our agent is a penguin. It has to cross the lake to get a fish, without falling into a hole. At first, it has no idea where to go. Press Train and watch it learn from experience.</p></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-1" class="primary">Train</button><button id="b-1r">Start over</button></div>
+    <div class="viz"><svg id="v-1" class="lake" viewBox="0 0 430 430"></svg></div>
+    <div class="bars" id="r-1b"></div>
+    <p class="say" id="r-1"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 2 -->
+<section class="slide"><div class="inner">
+<p class="kicker">The basics</p>
+<h1>Agent and environment</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>The learner is the <b>agent</b>. The place it acts in is the <b>environment</b>. Here, the penguin is the agent and the frozen lake is its environment.</p><p>They take turns. The penguin sees where it is, picks a move, and the lake responds with a new position and a reward. Press Next to step through one turn.</p></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-loop" class="primary">Next</button><button id="b-loopr">Start over</button></div>
+    <div class="viz"><svg id="v-loop" viewBox="0 0 640 330"></svg></div>
+    <p class="say" id="r-loop"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 3 -->
+<section class="slide"><div class="inner">
+<p class="kicker">The basics</p>
+<h1>State, action, reward</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>Each square is a <b>state</b>. The penguin's <b>action</b> is a move: left, down, right or up. The <b>reward</b> is 1 if it reaches the fish and 0 otherwise.</p><p>A trip from the start until it reaches the fish or falls in a hole is an <b>episode</b>. Try a few moves yourself. The penguin only gets a reward at the end if it reaches the fish.</p></div>
+  </div>
+  <div>
+    <div class="pad" id="p-play"><button data-a="0">&larr; Left</button><button data-a="1">&darr; Down</button><button data-a="2">&rarr; Right</button><button data-a="3">&uarr; Up</button><button id="b-playr">New episode</button></div>
+    <div class="viz"><svg id="v-play" class="lake" viewBox="0 0 430 430"></svg></div>
+    <div class="tbl-wrap" id="c-play"></div>
+    <p class="say" id="r-play"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 4 -->
+<section class="slide"><div class="inner">
+<p class="kicker">The basics</p>
+<h1>Sooner is better</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>The agent wants to collect as much reward as it can. The total reward over an episode is called the <b>return</b>.</p><p>If the fish is five steps away, we would rather get it in five steps than in fifty. The <b>discount</b>, written γ (gamma), makes rewards count less when they are farther in the future. A reward one step away is multiplied by γ; a reward two steps away is multiplied by γ twice.</p><p>Use the slider to see how γ changes the value of the fish from each square.</p></div>
+  </div>
+  <div>
+    <div class="slider"><label for="s7">γ</label><input type="range" id="s7" min="0.5" max="1" step="0.05" value="0.9"><span class="readout" id="n7"></span></div>
+    <div class="viz"><svg id="v-7" class="lake" viewBox="0 0 430 430"></svg></div>
+    <p class="say" id="r-7"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 5 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Markov decision process</p>
+<h1>Markov decision process</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>A <b>Markov decision process</b>, or MDP, is a way to write down the rules of a problem like this lake.</p><p>It tells us which states and actions are possible, what can happen after each action, what reward the agent gets, and how much future rewards count. Once we know those pieces, we can use the same methods to solve a lake, a game or a robot's task.</p></div>
+  </div>
+  <div>
+    <div class="parts">
+      <div><b>States</b><span>A square the agent can be in. The lake has 16.</span></div>
+      <div><b>Actions</b><span>The moves it can choose: left, down, right or up.</span></div>
+      <div><b>Transitions</b><span>What can happen after a move, and the chance of each result.</span></div>
+      <div><b>Rewards</b><span>What the agent gets. Here, reaching the fish gives 1.</span></div>
+      <div><b>Discount</b><span>How much future rewards count. Here, γ = 0.9.</span></div>
+    </div>
+  </div>
+</div>
+</div></section>
+
+<!-- 6 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Markov decision process</p>
+<h1>Transitions</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>On normal ice, pressing right always moves the penguin right. On slippery ice, it goes right only one time in three. The other two times, it slides up or down.</p><p>The MDP records the chance of each result for every square and move. Pick a square and action to see how the outcome changes between normal and slippery ice.</p></div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-tr"><button data-m="normal">Normal ice</button><button data-m="slip">Slippery ice</button></div>
+    <div class="pad" id="p-tra"><button data-a="0">&larr; Left</button><button data-a="1">&darr; Down</button><button data-a="2">&rarr; Right</button><button data-a="3">&uarr; Up</button></div>
+    <div class="viz"><svg id="v-tr" class="lake click" viewBox="0 0 430 430"></svg></div>
+    <div class="tbl-wrap" id="c-tr"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 7 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Markov decision process</p>
+<h1>The lake's MDP in Python</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>Gymnasium is a Python library with practice environments. Its FrozenLake is the lake from these slides.</p><p><code>P[state][action]</code> gives the possible results of a move: the chance of each result, the next state, the reward and whether the episode ends. Here we print the results of going right from state 14, the square next to the fish.</p></div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">import gymnasium as gym
+
+env = gym.make("FrozenLake-v1", is_slippery=True)
+P = env.unwrapped.P
+
+for chance, next_state, reward, done in P[14][2]:
+    print(round(chance, 2), next_state, reward, done)</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 8 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Markov decision process</p>
+<h1>The Markov property</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>The <b>Markov property</b> says the current state has enough information to make the next decision. Once we know the current square and the action, we don't need to know how the penguin got there.</p><p>For example, a penguin on square 9 has the same possible moves whether it arrived from above or from the side. In the examples on the right, ask: would knowing the past change what happens next?</p></div>
+  </div>
+  <div>
+    <div class="sort" id="v-mk"></div>
+    <p class="say" id="r-mk"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 9 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Policies and values</p>
+<h1>Policy</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>A <b>policy</b> is the agent's plan. It tells the agent which action to take in each state. On this lake, we can draw the policy as one arrow in every square.</p><p>The goal is to find the policy that earns the most reward. That is the <b>optimal policy</b>. Turn the arrows and see if you can make a route to the fish.</p></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-pol" class="primary">Follow the policy</button><button id="b-polr">Start over</button></div>
+    <div class="viz"><svg id="v-pol" class="lake click" viewBox="0 0 430 430"></svg></div>
+    <p class="say" id="r-pol"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 10 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Policies and values</p>
+<h1>Value</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>The <b>value</b> of a state is the return the agent expects if it starts there and follows its policy. A square near the fish is worth more than one far away, because the agent can reach the reward sooner.</p><p>Change the arrows to change the policy. The values update with them, so you can see which routes are better.</p></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-valb">Show the optimal policy</button><button id="b-valr">Start over</button></div>
+    <div class="viz"><svg id="v-val" class="lake click" viewBox="0 0 430 430"></svg></div>
+    <p class="say" id="r-val"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 11 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Policies and values</p>
+<h1>The Bellman equation</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>State values are connected. If a move gives a reward now and leads to a valuable state, then the square you started from should be valuable too.</p></div>
+    <pre class="code">value = expected(reward + γ × next-state value)</pre>
+    <div class="txt"><p>This relationship is the <b>Bellman equation</b>. Click a square to see how its value comes from the next move. The same idea is used by the algorithms in the rest of the lesson.</p></div>
+  </div>
+  <div>
+    <div class="viz"><svg id="v-bell" class="lake click" viewBox="0 0 430 430"></svg></div>
+    <div class="calc" id="c-bell"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 12 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>Planning or learning</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>How we solve the lake depends on whether we know its rules.</p><p>If we know what each move can do and how likely each result is, we can calculate a good policy before the penguin moves. That is <b>planning</b>.</p><p>If the rules are unknown, the agent has to try moves and learn from the rewards it gets. That is what Q-learning and SARSA do.</p></div>
+  </div>
+  <div>
+    <div class="recap">
+      <div><b>The agent knows the MDP</b><span>Value iteration</span></div>
+      <div><b>The agent doesn't know the MDP</b><span>Q-learning and SARSA</span></div>
+      <div><b>There are too many states for a table</b><span>Deep Q-learning and policy gradients</span></div>
+    </div>
+  </div>
+</div>
+</div></section>
+
+<!-- 13 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>Value iteration</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p><b>Value iteration</b> is a planning method. It starts by giving every square a value of 0. Then it revisits each square and asks: if I choose the best move from here, what reward should I expect?</p></div>
+    <pre class="code">value = best action's expected (reward + γ × next-state value)</pre>
+    <div class="txt"><p>Each sweep passes information about the fish back to the squares that can reach it. Once the values stop changing, the agent can choose the move with the highest value in each square. Step through a few sweeps and watch the values spread.</p></div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-vi"><button data-m="normal">Normal ice</button><button data-m="slip">Slippery ice</button></div>
+    <div class="ctrls"><button id="b-vi" class="primary">Next sweep</button><button id="b-vie">Run to the end</button><button id="b-vir">Start over</button></div>
+    <div class="viz"><svg id="v-vi" class="lake" viewBox="0 0 430 430"></svg></div>
+    <p class="say" id="r-vi"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 14 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>Value iteration in Python</h1>
+<div class="cols cols-recap">
+  <div>
+    <div class="txt"><p>The code uses the MDP's transition rules to calculate the value of each move. For a slippery move, it averages over all possible results, weighted by their chances.</p><p>Each sweep updates the state values. At the end, the policy picks the move with the highest value. The arrows on the fish and holes don't matter: the episode ends there.</p></div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">import numpy as np
+import gymnasium as gym
+
+env = gym.make("FrozenLake-v1", is_slippery=False)
+P = env.unwrapped.P
+gamma = 0.9
+
+def action_values(V, state):
+    values = np.zeros(4)
+    for action in range(4):
+        for chance, next_state, reward, done in P[state][action]:
+            values[action] += chance * (reward + gamma * V[next_state])
+    return values
+
+V = np.zeros(16)
+for sweep in range(100):
+    V = np.array([action_values(V, state).max() for state in range(16)])
+
+print(V.reshape(4, 4).round(2))
+
+policy = [action_values(V, state).argmax() for state in range(16)]
+arrows = np.array(["←", "↓", "→", "↑"])
+for row in arrows[policy].reshape(4, 4):
+    print(" ".join(row))</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 15 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>Q-values</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>Value iteration can look ahead because it knows the transition rules. An agent learning by trial and error does not have that information; it only sees the result of the move it just made.</p><p>It can still keep a value for each state and action. That estimate is called a <b>Q-value</b>. It answers: if I take this action here, how much reward can I expect from now on?</p><p>Once the estimates are useful, the policy is simple: choose the action with the highest Q-value.</p></div>
+  </div>
+  <div>
+    <div class="viz"><svg id="v-8" class="lake click" viewBox="0 0 430 430"></svg></div>
+    <div class="bars" id="r-8b"></div>
+    <p class="say" id="r-8"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 16 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>Q-learning</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p><b>Q-learning</b> starts with every Q-value at 0. After a move, it updates the value for that state and action. It uses the reward it just got and its best estimate for the next state.</p></div>
+    <pre class="code">target = reward + γ × best Q in next state
+new Q  = old Q + α × (target − old Q)</pre>
+    <div class="txt"><p>α (alpha) is the <b>learning rate</b>. It controls how much the new estimate changes. With α = 0.5, the value moves halfway toward the target on each update. Finish an episode, then run 1,000 episodes and watch the values spread back from the fish.</p></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-9" class="primary">Next step</button><button id="b-9e">Finish the episode</button><button id="b-9k">1000 episodes</button><button id="b-9r">Start over</button></div>
+    <div class="viz"><svg id="v-9" class="lake" viewBox="0 0 430 430"></svg></div>
+    <div class="calc" id="c-9"></div>
+    <p class="say" id="r-9"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 17 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>Explore or exploit</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>While it learns, the agent has to choose between using what it knows and trying something new.</p><ul><li><b>Exploit</b>: take the action with the best Q-value so far.</li><li><b>Explore</b>: try a random action, which might reveal a better route.</li></ul><p><b>Epsilon-greedy</b> controls this choice. With chance ε, the agent explores; otherwise it exploits. Starting with a high ε gives it room to explore. Lowering ε later lets it use what it has learned.</p></div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-10"><button data-m="zero">ε = 0</button><button data-m="low">ε = 0.1</button><button data-m="one">ε = 1</button><button data-m="shrink">Shrinking ε</button></div>
+    <div class="viz"><svg id="v-10" viewBox="0 0 640 330"></svg></div>
+    <p class="say" id="r-10"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 18 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>Q-learning in Python</h1>
+<div class="cols cols-recap">
+  <div>
+    <div class="txt"><p><code>env.reset()</code> starts an episode. <code>env.step(action)</code> takes one move and returns the next state and reward.</p><p>The agent doesn't read <code>P</code>; it learns from these moves. <code>terminated</code> means the penguin reached the fish or a hole. <code>truncated</code> means the 100-step limit ran out.</p></div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">import numpy as np
+import gymnasium as gym
+
+env = gym.make("FrozenLake-v1", is_slippery=False)
+rng = np.random.default_rng(0)
+
+Q = np.zeros((16, 4))    # 16 states, 4 actions
+alpha = 0.5
+gamma = 0.9
+wins = []
+
+for episode in range(4000):
+    epsilon = max(0.05, 1 - episode / 2000)
+    state, info = env.reset()
+    done = False
+    while not done:
+        if rng.random() < epsilon:
+            action = rng.integers(4)          # explore
+        else:
+            action = np.argmax(Q[state])      # exploit
+        next_state, reward, terminated, truncated, info = env.step(action)
+        target = reward + gamma * Q[next_state].max()
+        Q[state, action] += alpha * (target - Q[state, action])
+        state = next_state
+        done = terminated or truncated
+    wins.append(reward)
+
+print("first 500 episodes:", int(sum(wins[:500])), "reached the fish")
+print("last 500 episodes:", int(sum(wins[-500:])), "reached the fish")
+
+arrows = np.array(["←", "↓", "→", "↑"])
+for row in arrows[Q.argmax(axis=1)].reshape(4, 4):
+    print(" ".join(row))</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 19 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>SARSA</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p><b>SARSA</b> is another way to update Q-values. It is close to Q-learning, but the two methods make a different assumption about what the agent will do next.</p><p>Q-learning updates toward the best possible next action. SARSA updates toward the action the agent actually takes, including a random move during exploration.</p><p>In this cliff example, each step costs 1 and falling costs 100. Both agents explore 10% of the time. Notice how that risk changes the route SARSA prefers.</p></div>
+    <pre class="code">Q-learning: reward + γ × best Q in next state
+SARSA:      reward + γ × Q of the next action</pre>
+    <div class="txt">
+      <p>Q-learning assumes the agent will take the best action next. SARSA uses the action the agent really takes next, even when it is a random one.</p>
+      <p>Here each step costs 1 and falling off the cliff costs 100. Both agents make a random move 1 time in 10.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-cliff"><button data-m="q">Q-learning</button><button data-m="sarsa">SARSA</button></div>
+    <div class="viz"><svg id="v-cliff" viewBox="0 0 640 250"></svg></div>
+    <p class="say" id="r-cliff"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 20 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Algorithms</p>
+<h1>You get what you reward</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>The agent follows the reward, not what we meant. If the reward leaves out something we care about, it may learn a way to score well that looks wrong to us.</p><p>In a boat-racing game, an agent earned points by hitting targets. It found a spot where the targets kept coming back and circled there instead of finishing the race. When an agent behaves strangely, check what the reward is asking it to do.</p></div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-13"><button data-m="fish">+1 for the fish</button><button data-m="alive">+1 per step on the ice</button><button data-m="hurry">+1 for the fish, −1 per step</button></div>
+    <div class="viz"><svg id="v-13" class="lake" viewBox="0 0 430 430"></svg></div>
+    <p class="say" id="r-13"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 21 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Bigger problems</p>
+<h1>Deep Q-learning</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>A Q-table needs a row for every state. Sixteen rows are fine for this lake, but a game screen can have millions of possible states. Go has more board positions than there are atoms in the universe.</p><p><b>Deep Q-learning</b> uses a neural network instead of storing one row for every state. The network takes in a state and estimates a Q-value for each action. DeepMind used this approach to learn Atari games from screen pixels; the network is called a deep Q-network, or DQN.</p></div>
+  </div>
+  <div>
+    <div class="viz"><svg id="v-14" viewBox="0 0 640 300"></svg></div>
+    <p class="say" id="r-14">Each step to the right is 10 times more states</p>
+  </div>
+</div>
+</div></section>
+
+<!-- 22 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Bigger problems</p>
+<h1>Policy gradients</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>Q-learning estimates how good each action is, then chooses the action with the highest value. <b>Policy gradient</b> methods learn the policy directly. The policy gives each action a probability.</p><p>After a good episode, the method makes the actions it took more likely. This is useful when there are too many actions to compare in a table, such as the many possible joint movements of a robot. PPO is one popular policy-gradient method.</p><p>In the animation, a wider arrow means that move is more likely.</p></div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-pg" class="primary">100 episodes</button><button id="b-pgr">Start over</button></div>
+    <div class="viz"><svg id="v-pg" class="lake" viewBox="0 0 430 430"></svg></div>
+    <p class="say" id="r-pg"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 23 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Bigger problems</p>
+<h1>Three kinds of learning</h1>
+<div class="cols">
+  <div>
+    <div class="txt"><p>Reinforcement learning is useful when a program makes a series of choices and gets feedback about how well they went, but we can't label the right choice at every step.</p><p>It takes many attempts to learn. That makes it a good fit for games and simulations, where trying again is cheap. Which kind of learning fits each example?</p></div>
+  </div>
+  <div>
+    <div class="sort sort4" id="v-kinds"></div>
+    <p class="say" id="r-kinds"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 24 -->
+<section class="slide"><div class="inner">
+<h1>Recap</h1>
+<div class="recap wide">
+      <div><b>Reinforcement learning</b><span>An agent learns which choices work by trying them and receiving rewards.</span></div>
+      <div><b>Markov decision process</b><span>The states, actions, possible outcomes, rewards and discount that define the problem.</span></div>
+      <div><b>Policy and value</b><span>A policy says what to do. A value estimates the return from a state.</span></div>
+      <div><b>Value iteration</b><span>Uses the known transition rules to find a good policy.</span></div>
+      <div><b>Q-learning and SARSA</b><span>Learn action values from experience, without the transition rules.</span></div>
+      <div><b>Deep Q-learning and policy gradients</b><span>Use a neural network when a table is too large to store or learn.</span></div>
+    </div>
+<div class="cols cols-recap" style="margin-top:28px">
+  <div>
+    <div class="txt"><p>This example trains Q-learning on slippery ice, then tests its policy with random moves turned off.</p><p>Even the best policy reaches the fish only about three times in four. Sometimes the ice slides the penguin into a hole.</p></div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">import numpy as np
+import gymnasium as gym
+
+env = gym.make("FrozenLake-v1", is_slippery=True)
+rng = np.random.default_rng(0)
+
+Q = np.zeros((16, 4))
+alpha = 0.05
+gamma = 0.99
+
+for episode in range(5000):
+    epsilon = max(0.05, 1 - episode / 4000)
+    state, info = env.reset(seed=episode)
+    done = False
+    while not done:
+        if rng.random() < epsilon:
+            action = rng.integers(4)
+        else:
+            action = np.argmax(Q[state])
+        next_state, reward, terminated, truncated, info = env.step(action)
+        target = reward + gamma * Q[next_state].max()
+        Q[state, action] += alpha * (target - Q[state, action])
+        state = next_state
+        done = terminated or truncated
+
+wins = 0
+for episode in range(1000):
+    state, info = env.reset(seed=episode)
+    done = False
+    while not done:
+        state, reward, terminated, truncated, info = env.step(np.argmax(Q[state]))
+        done = terminated or truncated
+    wins += reward
+
+print("reached the fish in", int(wins), "of 1000 episodes")</textarea></div>
+  </div>
+</div>
+</div></section>
+
+</main>
+<nav class="bar" aria-label="Slides">
+  <span id="pystat">Python: loading</span>
+  <button id="prev" aria-label="Previous slide">&larr; Back</button>
+  <span id="count" aria-hidden="true">1 / 24</span>
+  <button id="next" class="primary" aria-label="Next slide">Next &rarr;</button>
+</nav>
+<p id="sr-status" class="sr-only" aria-live="polite"></p>
+</div>
+<script>
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const FG = "#111111", BLUE = "#1a56db", RED = "#c5221f", GREEN = "#137333", MUTED = "#5f6368", LINE = "#d9dce1", SOFT = "#f3f4f6";
+const ORANGE = "#e8590c", LEMON = "#b88a00", OR_SOFT = "#fde3d2", LE_SOFT = "#f8eec2", BLUE_SOFT = "#dbe6fc", GREY_SOFT = "#eceef1", RED_SOFT = "#fce8e6";
+const SVGNS = "http://www.w3.org/2000/svg";
+function S(tag, attrs = {}, text){
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs){
+    if (k === "font-size") e.style.fontSize = attrs[k] + "px"; // the stylesheet sets svg text size, so this has to be a style
+    else e.setAttribute(k, attrs[k]);
+  }
+  if (text != null) e.textContent = text;
+  return e;
+}
+const fmt = (x, d = 1) => { const s = Number(x).toFixed(d); return (+s === 0 ? Math.abs(+s).toFixed(d) : s).replace("-", "−"); };
+const pct = x => Math.round(x * 100) + "%";
+let clipN = 0;
+
+/* axes + clipped drawing area, returns scales */
+function plot(svg, o){
+  svg.innerHTML = "";
+  const H = +svg.getAttribute("viewBox").split(" ")[3];
+  const L = o.L ?? 68, R = o.R ?? 624, T = 16, B = H - (o.bot ?? 50);
+  const X = v => L + (v - o.x0) / (o.x1 - o.x0) * (R - L);
+  const Y = v => B - (v - o.y0) / (o.y1 - o.y0) * (B - T);
+  const Xi = p => o.x0 + (p - L) / (R - L) * (o.x1 - o.x0);
+  const Yi = p => o.y0 + (B - p) / (B - T) * (o.y1 - o.y0);
+  const ax = S("g"); svg.append(ax);
+  (o.yt || []).forEach(t => {
+    ax.append(S("line", {x1:L, x2:R, y1:Y(t), y2:Y(t), stroke:LINE}));
+    ax.append(S("text", {x:L - 8, y:Y(t) + 4, "text-anchor":"end"}, o.yf ? o.yf(t) : t));
+  });
+  (o.xt || []).forEach(t => {
+    ax.append(S("line", {x1:X(t), x2:X(t), y1:B, y2:B + 5, stroke:FG}));
+    ax.append(S("text", {x:X(t), y:B + 20, "text-anchor":"middle"}, o.xf ? o.xf(t) : t));
+  });
+  ax.append(S("line", {x1:L, x2:R, y1:B, y2:B, stroke:FG}));
+  if (o.xlab) ax.append(S("text", {x:(L + R) / 2, y:B + 42, "text-anchor":"middle"}, o.xlab));
+  if (o.ylab) ax.append(S("text", {x:14, y:(T + B) / 2, "text-anchor":"middle", transform:`rotate(-90 14 ${(T + B) / 2})`}, o.ylab));
+  const id = "clip" + (clipN++);
+  const defs = S("defs"), cp = S("clipPath", {id});
+  cp.append(S("rect", {x:L, y:T - 8, width:R - L, height:B - T + 8}));
+  defs.append(cp); svg.append(defs);
+  const under = S("g", {"clip-path":`url(#${id})`}); svg.insertBefore(under, ax);
+  const clip = S("g", {"clip-path":`url(#${id})`}); svg.append(clip);
+  const top = S("g"); svg.append(top);
+  return { X, Y, Xi, Yi, L, R, T, B, under, clip, top, o, svg };
+}
+function svgPoint(svg, e){
+  const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
+  return p.matrixTransform(svg.getScreenCTM().inverse());
+}
+function bindSlider(id, fmtFn, cb){
+  const s = $("#" + id), n = $("#n" + id.slice(1));
+  const upd = () => { n.textContent = fmtFn(+s.value); cb(+s.value); };
+  s.addEventListener("input", upd);
+  return { el: s, upd, set: v => { s.value = v; upd(); } };
+}
+function range(a, b, s = 1){ const r = []; for (let v = a; v <= b + 1e-9; v += s) r.push(+v.toFixed(6)); return r; }
+/* buttons in a group that behave like tabs */
+function tabs(sel, attr, cb){
+  const box = $(sel);
+  const set = v => { $$("button[data-" + attr + "]", box).forEach(b => b.classList.toggle("on", b.dataset[attr] === String(v))); cb(v); };
+  box.addEventListener("click", e => { const b = e.target.closest("button[data-" + attr + "]"); if (b) set(b.dataset[attr]); });
+  return set;
+}
+
+/* ---------- the frozen lake ---------- */
+const MAPSTR = ["SFFF", "FHFH", "FFFH", "HFFG"];
+const GOAL = 15;
+const isHole = s => MAPSTR[s >> 2][s & 3] === "H";
+const isEnd = s => s === GOAL || isHole(s);
+const DX = [-1, 0, 1, 0], DY = [0, 1, 0, -1];
+const ANAME = ["left", "down", "right", "up"], ARROW = ["←", "↓", "→", "↑"];
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function moveTo(s, a){
+  const x = Math.max(0, Math.min(3, (s & 3) + DX[a])), y = Math.max(0, Math.min(3, (s >> 2) + DY[a]));
+  return y * 4 + x;
+}
+/* on slippery ice the penguin goes the way it wants a third of the time, and slides to either side the rest */
+function envStep(s, a, slip, rnd){
+  let went = a;
+  if (slip){ const r = rnd(); went = r < 1 / 3 ? (a + 3) % 4 : r < 2 / 3 ? a : (a + 1) % 4; }
+  const s2 = moveTo(s, went);
+  return { s2, went, r: s2 === GOAL ? 1 : 0, done: isEnd(s2) };
+}
+/* first of the biggest, like np.argmax */
+const argmax = v => { let b = 0; for (let i = 1; i < v.length; i++) if (v[i] > v[b]) b = i; return b; };
+const zerosQ = () => Array.from({ length: 16 }, () => [0, 0, 0, 0]);
+
+/* an agent that learns one step at a time */
+function makeAgent(o){
+  const rnd = rng(o.seed || 1), Q = zerosQ(), wins = [];
+  let s = 0, ep = 0, t = 0;
+  return {
+    Q, wins,
+    get s(){ return s; }, get ep(){ return ep; }, get t(){ return t; },
+    step(){
+      const explore = rnd() < o.eps(ep);
+      const a = explore ? Math.floor(rnd() * 4) : argmax(Q[s]);
+      const st = envStep(s, a, o.slip, rnd);
+      const old = Q[s][a], best = Math.max(...Q[st.s2]);
+      Q[s][a] = old + o.alpha * (st.r + o.gamma * best - old);
+      const out = st.done || t + 1 >= 100;
+      const info = { s, a, s2: st.s2, went: st.went, r: st.r, old, best, now: Q[s][a], done: out, timeout: out && !st.done, explore, ep };
+      s = st.s2; t++;
+      if (out){ wins.push(st.r); ep++; s = 0; t = 0; }
+      return info;
+    },
+  };
+}
+function train(o){ const ag = makeAgent(o); while (ag.ep < o.episodes) ag.step(); return ag; }
+/* follow a policy with no exploring */
+function test(policy, slip, n, seed){
+  const rnd = rng(seed); let wins = 0;
+  for (let i = 0; i < n; i++){
+    let s = 0;
+    for (let t = 0; t < 100; t++){ const st = envStep(s, policy[s], slip, rnd); s = st.s2; if (st.done) break; }
+    if (s === GOAL) wins++;
+  }
+  return wins;
+}
+/* the Q-values the agent would end up with after a very long time */
+function solve(reward, gamma, slip){
+  const Q = zerosQ();
+  for (let it = 0; it < 2000; it++){
+    for (let s = 0; s < 16; s++){
+      if (isEnd(s)) continue;
+      for (let a = 0; a < 4; a++){
+        const outs = slip ? [(a + 3) % 4, a, (a + 1) % 4] : [a];
+        let q = 0;
+        outs.forEach(w => { const s2 = moveTo(s, w); q += (reward(s2) + (isEnd(s2) ? 0 : gamma * Math.max(...Q[s2]))) / outs.length; });
+        Q[s][a] = q;
+      }
+    }
+  }
+  return Q;
+}
+/* steps to the fish on the shortest way */
+const DIST = (() => {
+  const d = Array(16).fill(Infinity); d[GOAL] = 0; const q = [GOAL];
+  while (q.length){ const s = q.shift(); for (let p = 0; p < 16; p++) if (!isEnd(p) && d[p] === Infinity) for (let a = 0; a < 4; a++) if (moveTo(p, a) === s){ d[p] = d[s] + 1; q.push(p); break; } }
+  return d;
+})();
+
+/* ---------- slide navigation ---------- */
+const slides = $$(".slide");
+const onEnter = {};
+let cur = 0;
+function show(i){
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle("active", k === cur));
+  $("#count").textContent = `${cur + 1} / ${slides.length}`;
+  $("#prev").disabled = cur === 0;
+  $("#next").disabled = cur === slides.length - 1;
+  slides[cur].scrollTop = 0;
+  try { history.replaceState(null, "", "#" + (cur + 1)); } catch (e) {}
+  const st = $("#sr-status"), h = slides[cur].querySelector("h1");
+  if (st) st.textContent = `Slide ${cur + 1} of ${slides.length}: ${h ? h.textContent : ""}`;
+  if (onEnter[cur + 1]) onEnter[cur + 1]();
+}
+$("#prev").onclick = () => show(cur - 1);
+$("#next").onclick = () => show(cur + 1);
+document.addEventListener("keydown", e => {
+  const t = e.target.tagName;
+  if (t === "TEXTAREA" || t === "INPUT") return;
+  if (["ArrowRight","PageDown"].includes(e.key) || (e.key === " " && t !== "BUTTON")) { e.preventDefault(); show(cur + 1); }
+  if (["ArrowLeft","PageUp"].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+});
+
+function sorter(box, say, labels, items){
+  let done = 0, right = 0;
+  items.forEach(it => {
+    const c = document.createElement("div"); c.className = "card";
+    c.innerHTML = `<div class="q">${it.q}</div><div class="pick">${labels.map((l, i) => `<button data-i="${i}">${l}</button>`).join("")}</div><div class="why"><b>${labels[it.a]}.</b> ${it.why}</div>`;
+    c.querySelector(".pick").onclick = e => {
+      const b = e.target.closest("button"); if (!b || c.classList.contains("done")) return;
+      const ok = +b.dataset.i === it.a;
+      c.classList.add("done", ok ? "right" : "wrong");
+      b.classList.add("on");
+      $$("button", c).forEach(x => x.disabled = true);
+      done++; if (ok) right++;
+      say.textContent = done < items.length ? `${right} of ${done} right so far` : `You got ${right} of ${items.length} right`;
+    };
+    box.append(c);
+  });
+  say.textContent = "Pick an answer for each";
+}
+const fmtN = x => Math.round(x).toLocaleString("en-US");
+const CL = [BLUE, ORANGE, GREEN];
+/* run something the first time a slide is opened */
+function lazy(n, fn){ let done = false; onEnter[n] = () => { if (!done){ done = true; fn(); } }; }
+
+/* ---------- drawing the lake ---------- */
+const ICE = "#eef4fa", ICE_LINE = "#b7c9dc", WATER = "#2f6db5";
+function T(g, x, y, str, o = {}){
+  const t = S("text", {x, y, "text-anchor": o.anchor || "middle", "font-size": o.size || 13}, str);
+  if (o.fill) t.style.fill = o.fill;
+  if (o.bold) t.style.fontWeight = 700;
+  g.append(t); return t;
+}
+function fish(g, x, y, k = 1){
+  const f = S("g", {transform:`translate(${x} ${y}) scale(${k})`});
+  f.append(S("path", {d:"M 14 0 L 30 -12 L 30 12 Z", fill:ORANGE}));
+  f.append(S("ellipse", {cx:-2, cy:0, rx:21, ry:11.5, fill:ORANGE}));
+  f.append(S("circle", {cx:-12, cy:-3, r:2.4, fill:"#fff"}));
+  g.append(f); return f;
+}
+function penguin(g, x, y, k = 1){
+  const p = S("g"), b = S("g", {transform:`scale(${k})`});
+  b.append(S("ellipse", {cx:-7, cy:25, rx:6.5, ry:3.2, fill:ORANGE}));
+  b.append(S("ellipse", {cx:7, cy:25, rx:6.5, ry:3.2, fill:ORANGE}));
+  b.append(S("ellipse", {cx:0, cy:2, rx:17, ry:23, fill:FG, stroke:"#fff", "stroke-width":1.5}));
+  b.append(S("ellipse", {cx:0, cy:8, rx:10.5, ry:14.5, fill:"#fff"}));
+  b.append(S("circle", {cx:-5.5, cy:-11, r:2.2, fill:"#fff"}));
+  b.append(S("circle", {cx:5.5, cy:-11, r:2.2, fill:"#fff"}));
+  b.append(S("path", {d:"M -4.5 -6.5 L 4.5 -6.5 L 0 -0.5 Z", fill:ORANGE}));
+  p.append(b); g.append(p);
+  p.at = (px, py) => p.setAttribute("transform", `translate(${px} ${py})`);
+  p.at(x, y);
+  return p;
+}
+function arrowMark(g, x, y, a, o = {}){
+  const len = o.len || 30, col = o.col || FG, w = o.w || 3.5, h = o.head || 9;
+  const dx = DX[a], dy = DY[a];
+  const x1 = x - dx * len / 2, y1 = y - dy * len / 2, x2 = x + dx * len / 2, y2 = y + dy * len / 2;
+  const grp = S("g", {opacity: o.opacity == null ? 1 : o.opacity});
+  grp.append(S("line", {x1, y1, x2: x2 - dx * h * .6, y2: y2 - dy * h * .6, stroke:col, "stroke-width":w, "stroke-linecap":"round"}));
+  grp.append(S("path", {d:`M ${x2} ${y2} L ${x2 - dx * h - dy * h * .65} ${y2 - dy * h - dx * h * .65} L ${x2 - dx * h + dy * h * .65} ${y2 - dy * h + dx * h * .65} Z`, fill:col}));
+  g.append(grp); return grp;
+}
+function lake(svg, o = {}){
+  if (!o.into) svg.innerHTML = "";
+  const C = 100, M = 15;
+  const X = s => M + (s & 3) * C, Y = s => M + (s >> 2) * C;
+  const cx = s => X(s) + C / 2, cy = s => Y(s) + C / 2;
+  const base = S("g"), mid = S("g"), top = S("g"); (o.into || svg).append(base, mid, top);
+  for (let s = 0; s < 16; s++){
+    base.append(S("rect", {x:X(s), y:Y(s), width:C, height:C, fill:ICE, stroke:ICE_LINE, "stroke-width":1.5}));
+    if (isHole(s)) base.append(S("circle", {cx:cx(s), cy:cy(s), r:33, fill:WATER, stroke:"#a9c6e8", "stroke-width":6}));
+    if (s === GOAL) fish(base, cx(s), cy(s));
+    if (o.nums) T(base, X(s) + 7, Y(s) + 18, s, {anchor:"start", fill:MUTED, size:13});
+  }
+  if (o.start) T(base, X(0) + 7, Y(0) + 18, "start", {anchor:"start", fill:MUTED, size:13});
+  const cell = e => { const p = svgPoint(svg, e), i = Math.floor((p.x - M) / C), j = Math.floor((p.y - M) / C); return i < 0 || i > 3 || j < 0 || j > 3 ? -1 : j * 4 + i; };
+  return { C, M, X, Y, cx, cy, base, mid, top, cell, svg };
+}
+/* the four Q-values of each square, drawn as four triangles */
+function qCells(L, Q, o = {}){
+  let top = 0; Q.forEach(r => r.forEach(v => { top = Math.max(top, Math.abs(v)); })); top = Math.max(top, 1);
+  for (let s = 0; s < 16; s++){
+    if (isEnd(s)) continue;
+    const x = L.X(s), y = L.Y(s), C = L.C, mx = x + C / 2, my = y + C / 2;
+    const tri = [`${x},${y} ${x},${y + C} ${mx},${my}`, `${x},${y + C} ${x + C},${y + C} ${mx},${my}`, `${x + C},${y} ${x + C},${y + C} ${mx},${my}`, `${x},${y} ${x + C},${y} ${mx},${my}`];
+    const tp = [[x + 21, my + 5], [mx, y + C - 11], [x + C - 21, my + 5], [mx, y + 21]];
+    const best = Math.max(...Q[s]);
+    for (let a = 0; a < 4; a++){
+      const v = Q[s][a];
+      L.mid.append(S("polygon", {points:tri[a], fill:BLUE, "fill-opacity":Math.min(.6, Math.abs(v) / top * .6), stroke:ICE_LINE, "stroke-width":1}));
+      const isBest = best > 1e-9 && v > best - 1e-9;
+      T(L.mid, tp[a][0], tp[a][1], fmt(v, 2), {size:13, bold:isBest, fill:v === 0 ? MUTED : FG});
+    }
+    if (o.sel === s) L.mid.append(S("rect", {x:x + 2, y:y + 2, width:C - 4, height:C - 4, fill:"none", stroke:FG, "stroke-width":3.5}));
+    if (o.hi && o.hi[0] === s) L.mid.append(S("polygon", {points:tri[o.hi[1]], fill:"none", stroke:ORANGE, "stroke-width":3.5, "stroke-linejoin":"round"}));
+  }
+}
+const lastN = (wins, n) => wins.slice(-n).reduce((a, b) => a + b, 0);
+const SHRINK = ep => Math.max(0.05, 1 - ep / 2000);
+
+/* ---------- 1: watch it learn ---------- */
+(function(){
+  const svg = $("#v-1"), out = $("#r-1"), bars = $("#r-1b"), btn = $("#b-1");
+  const N = 4000;
+  let ag, L, pg, timer = 0;
+  function bar(k){ bars.innerHTML = `<span class="lab">fish in the last 100 episodes</span><div class="track"><div class="fill b" style="width:${k}%"></div></div><span class="n">${k}</span>`; }
+  function reset(){
+    clearTimeout(timer); btn.disabled = false;
+    ag = makeAgent({ seed: 8, alpha: .5, gamma: .9, eps: SHRINK });
+    L = lake(svg, {start:true}); pg = penguin(L.top, L.cx(0), L.cy(0));
+    bar(0);
+    out.textContent = "It hasn't learned anything yet";
+  }
+  function tick(){
+    const d = 90 * Math.pow(.8, ag.ep);
+    const n = d >= 16 ? 1 : Math.min(700, Math.round(16 / d));
+    let info;
+    for (let i = 0; i < n && ag.ep < N; i++) info = ag.step();
+    pg.at(L.cx(info.s2), L.cy(info.s2));
+    bar(lastN(ag.wins, 100));
+    if (ag.ep >= N) return finale();
+    out.textContent = `Episode ${fmtN(ag.ep + 1)} of ${fmtN(N)}`;
+    timer = setTimeout(tick, Math.max(16, d));
+  }
+  function finale(){
+    let s = 0;
+    pg.at(L.cx(0), L.cy(0));
+    out.textContent = `After ${fmtN(N)} episodes, this is what it does`;
+    const walk = () => {
+      s = moveTo(s, argmax(ag.Q[s]));
+      pg.at(L.cx(s), L.cy(s));
+      if (s === GOAL){ out.innerHTML = `After ${fmtN(N)} episodes it walks <b>straight to the fish</b>`; return; }
+      timer = setTimeout(walk, 330);
+    };
+    timer = setTimeout(walk, 700);
+  }
+  btn.onclick = () => { btn.disabled = true; tick(); };
+  $("#b-1r").onclick = reset;
+  reset();
+})();
+
+/* ---------- 7: the discount ---------- */
+(function(){
+  const svg = $("#v-7"), out = $("#r-7");
+  function draw(g){
+    const L = lake(svg);
+    for (let s = 0; s < 16; s++){
+      if (isEnd(s)) continue;
+      const v = Math.pow(g, DIST[s] - 1);
+      L.mid.append(S("rect", {x:L.X(s) + 1, y:L.Y(s) + 1, width:L.C - 2, height:L.C - 2, fill:BLUE, "fill-opacity":v * .55}));
+      T(L.mid, L.cx(s), L.cy(s) + 8, fmt(v, 2), {size:23, bold:true});
+    }
+    T(L.mid, L.X(0) + 7, L.Y(0) + 18, "start", {anchor:"start", size:13});
+    const v0 = Math.pow(g, 5);
+    out.innerHTML = g === 1 ? `With γ = 1 the fish is worth 1 from every square, so a long path is as good as a short one`
+      : `From the start, the fish is worth <b>${fmt(v0, 2)}</b>. That is ${Array(5).fill(g).join(" × ")}.`;
+  }
+  bindSlider("s7", v => fmt(v, 2), draw).upd();
+})();
+
+/* ---------- 8: the Q-table ---------- */
+(function(){
+  const svg = $("#v-8"), out = $("#r-8"), bars = $("#r-8b");
+  const Q = solve(s => s === GOAL ? 1 : 0, .9, false);
+  let sel = 9, L;
+  function draw(){
+    L = lake(svg); qCells(L, Q, {sel});
+    const q = Q[sel], best = Math.max(...q);
+    bars.innerHTML = q.map((v, a) => `<span class="lab">${ANAME[a].padStart(5)}</span><div class="track"><div class="fill${v > best - 1e-9 ? " b" : ""}" style="width:${v * 100}%"></div></div><span class="n">${fmt(v, 2)}</span>`).join("");
+    const top = [0, 1, 2, 3].filter(a => q[a] > best - 1e-9).map(a => ANAME[a]);
+    const wet = [0, 1, 2, 3].filter(a => isHole(moveTo(sel, a))).map(a => ANAME[a]);
+    const cap = s => s[0].toUpperCase() + s.slice(1);
+    let t = top.length === 1 ? `The best action here is <b>${top[0]}</b>, with a Q-value of ${fmt(best, 2)}` : `<b>${cap(top.join(" and "))}</b> are equally good here, with a Q-value of ${fmt(best, 2)}`;
+    if (wet.length) t += `. Going ${wet.join(" or ")} has a Q-value of 0, because it ends in a hole.`;
+    out.innerHTML = t;
+  }
+  svg.addEventListener("click", e => { const s = L.cell(e); if (s < 0 || isEnd(s)) return; sel = s; draw(); });
+  draw();
+})();
+
+/* ---------- 9: Q-learning one step at a time ---------- */
+(function(){
+  const svg = $("#v-9"), out = $("#r-9"), calc = $("#c-9");
+  const A = .5, G = .9;
+  let ag, last;
+  function draw(){
+    const L = lake(svg);
+    qCells(L, ag.Q, {hi: last ? [last.s, last.a] : null});
+    const at = last && last.done ? last.s2 : ag.s;
+    penguin(L.top, L.cx(at), L.cy(at) - 1, .5);
+  }
+  function tell(){
+    if (!last){ calc.textContent = "Every Q-value starts at 0"; out.textContent = "Press Next step"; return; }
+    const i = last, target = i.r + G * i.best;
+    calc.textContent = `square ${i.s}, action ${ANAME[i.a]}, reward ${i.r}, next square ${i.s2}\n`
+      + `target = ${i.r} + ${G} × ${fmt(i.best, 2)} = ${fmt(target, 2)}\n`
+      + `new Q  = ${fmt(i.old, 2)} + ${A} × (${fmt(target, 2)} − ${fmt(i.old, 2)}) = ${fmt(i.now, 2)}`;
+    const changed = Math.abs(i.now - i.old) > 1e-9;
+    const what = changed ? `The Q-value outlined in orange changed.` : `No Q-value changed.`;
+    if (i.done) out.innerHTML = `Episode ${fmtN(i.ep + 1)} ` + (i.s2 === GOAL ? `<b>reached the fish</b>. ` : i.timeout ? `ran out of time. ` : `ended in a hole. `) + what;
+    else out.innerHTML = `Episode ${fmtN(i.ep + 1)}, step ${ag.t}. ` + what;
+  }
+  function reset(){ ag = makeAgent({ seed: 106, alpha: A, gamma: G, eps: SHRINK }); last = null; draw(); tell(); }
+  $("#b-9").onclick = () => { last = ag.step(); draw(); tell(); };
+  $("#b-9e").onclick = () => { do { last = ag.step(); } while (!last.done); draw(); tell(); };
+  $("#b-9k").onclick = () => {
+    const stop = ag.ep + 1000; while (ag.ep < stop) last = ag.step();
+    draw(); tell();
+    out.innerHTML = `${fmtN(ag.ep)} episodes so far. It reached the fish in <b>${lastN(ag.wins, 100)} of the last 100</b>.`;
+  };
+  $("#b-9r").onclick = reset;
+  reset();
+})();
+
+/* ---------- 10: four ways to set epsilon ---------- */
+lazy(17, function(){
+  const svg = $("#v-10"), out = $("#r-10");
+  const N = 4000, RUNS = 24, BIN = 100;
+  const MODES = { zero: ep => 0, low: ep => .1, one: ep => 1, shrink: SHRINK };
+  const NAME = { zero: "ε = 0", low: "ε = 0.1", one: "ε = 1", shrink: "shrinking ε" };
+  const curve = {}, end = {};
+  Object.keys(MODES).forEach(m => {
+    const sum = new Float64Array(N / BIN), runs = m === "zero" ? 1 : RUNS;
+    for (let r = 0; r < runs; r++){
+      const ag = train({ seed: 500 + r, alpha: .5, gamma: .9, eps: MODES[m], episodes: N });
+      ag.wins.forEach((w, i) => sum[Math.floor(i / BIN)] += w);
+    }
+    curve[m] = [...sum].map(v => v / runs / BIN);
+    end[m] = curve[m][curve[m].length - 1];
+  });
+  const SAY = {
+    zero: () => `With ε = 0 it never explores. Every Q-value starts at 0, so it keeps picking the first action and never leaves the start.`,
+    low: () => `With ε = 0.1 it explores too little to find the fish. With no reward, it learns nothing.`,
+    one: () => `With ε = 1 every move is random. It reaches the fish about 1 time in 70 and never gets better.`,
+    shrink: () => `It explores a lot at first, then less. By the end it reaches the fish in <b>${pct(end.shrink)}</b> of episodes.`,
+  };
+  function draw(m){
+    const A = plot(svg, { x0:0, x1:N, y0:0, y1:1, xt:[0, 1000, 2000, 3000, 4000], yt:[0, .25, .5, .75, 1], yf:pct, xf:fmtN, xlab:"episodes", ylab:"reached the fish", L:74, R:606 });
+    const line = (k, col, w) => A.clip.append(S("polyline", {points:curve[k].map((v, i) => `${A.X((i + .5) * BIN)},${A.Y(v)}`).join(" "), fill:"none", stroke:col, "stroke-width":w, "stroke-linejoin":"round"}));
+    Object.keys(MODES).filter(k => k !== m).forEach(k => line(k, "#b8bec7", 2));
+    line(m, BLUE, 3.5);
+    out.innerHTML = SAY[m]();
+  }
+  tabs("#p-10", "m", draw)("shrink");
+});
+
+/* ---------- 13: you get what you reward ---------- */
+(function(){
+  const svg = $("#v-13"), out = $("#r-13");
+  const R = {
+    fish: s => s === GOAL ? 1 : 0,
+    alive: s => isHole(s) ? 0 : 1,
+    hurry: s => (s === GOAL ? 1 : 0) - 1,
+  };
+  const POL = {}; Object.keys(R).forEach(k => POL[k] = solve(R[k], .9, false).map(argmax));
+  const SAY = {
+    fish: n => `It walks to the fish in ${n} steps`,
+    alive: () => `It stays at the start and walks into the edge forever. Reaching the fish would end the episode, and the points would stop.`,
+    hurry: n => `It jumps into the nearest hole. The walk to the fish costs more than the fish is worth, so ending the episode early loses fewer points.`,
+  };
+  let timer = 0;
+  function play(m){
+    clearTimeout(timer);
+    const L = lake(svg, {start:true}), pg = penguin(L.top, L.cx(0), L.cy(0)), pol = POL[m];
+    const score = T(L.top, L.X(3) + L.C - 8, L.Y(0) + 20, "reward so far: 0", {anchor:"end", size:14, bold:true});
+    let s = 0, n = 0, tot = 0;
+    out.textContent = "Watch what it learned";
+    const walk = () => {
+      const s2 = moveTo(s, pol[s]); n++; tot += R[m](s2);
+      const bump = s2 === s; s = s2;
+      pg.at(L.cx(s) + (bump ? -9 : 0), L.cy(s));
+      if (bump) setTimeout(() => pg.at(L.cx(s), L.cy(s)), 170);
+      score.textContent = `reward so far: ${String(tot).replace("-", "−")}`;
+      if (isEnd(s) || n >= 12){ out.innerHTML = SAY[m](n); return; }
+      timer = setTimeout(walk, 380);
+    };
+    timer = setTimeout(walk, 600);
+  }
+  tabs("#p-13", "m", play);
+  lake(svg, {start:true}); penguin(svg, 65, 65);
+  out.textContent = "Pick a reward";
+})();
+
+/* ---------- 14: how many states ---------- */
+(function(){
+  const svg = $("#v-14");
+  const ROWS = [["Frozen lake", 1.2, "16"], ["Taxi (homework)", 2.7, "500"], ["Backgammon", 20, "10²⁰"], ["Chess", 44, "10⁴⁴"], ["Go", 170, "10¹⁷⁰"]];
+  const L = 132, R = 590, X = v => L + v / 180 * (R - L), top = 34, h = 26, gap = 15;
+  [0, 50, 100, 150].forEach(t => {
+    svg.append(S("line", {x1:X(t), x2:X(t), y1:top - 10, y2:top + ROWS.length * (h + gap) - gap + 8, stroke:LINE}));
+    T(svg, X(t), top + ROWS.length * (h + gap) + 12, t === 0 ? "1" : "10" + String(t).replace(/\d/g, d => "⁰¹²³⁴⁵⁶⁷⁸⁹"[d]));
+  });
+  T(svg, (L + R) / 2, top + ROWS.length * (h + gap) + 38, "number of states");
+  ROWS.forEach(([name, v, lab], i) => {
+    const y = top + i * (h + gap);
+    T(svg, L - 10, y + h / 2 + 5, name, {anchor:"end", size:14});
+    svg.append(S("rect", {x:L, y, width:Math.max(4, X(v) - L), height:h, rx:3, fill:BLUE}));
+    T(svg, X(v) + 8, y + h / 2 + 5, lab, {anchor:"start", size:14, bold:true});
+  });
+  const ax = X(80), yb = top + ROWS.length * (h + gap) - gap + 8;
+  svg.append(S("line", {x1:ax, x2:ax, y1:top - 10, y2:yb, stroke:ORANGE, "stroke-width":2.5, "stroke-dasharray":"6 5"}));
+  T(svg, ax, top - 16, "atoms in the universe", {fill:ORANGE, size:14, bold:true});
+})();
+
+
+/* ---------- helpers for the new demos ---------- */
+function arrowLine(g, x1, y1, x2, y2, col = BLUE, w = 4){
+  const d = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / d, uy = (y2 - y1) / d, h = 12;
+  g.append(S("line", {x1, y1, x2: x2 - ux * h * .7, y2: y2 - uy * h * .7, stroke:col, "stroke-width":w, "stroke-linecap":"round"}));
+  g.append(S("path", {d:`M ${x2} ${y2} L ${x2 - ux * h - uy * h * .6} ${y2 - uy * h + ux * h * .6} L ${x2 - ux * h + uy * h * .6} ${y2 - uy * h - ux * h * .6} Z`, fill:col}));
+}
+/* every outcome of an action: [chance, next state] */
+function outcomes(s, a, slip){
+  const m = new Map();
+  (slip ? [(a + 3) % 4, a, (a + 1) % 4] : [a]).forEach(w => { const s2 = moveTo(s, w); m.set(s2, (m.get(s2) || 0) + (slip ? 1 / 3 : 1)); });
+  return [...m.entries()].map(([s2, p]) => [p, s2]);
+}
+const chanceWord = p => p > .99 ? "always" : p > .6 ? "2 times in 3" : "1 time in 3";
+const OPT_Q = solve(s => s === GOAL ? 1 : 0, .9, false);
+const OPT_V = OPT_Q.map(q => Math.max(...q));
+const OPT_POL = OPT_Q.map(argmax);
+const tableHTML = (head, rows) => `<table class="tbl sm"><thead><tr>${head.map(h => `<th>${h}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+
+/* ---------- the loop ---------- */
+(function(){
+  const svg = $("#v-loop"), out = $("#r-loop"), btn = $("#b-loop");
+  const PATH = [0, 4, 8, 9, 13, 14, 15], ACT = [1, 1, 2, 1, 2, 2];
+  let k;
+  function draw(){
+    svg.innerHTML = "";
+    const i = Math.floor(k / 2), acting = k % 2 === 1, s = PATH[i], over = s === GOAL;
+    // boxes
+    svg.append(S("rect", {x:30, y:120, width:170, height:110, rx:10, fill:"#fff", stroke:FG, "stroke-width":2.5}));
+    T(svg, 115, 148, "Agent", {size:17, bold:true});
+    penguin(svg, 115, 190, .9);
+    svg.append(S("rect", {x:410, y:55, width:200, height:240, rx:10, fill:"#fff", stroke:FG, "stroke-width":2.5}));
+    T(svg, 510, 83, "Environment", {size:17, bold:true});
+    const g = S("g", {transform:"translate(425 98) scale(.395)"}); svg.append(g);
+    const L = lake(svg, {into:g});
+    penguin(L.top, L.cx(s), L.cy(s), 1.25);
+    // arrows
+    const colA = acting ? BLUE : "#b8bec7", colB = acting ? "#b8bec7" : BLUE;
+    svg.append(S("path", {d:"M 115 120 C 115 40, 300 30, 398 100", fill:"none", stroke:colA, "stroke-width":acting ? 5 : 3}));
+    svg.append(S("path", {d:"M 410 104 L 392 104 L 400 88 Z", fill:colA}));
+    svg.append(S("path", {d:"M 410 250 C 300 320, 115 320, 115 242", fill:"none", stroke:colB, "stroke-width":acting ? 3 : 5}));
+    svg.append(S("path", {d:"M 115 230 L 106 248 L 124 248 Z", fill:colB}));
+    T(svg, 255, 38, acting ? `action: ${ANAME[ACT[i]]}` : "action", {size:16, bold:acting, fill:acting ? BLUE : MUTED});
+    const r = i === 0 ? null : (s === GOAL ? 1 : 0);
+    T(svg, 262, 322, acting ? "state, reward" : (r === null ? `state: ${s}` : `reward: ${r},  state: ${s}`), {size:16, bold:!acting, fill:acting ? MUTED : BLUE});
+    out.innerHTML = acting ? `The agent picks an action: <b>${ANAME[ACT[i]]}</b>`
+      : i === 0 ? `The agent sees <b>state 0</b>`
+      : over ? `The environment gives back <b>reward 1</b> and state 15. The penguin reached the fish, so the episode is over.`
+      : `The environment gives back <b>reward 0</b> and <b>state ${s}</b>`;
+    btn.disabled = over;
+  }
+  btn.onclick = () => { k++; draw(); };
+  $("#b-loopr").onclick = () => { k = 0; draw(); };
+  k = 0; draw();
+})();
+
+/* ---------- you are the agent ---------- */
+(function(){
+  const svg = $("#v-play"), log = $("#c-play"), out = $("#r-play"), pad = $("#p-play");
+  let s, rows, over, L, pg;
+  const moves = () => $$("button[data-a]", pad);
+  const show = () => { log.innerHTML = tableHTML(["step", "state", "action", "reward", "next state"], rows.slice(-4)); };
+  function reset(){
+    s = 0; rows = []; over = false;
+    L = lake(svg, {nums:true}); pg = penguin(L.top, L.cx(0), L.cy(0));
+    show();
+    out.textContent = "The penguin is in state 0";
+    moves().forEach(b => b.disabled = false);
+    $("#b-playr").classList.remove("primary");
+  }
+  pad.addEventListener("click", e => {
+    const b = e.target.closest("button[data-a]"); if (!b || over) return;
+    const a = +b.dataset.a, st = envStep(s, a, false);
+    rows.push([rows.length + 1, s, ANAME[a], st.r, st.s2]); show();
+    s = st.s2; pg.at(L.cx(s), L.cy(s));
+    if (st.done){
+      over = true;
+      moves().forEach(x => x.disabled = true);
+      $("#b-playr").classList.add("primary");
+      out.innerHTML = s === GOAL ? `You reached the fish and got a <b>reward of 1</b>. The episode is over.` : `You fell in a hole. The episode is over, with no reward.`;
+    } else out.textContent = `The penguin is in state ${s}`;
+  });
+  $("#b-playr").onclick = reset;
+  reset();
+})();
+
+/* ---------- transitions ---------- */
+(function(){
+  const svg = $("#v-tr"), box = $("#c-tr");
+  let s = 9, a = 1, slip = true, L;
+  function draw(){
+    L = lake(svg, {nums:true});
+    L.mid.append(S("rect", {x:L.X(s) + 2, y:L.Y(s) + 2, width:L.C - 4, height:L.C - 4, fill:"none", stroke:FG, "stroke-width":3.5}));
+    const outs = outcomes(s, a, slip), frac = p => p > .99 ? "always" : p > .6 ? "2 in 3" : "1 in 3";
+    outs.forEach(([p, s2]) => {
+      if (s2 === s){ T(L.top, L.cx(s), L.Y(s) + L.C - 10, `stays: ${frac(p)}`, {size:13, bold:true, fill:BLUE}); return; }
+      const dx = Math.sign(L.cx(s2) - L.cx(s)), dy = Math.sign(L.cy(s2) - L.cy(s));
+      arrowLine(L.top, L.cx(s) + dx * 30, L.cy(s) + dy * 30, L.cx(s2) - dx * 22, L.cy(s2) - dy * 22);
+      const lab = T(L.top, L.cx(s2) + dx * 8, L.cy(s2) + dy * 8 + (dy ? (dy > 0 ? 22 : -10) : 30), frac(p), {size:14, bold:true, fill:isHole(s2) ? "#fff" : BLUE});
+    });
+    penguin(L.top, L.cx(s), L.cy(s) - 4, .7);
+    $$("#p-tra button").forEach(b => b.classList.toggle("on", +b.dataset.a === a));
+    box.innerHTML = tableHTML(["chance", "next state", "reward"], outs.map(([p, s2]) => [chanceWord(p), s2 + (isHole(s2) ? " (hole)" : s2 === GOAL ? " (fish)" : ""), s2 === GOAL ? 1 : 0]));
+  }
+  svg.addEventListener("click", e => { const c = L.cell(e); if (c < 0 || isEnd(c)) return; s = c; draw(); });
+  $("#p-tra").addEventListener("click", e => { const b = e.target.closest("button[data-a]"); if (!b) return; a = +b.dataset.a; draw(); });
+  tabs("#p-tr", "m", m => { slip = m === "slip"; draw(); })("slip");
+})();
+
+/* ---------- the Markov property ---------- */
+sorter($("#v-mk"), $("#r-mk"), ["Yes", "No"], [
+  { q:"<b>Problem:</b> pick the next move in chess<br><b>State:</b> where every piece is on the board", a:0, why:"The best move depends on the board, not on the moves that led to it." },
+  { q:"<b>Problem:</b> catch a ball<br><b>State:</b> one photo of the ball in the air", a:1, why:"One photo doesn't show which way the ball is moving or how fast. Adding its speed and direction to the state fixes this." },
+  { q:"<b>Problem:</b> get out of a maze where a key opens the exit<br><b>State:</b> the square you are on", a:1, why:"The best move depends on whether you have the key. Adding that to the state fixes this." },
+]);
+
+/* ---------- draw a policy ---------- */
+(function(){
+  const svg = $("#v-pol"), out = $("#r-pol"), btn = $("#b-pol");
+  let pol, L, pg, timer = 0, busy = false;
+  function draw(){
+    L = lake(svg, {start:true});
+    for (let s = 0; s < 16; s++) if (!isEnd(s)) arrowMark(L.mid, L.cx(s), L.cy(s) + 6, pol[s]);
+  }
+  function stop(){ clearTimeout(timer); busy = false; btn.disabled = false; }
+  function reset(){ stop(); pol = Array(16).fill(2); draw(); out.textContent = "This policy says to go right on every square"; }
+  svg.addEventListener("click", e => {
+    if (busy) return;
+    const s = L.cell(e); if (s < 0 || isEnd(s)) return;
+    pol[s] = (pol[s] + 1) % 4; draw();
+    out.textContent = "Press Follow the policy to try it";
+  });
+  btn.onclick = () => {
+    busy = true; btn.disabled = true; draw();
+    pg = penguin(L.top, L.cx(0), L.cy(0), .8);
+    let s = 0, n = 0; const seen = new Set([0]);
+    out.textContent = "Following the policy";
+    const walk = () => {
+      const s2 = moveTo(s, pol[s]); n++;
+      pg.at(L.cx(s2), L.cy(s2));
+      if (s2 === GOAL){ out.innerHTML = n === 6 ? `It reached the fish in <b>6 steps</b>. No policy is faster.` : `It reached the fish in <b>${n} steps</b>. The fastest policy takes 6.`; return stop(); }
+      if (isHole(s2)){ out.innerHTML = `It fell in a hole on step ${n}`; return stop(); }
+      if (s2 === s){ out.innerHTML = `This arrow points at the edge, so the penguin is stuck`; return stop(); }
+      if (seen.has(s2)){ out.innerHTML = `It is back on a square it already visited, so it will go in circles`; return stop(); }
+      seen.add(s2); s = s2;
+      timer = setTimeout(walk, 380);
+    };
+    timer = setTimeout(walk, 450);
+  };
+  $("#b-polr").onclick = reset;
+  reset();
+})();
+
+/* ---------- the value of each state under a policy ---------- */
+(function(){
+  const svg = $("#v-val"), out = $("#r-val");
+  let pol, L;
+  function value(s){
+    const seen = new Set();
+    for (let n = 1; n <= 20; n++){
+      if (seen.has(s)) return 0; seen.add(s);
+      const s2 = moveTo(s, pol[s]);
+      if (s2 === GOAL) return Math.pow(.9, n - 1);
+      if (isHole(s2) || s2 === s) return 0;
+      s = s2;
+    }
+    return 0;
+  }
+  function draw(){
+    L = lake(svg);
+    for (let s = 0; s < 16; s++){
+      if (isEnd(s)) continue;
+      const v = value(s);
+      L.mid.append(S("rect", {x:L.X(s) + 1, y:L.Y(s) + 1, width:L.C - 2, height:L.C - 2, fill:BLUE, "fill-opacity":v * .55}));
+      arrowMark(L.mid, L.cx(s), L.cy(s) - 12, pol[s], {len:26, w:3});
+      T(L.mid, L.cx(s), L.cy(s) + 32, fmt(v, 2), {size:19, bold:true});
+    }
+    const v0 = value(0);
+    out.innerHTML = v0 === 0 ? `The start has a value of <b>0.00</b>, because this policy never reaches the fish from there`
+      : v0 > .59 ? `The start has a value of <b>${fmt(v0, 2)}</b>. No policy gives it a higher value.`
+      : `The start has a value of <b>${fmt(v0, 2)}</b>. A faster path to the fish would make it higher.`;
+  }
+  svg.addEventListener("click", e => { const s = L.cell(e); if (s < 0 || isEnd(s)) return; pol[s] = (pol[s] + 1) % 4; draw(); });
+  $("#b-valb").onclick = () => { pol = OPT_POL.slice(); draw(); };
+  $("#b-valr").onclick = () => { pol = Array(16).fill(2); draw(); };
+  pol = Array(16).fill(2); draw();
+})();
+
+/* ---------- the Bellman equation ---------- */
+(function(){
+  const svg = $("#v-bell"), calc = $("#c-bell");
+  let sel = 9, L;
+  function draw(){
+    L = lake(svg);
+    for (let s = 0; s < 16; s++){
+      if (isEnd(s)) continue;
+      L.mid.append(S("rect", {x:L.X(s) + 1, y:L.Y(s) + 1, width:L.C - 2, height:L.C - 2, fill:BLUE, "fill-opacity":OPT_V[s] * .55}));
+      T(L.mid, L.cx(s), L.cy(s) + 8, fmt(OPT_V[s], 2), {size:23, bold:true});
+    }
+    const a = OPT_POL[sel], s2 = moveTo(sel, a);
+    L.top.append(S("rect", {x:L.X(sel) + 2, y:L.Y(sel) + 2, width:L.C - 4, height:L.C - 4, fill:"none", stroke:FG, "stroke-width":3.5}));
+    arrowLine(L.top, L.cx(sel) + DX[a] * 36, L.cy(sel) + DY[a] * 30, L.cx(s2) - DX[a] * 36, L.cy(s2) - DY[a] * 30, ORANGE);
+    calc.textContent = s2 === GOAL
+      ? `From square ${sel}, the best action is ${ANAME[a]}. It reaches the fish.\nThe episode ends there, so there is no next value.\nvalue = 1 + 0.9 × 0 = 1.00`
+      : `From square ${sel}, the best action is ${ANAME[a]}. It leads to square ${s2}.\nvalue = 0 + 0.9 × ${fmt(OPT_V[s2], 2)} = ${fmt(OPT_V[sel], 2)}`;
+  }
+  svg.addEventListener("click", e => { const s = L.cell(e); if (s < 0 || isEnd(s)) return; sel = s; draw(); });
+  draw();
+})();
+
+/* ---------- value iteration ---------- */
+(function(){
+  const svg = $("#v-vi"), out = $("#r-vi"), btn = $("#b-vi");
+  let V, n, slip = false, done;
+  const qOf = (s, a) => outcomes(s, a, slip).reduce((t, [p, s2]) => t + p * ((s2 === GOAL ? 1 : 0) + (isEnd(s2) ? 0 : .9 * V[s2])), 0);
+  const policy = () => V.map((v, s) => argmax([0, 1, 2, 3].map(a => qOf(s, a))));
+  function draw(){
+    const L = lake(svg), pol = policy();
+    for (let s = 0; s < 16; s++){
+      if (isEnd(s)) continue;
+      L.mid.append(S("rect", {x:L.X(s) + 1, y:L.Y(s) + 1, width:L.C - 2, height:L.C - 2, fill:BLUE, "fill-opacity":Math.min(1, V[s]) * .55}));
+      T(L.mid, L.cx(s), L.cy(s) + (V[s] > 0 ? 32 : 8), fmt(V[s], 2), {size:V[s] > 0 ? 19 : 23, bold:true, fill:V[s] > 0 ? FG : MUTED});
+      if (V[s] > 1e-6) arrowMark(L.mid, L.cx(s), L.cy(s) - 12, pol[s], {len:26, w:3});
+    }
+    btn.disabled = done; $("#b-vie").disabled = done;
+    if (n === 0) out.textContent = "Every value starts at 0";
+    else if (!done) out.innerHTML = `After ${n} ${n === 1 ? "sweep" : "sweeps"}`;
+    else {
+      const wins = test(pol, slip, 2000, 11);
+      out.innerHTML = `The values stopped changing after <b>${n} sweeps</b>. ` + (slip
+        ? `On slippery ice no policy is safe. This one reaches the fish about ${Math.round(wins / 20)} times in 100.`
+        : `Following the arrows reaches the fish every time.`);
+    }
+  }
+  function sweep(){
+    const W = V.map((v, s) => isEnd(s) ? 0 : Math.max(...[0, 1, 2, 3].map(a => qOf(s, a))));
+    const change = Math.max(...W.map((w, s) => Math.abs(w - V[s])));
+    if (change < 5e-4){ done = true; return; }
+    V = W; n++;
+  }
+  function reset(){ V = Array(16).fill(0); n = 0; done = false; draw(); }
+  btn.onclick = () => { sweep(); draw(); };
+  $("#b-vie").onclick = () => { while (!done) sweep(); draw(); };
+  $("#b-vir").onclick = reset;
+  tabs("#p-vi", "m", m => { slip = m === "slip"; reset(); })("normal");
+})();
+
+/* ---------- Q-learning and SARSA on the cliff ---------- */
+lazy(19, function(){
+  const svg = $("#v-cliff"), out = $("#r-cliff");
+  const W = 12, H = 4, START = 36, END = 47, C = 50, MX = 20, MY = 22;
+  const isCliff = s => s > 36 && s < 47;
+  const mv = (s, a) => Math.max(0, Math.min(H - 1, Math.floor(s / W) + DY[a])) * W + Math.max(0, Math.min(W - 1, (s % W) + DX[a]));
+  function learn(sarsa, seed){
+    const rnd = rng(seed), Q = Array.from({ length: W * H }, () => [0, 0, 0, 0]), tot = [];
+    const pick = s => rnd() < .1 ? Math.floor(rnd() * 4) : argmax(Q[s]);
+    for (let ep = 0; ep < 500; ep++){
+      let s = START, a = pick(s), R = 0;
+      for (let t = 0; t < 500; t++){
+        const s2 = mv(s, a), fell = isCliff(s2), over = fell || s2 === END, r = fell ? -100 : -1; R += r;
+        const a2 = pick(s2), next = over ? 0 : sarsa ? Q[s2][a2] : Math.max(...Q[s2]);
+        Q[s][a] += .5 * (r + next - Q[s][a]);
+        s = s2; a = a2; if (over) break;
+      }
+      tot.push(R);
+    }
+    return { Q, avg: tot.slice(-100).reduce((x, y) => x + y, 0) / 100 };
+  }
+  const RES = {};
+  [["q", false], ["sarsa", true]].forEach(([k, sarsa]) => {
+    const one = learn(sarsa, 3); let s = START; const path = [s];
+    for (let i = 0; i < 40 && s !== END && !isCliff(s); i++){ s = mv(s, argmax(one.Q[s])); path.push(s); }
+    let avg = 0; for (let seed = 1; seed <= 20; seed++) avg += learn(sarsa, seed).avg / 20;
+    RES[k] = { path, avg: Math.round(avg) };
+  });
+  const cx = s => MX + (s % W) * C + C / 2, cy = s => MY + Math.floor(s / W) * C + C / 2;
+  function draw(m){
+    svg.innerHTML = "";
+    for (let s = 0; s < W * H; s++) svg.append(S("rect", {x:cx(s) - C / 2, y:cy(s) - C / 2, width:C, height:C, fill:isCliff(s) ? WATER : ICE, stroke:ICE_LINE, "stroke-width":1.5}));
+    T(svg, (cx(37) + cx(46)) / 2, cy(40) + 6, "cliff", {size:16, bold:true, fill:"#fff"});
+    T(svg, cx(START), cy(START) + 5, "start", {size:13});
+    T(svg, cx(END), cy(END) + 5, "goal", {size:13, bold:true});
+    const p = RES[m].path;
+    svg.append(S("polyline", {points:p.slice(0, -1).map(s => `${cx(s)},${cy(s) - (s === START ? 16 : 0)}`).join(" "), fill:"none", stroke:BLUE, "stroke-width":5, "stroke-linejoin":"round", "stroke-linecap":"round"}));
+    const a = p[p.length - 2], b = p[p.length - 1];
+    arrowLine(svg, cx(a), cy(a), cx(b), cy(b) - 16, BLUE, 5);
+    const steps = p.length - 1, avg = String(RES[m].avg).replace("-", "−");
+    out.innerHTML = m === "q"
+      ? `Q-learning learns the shortest path, ${steps} steps along the edge of the cliff. But its random moves often push it off. While training, its average reward per episode was <b>${avg}</b>.`
+      : `SARSA learns a longer path, ${steps} steps, far from the cliff. It knows it will sometimes make a random move, so it stays safe. While training, its average reward per episode was <b>${avg}</b>.`;
+  }
+  tabs("#p-cliff", "m", draw)("q");
+});
+
+/* ---------- policy gradient ---------- */
+(function(){
+  const svg = $("#v-pg"), out = $("#r-pg");
+  let th, rnd, wins;
+  const probs = s => { const m = Math.max(...th[s]), e = th[s].map(v => Math.exp(v - m)), z = e.reduce((a, b) => a + b, 0); return e.map(v => v / z); };
+  function episode(){
+    let s = 0, R = 0; const steps = [];
+    for (let t = 0; t < 100; t++){
+      const p = probs(s); let u = rnd(), a = 0; while (a < 3 && u > p[a]){ u -= p[a]; a++; }
+      const st = envStep(s, a, false, rnd); steps.push([s, a]); s = st.s2; R = st.r; if (st.done) break;
+    }
+    wins.push(R);
+    // after a win, every action on the way gets more likely. the later ones get the biggest push
+    if (R > 0) steps.forEach(([s, a], t) => { const G = Math.pow(.9, steps.length - 1 - t), p = probs(s); for (let b = 0; b < 4; b++) th[s][b] += G * ((b === a ? 1 : 0) - p[b]); });
+  }
+  function draw(){
+    const L = lake(svg, {start:true});
+    for (let s = 0; s < 16; s++){
+      if (isEnd(s)) continue;
+      const p = probs(s);
+      for (let a = 0; a < 4; a++){
+        const len = 10 + 30 * p[a], off = 6 + len / 2;
+        arrowMark(L.mid, L.cx(s) + DX[a] * off, L.cy(s) + DY[a] * off, a, {len, w:2 + 3 * p[a], head:5 + 6 * p[a], opacity:.3 + .7 * p[a]});
+      }
+    }
+    out.innerHTML = wins.length === 0 ? `Every action starts with the same probability`
+      : `${fmtN(wins.length)} episodes so far. It reached the fish in <b>${lastN(wins, 100)} of the last 100</b>.`;
+  }
+  function reset(){ th = zerosQ(); rnd = rng(4); wins = []; draw(); }
+  $("#b-pg").onclick = () => { for (let i = 0; i < 100; i++) episode(); draw(); };
+  $("#b-pgr").onclick = reset;
+  reset();
+})();
+
+/* ---------- which kind of learning ---------- */
+sorter($("#v-kinds"), $("#r-kinds"), ["Supervised", "Unsupervised", "Reinforcement"], [
+  { q:"Predict a house's price from thousands of past sales", a:0, why:"Every past sale has a label, the price." },
+  { q:"A thermostat tries heating settings and watches the energy bill", a:2, why:"The thermostat takes actions, and the bill is its reward." },
+  { q:"Sort news articles into topics when nobody has tagged them", a:1, why:"There are no labels and no rewards. It has to find the groups itself." },
+  { q:"A program plays a video game thousands of times and only sees the score", a:2, why:"The program takes actions, and the score is its reward." },
+  { q:"Tell if an X-ray shows a broken bone, using X-rays that doctors marked", a:0, why:"The doctors' marks are labels." },
+]);
+
+/* ---------- no double-tap zoom ---------- */
+/* the css touch-action rules stop it on current phones, and this catches older ones.
+   a second tap within 350 ms is turned into a normal click instead of a zoom */
+(function(){
+  let last = 0;
+  document.addEventListener("touchend", e => {
+    const now = e.timeStamp;
+    if (now - last < 350 && e.changedTouches.length === 1 && !e.target.closest("input, textarea, select")){
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      e.target.dispatchEvent(new MouseEvent("click", { bubbles:true, cancelable:true, view:window, clientX:t.clientX, clientY:t.clientY }));
+    }
+    last = now;
+  }, { passive:false });
+})();
+
+
+/* ---------- Python in the browser (Pyodide) ---------- */
+const PY_HELPER = `
+import ast, io, sys, types, warnings
+warnings.filterwarnings("ignore")
+
+# gymnasium imports multiprocessing, which a browser doesn't have, so it gets an empty stand-in
+_mp = types.ModuleType("_multiprocessing")
+class _SemLock:
+    SEM_VALUE_MAX = 2147483647
+    def __init__(self, *a, **k): pass
+_mp.SemLock = _SemLock
+_mp.sem_unlink = lambda *a: None
+sys.modules["_multiprocessing"] = _mp
+
+import numpy as np
+import gymnasium
+np.set_printoptions(suppress=True)
+
+def _run(code):
+    ns = {}
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        tree = ast.parse(code)
+        last = None
+        if tree.body and isinstance(tree.body[-1], ast.Expr):
+            last = ast.Expression(tree.body.pop().value)
+        exec(compile(tree, "<code>", "exec"), ns)
+        if last is not None:
+            result = eval(compile(last, "<code>", "eval"), ns)
+            if result is not None:
+                print(repr(result) if isinstance(result, str) else result)
+    except Exception as e:
+        print(type(e).__name__ + ": " + str(e))
+    finally:
+        sys.stdout = old
+    return buf.getvalue()
+`;
+
+let pyPromise = null;
+const pystat = $("#pystat");
+function loadPy(){
+  if (pyPromise) return pyPromise;
+  pystat.textContent = "Python: loading"; pystat.classList.remove("ready");
+  pyPromise = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+    s.onload = res;
+    s.onerror = () => rej(new Error("Could not load Python. Check the internet connection and press Run again."));
+    document.head.appendChild(s);
+  }).then(() => loadPyodide())
+    .then(async py => {
+      await py.loadPackage(["numpy", "micropip"]);
+      await py.pyimport("micropip").install("gymnasium==1.2.3");
+      py.runPython(PY_HELPER);
+      pystat.textContent = "Python: ready"; pystat.classList.add("ready");
+      return py;
+    })
+    .catch(e => { pyPromise = null; pystat.textContent = "Python: not loaded"; throw e; });
+  return pyPromise;
+}
+
+$$(".runner").forEach(r => {
+  const ta = $("textarea", r), orig = ta.value;
+  const fit = () => { ta.rows = Math.max(ta.value.split("\n").length, 2); };
+  fit();
+  ta.addEventListener("input", fit);
+  const bar = document.createElement("div"); bar.className = "run-bar";
+  bar.innerHTML = `<button class="primary run">Run</button><button class="reset">Reset code</button><span class="hint">Ctrl+Enter runs</span>`;
+  const out = document.createElement("pre"); out.className = "out"; out.hidden = true;
+  r.append(bar, out);
+  async function run(){
+    out.hidden = false;
+    out.textContent = "Running... (the first run loads Python, it can take a few seconds)";
+    try {
+      const py = await loadPy();
+      await new Promise(res => setTimeout(res, 30)); // let the message show before Python takes over
+      out.textContent = py.globals.get("_run")(ta.value) || "(no output)";
+    } catch (e) { out.textContent = e.message || String(e); }
+  }
+  $(".run", bar).onclick = run;
+  $(".reset", bar).onclick = () => { ta.value = orig; fit(); out.hidden = true; };
+  ta.addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); run(); }
+    if (e.key === "Tab" && !e.shiftKey){
+      e.preventDefault();
+      const s = ta.selectionStart; ta.setRangeText("    ", s, ta.selectionEnd, "end");
+    }
+  });
+});
+
+/* keep words like Q-value on one line */
+$$(".txt p, .txt li, .recap div > span").forEach(el => { if (el.textContent.includes("Q-")) el.innerHTML = el.innerHTML.replace(/Q-[a-z]+/g, m => `<span class="nb">${m}</span>`); });
+
+/* ---------- accessibility ---------- */
+(function(){
+  const SVG = {
+    "v-1": "A frozen lake of 16 squares with 4 holes, a penguin at the start and a fish in the far corner",
+    "v-loop": "The agent sends an action to the environment, and the environment sends back a state and a reward",
+    "v-play": "The frozen lake with numbered squares and the penguin you move",
+    "v-7": "The frozen lake with what the fish is worth from each square",
+    "v-tr": "The frozen lake with arrows from the chosen square to each square the chosen action can lead to",
+    "v-pol": "The frozen lake with an arrow on each square that you can turn",
+    "v-val": "The frozen lake with an arrow and a value on each square",
+    "v-bell": "The frozen lake with the value of each square under the optimal policy",
+    "v-vi": "The frozen lake with the value of each square after the sweeps so far",
+    "v-8": "The frozen lake with four Q-values on each square, one for each direction",
+    "v-9": "The frozen lake with the Q-values the agent has learned so far",
+    "v-10": "How often the agent reached the fish while training, for four ways of setting epsilon",
+    "v-cliff": "A grid with a cliff along the bottom edge and the path the trained agent takes from start to goal",
+    "v-13": "The frozen lake with the penguin doing what it learned from the chosen reward",
+    "v-14": "Number of states for the frozen lake, Taxi, backgammon, chess and Go, next to the number of atoms in the universe",
+    "v-pg": "The frozen lake with four arrows on each square, sized by the probability of each action",
+  };
+  Object.entries(SVG).forEach(([id, label]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.setAttribute("role", "img"); el.setAttribute("aria-label", label);
+    const say = el.closest(".slide").querySelector(".say");
+    if (say){ if (!say.id) say.id = id + "-say"; el.setAttribute("aria-describedby", say.id); }
+  });
+  // results under each demo are read out when they change, except the ones that update every frame
+  const QUIET = new Set(["r-1"]);
+  $$(".say").forEach(p => { if (!QUIET.has(p.id)) p.setAttribute("aria-live", "polite"); });
+  // tab buttons say whether they're on
+  const sync = b => b.setAttribute("aria-pressed", b.classList.contains("on") ? "true" : "false");
+  const toggles = $$(".ctrls button").filter(b => b.dataset.m);
+  toggles.forEach(b => { sync(b); new MutationObserver(() => sync(b)).observe(b, { attributes:true, attributeFilter:["class"] }); });
+  // slides
+  slides.forEach((s, i) => { s.setAttribute("role", "group"); s.setAttribute("aria-roledescription", "slide"); s.setAttribute("aria-label", `${i + 1} of ${slides.length}`); });
+  // code boxes
+  $$(".runner").forEach(r => { $("textarea", r).setAttribute("aria-label", "Python code"); const o = $(".out", r); o.setAttribute("aria-live", "polite"); o.setAttribute("tabindex", "0"); });
+})();
+
+show((parseInt(location.hash.slice(1)) || 1) - 1);
+window.addEventListener("load", () => setTimeout(() => loadPy().catch(() => {}), 400));
+
+</script>
+</body>
+</html>
