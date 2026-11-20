@@ -1,0 +1,1503 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ensembles and Naive Bayes</title>
+<style>
+:root{
+  --bg:#ffffff; --fg:#111111; --muted:#5f6368; --line:#d9dce1; --soft:#f3f4f6;
+  --accent:#1a56db; --accent-soft:#e1eafd;
+  --bad:#c5221f; --bad-soft:#fce8e6; --good:#137333; --good-soft:#e6f4ea;
+  --orange:#e8590c; --orange-soft:#fde3d2; --lemon:#b88a00; --lemon-soft:#f8eec2;
+  --mono: ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans: system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  color-scheme: light;
+}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:18px;line-height:1.5}
+.deck{height:100%;display:flex;flex-direction:column}
+#slides{flex:1;min-height:0}
+.slide{display:none;height:100%;overflow-y:auto;box-sizing:border-box;padding:36px clamp(16px,5vw,64px) 40px}
+.slide.active{display:block}
+.inner{max-width:1200px;margin:0 auto}
+h1{font-size:clamp(1.6rem,3vw,2.4rem);line-height:1.2;margin:0 0 28px;text-wrap:balance}
+.kicker{font-size:.85rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:44px;align-items:start}
+.cols > *{min-width:0}
+.cols.cols-recap{grid-template-columns:minmax(0,4fr) minmax(0,6fr)}
+@media (max-width:900px){.cols,.cols.cols-recap{grid-template-columns:minmax(0,1fr)}}
+.txt{font-size:1.15rem;line-height:1.6;max-width:62ch;margin:0 0 22px}
+.txt p{margin:0 0 .9em}
+.txt p:last-child{margin-bottom:0}
+.txt ol,.txt ul{margin:0 0 .9em;padding-left:1.3em}
+.txt li{margin:0 0 .35em}
+.big{font-size:1.25rem;font-weight:600;line-height:1.45;border-left:4px solid var(--fg);padding:2px 0 2px 14px;margin:0 0 22px;max-width:52ch}
+code{font-family:var(--mono);font-size:.9em;background:var(--soft);padding:.08em .35em;border-radius:4px}
+pre.code{font-family:var(--mono);font-size:1rem;background:var(--soft);padding:14px 16px;border-radius:6px;margin:0 0 22px;overflow-x:auto;white-space:pre}
+.note{color:var(--muted);font-size:1rem;margin:0 0 16px}
+button{font:inherit;font-size:.95rem;padding:7px 14px;border:1.5px solid var(--fg);background:var(--bg);color:var(--fg);border-radius:6px;cursor:pointer}
+button:hover{background:var(--soft)}
+button:disabled{opacity:.4;cursor:default}
+button.on,button.primary{background:var(--fg);color:var(--bg)}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.ctrls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0}
+.readout{font-family:var(--mono);font-size:1rem}
+.say{font-size:1.05rem;line-height:1.55;min-height:3.1em;margin:12px 0 0}
+.viz{overflow-x:auto}
+svg{display:block;max-width:100%;height:auto}
+svg text{fill:var(--fg);font-family:var(--sans);font-size:13px}
+svg.click{cursor:crosshair}
+input[type=range]{width:200px;accent-color:var(--fg)}
+.slider{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin:8px 0;max-width:460px}
+.slider label{font-family:var(--mono);min-width:6ch}
+.slider input{width:100%}
+.slider .readout{min-width:6ch;text-align:right}
+.ok{color:var(--good);font-weight:700}
+.no{color:var(--bad);font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:.92rem;color:var(--muted);margin:6px 0 8px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend svg{display:inline-block}
+
+/* tables */
+.tbl{border-collapse:collapse;font-size:.92rem;font-variant-numeric:tabular-nums}
+.tbl th,.tbl td{padding:4px 12px;text-align:left;border-bottom:1px solid var(--line);white-space:pre}
+.tbl th{border-bottom:2px solid var(--fg)}
+.tbl.sm th,.tbl.sm td{padding:2px 10px;font-size:.85rem}
+.tbl .num{text-align:right}
+
+/* bars */
+.bars{display:grid;grid-template-columns:auto 1fr auto;gap:8px 12px;align-items:center;max-width:520px;margin:10px 0}
+.bars .lab{font-family:var(--mono);white-space:pre;text-align:right}
+.bars .track{height:22px;background:var(--soft);border-radius:4px;overflow:hidden}
+.bars .fill{height:100%;background:var(--fg);width:0;transition:width .25s}
+.bars .fill.b{background:var(--accent)}
+.bars .n{font-variant-numeric:tabular-nums;min-width:4ch;font-weight:700;font-family:var(--mono)}
+
+/* recap */
+.recap{display:grid;gap:12px}
+.recap div{border:1.5px solid var(--line);border-radius:8px;padding:10px 14px}
+.recap b{display:block;font-size:1.05rem}
+.recap span{color:var(--muted);font-size:.98rem}
+.recap code{font-size:.85em}
+
+/* code runner */
+.runner{border:1.5px solid var(--line);border-radius:8px;overflow:hidden;margin:0 0 18px;background:var(--bg)}
+.runner textarea{display:block;width:100%;box-sizing:border-box;border:0;resize:vertical;font-family:var(--mono);font-size:1rem;line-height:1.5;padding:12px 14px;background:var(--soft);color:var(--fg);white-space:pre;overflow-x:auto;tab-size:4}
+.run-bar{display:flex;gap:8px;padding:8px 10px;border-top:1px solid var(--line);align-items:center;flex-wrap:wrap}
+.run-bar .hint{color:var(--muted);font-size:.85rem;margin-left:auto}
+.out{margin:0;padding:12px 14px;font-family:var(--mono);font-size:.86rem;line-height:1.45;border-top:1px solid var(--line);max-height:360px;overflow:auto;white-space:pre}
+
+/* nav */
+.bar{display:flex;align-items:center;gap:12px;padding:10px clamp(16px,5vw,64px) calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line);background:var(--bg)}
+#count{font-variant-numeric:tabular-nums;color:var(--muted);min-width:5ch;text-align:center}
+#pystat{color:var(--muted);font-size:.85rem;margin-right:auto}
+#pystat.ready{color:var(--good)}
+@media (max-width:700px){
+  #pystat,#count{display:none}
+  .bar{justify-content:space-between}
+}
+@media (max-width:700px){svg text{font-size:19px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* sorting cards (birds and planes, when to use a network) */
+.sort{display:grid;gap:8px;margin:4px 0 10px}
+.sort .card{border:1.5px solid var(--line);border-radius:8px;padding:9px 12px;display:grid;grid-template-columns:1fr auto;gap:6px 12px;align-items:center}
+.sort .card .q{font-size:1rem;line-height:1.4}
+.sort .card .pick{display:flex;gap:6px}
+.sort .card .pick button{font-size:.85rem;padding:4px 10px}
+.sort .card .why{grid-column:1 / -1;font-size:.92rem;color:var(--muted);display:none}
+.sort .card.done .why{display:block}
+.sort .card.right{border-color:var(--good);background:var(--good-soft)}
+.sort .card.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.sort .card .why b{color:var(--fg)}
+@media (max-width:520px){.sort .card{grid-template-columns:1fr}}
+
+/* toggles that show on/off state */
+button.tog{min-width:9ch}
+button.tog.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+/* formula readout */
+.calc{font-family:var(--mono);font-size:.95rem;background:var(--soft);border-radius:6px;padding:10px 14px;margin:10px 0 0;white-space:pre-wrap;line-height:1.55}
+
+/* small stat row */
+.stats{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--mono);font-size:.98rem;margin:8px 0 0}
+.stats b{font-weight:700}
+
+/* touch: no double-tap zoom, no sideways swiping of the page, pinch zoom still works */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{overscroll-behavior:none}
+.deck{height:100vh;height:100dvh}
+.slide{touch-action:pan-y pinch-zoom;overscroll-behavior:contain}
+.viz,.runner textarea,.out,.tbl-wrap{touch-action:pan-x pan-y pinch-zoom}
+button,input,textarea,label{touch-action:manipulation}
+button{min-height:40px}
+@media (pointer:coarse){button{min-height:44px}input[type=range]{min-height:32px}}
+
+/* screen reader only text */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* small screens */
+@media (max-width:420px){
+  .slider{grid-template-columns:auto minmax(0,1fr) auto;gap:8px}
+  .slider label{min-width:0}
+  .bars{grid-template-columns:auto minmax(0,1fr) auto}
+  h1{font-size:1.5rem}
+  .txt{font-size:1.05rem}
+}
+/* short screens, like a phone on its side */
+@media (max-height:520px){
+  .viz svg{max-height:78vh;margin:0 auto}
+  .slide{padding-top:18px}
+}
+
+/* ten runs of k-means */
+.runs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:6px 0 4px}
+.run{border:1.5px solid var(--line);border-radius:8px;padding:4px 4px 2px}
+.run.best{border-color:var(--accent);background:var(--accent-soft)}
+.run .cap{font-family:var(--mono);font-size:.8rem;text-align:center;color:var(--muted)}
+.run .cap b{color:var(--fg)}
+.run.stuck .cap b{color:var(--bad)}
+.runs.cmp{grid-template-columns:repeat(3,minmax(0,1fr))}
+.run.truth{background:var(--soft)}
+@media (max-width:520px){.runs,.runs.cmp{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* four answers per card */
+.sort.sort4 .card{grid-template-columns:1fr}
+.recap.wide{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* long inline code can wrap on small phones */
+.txt code{overflow-wrap:anywhere}
+/* no double-tap zoom on anything */
+svg,svg *,.txt,.txt *,h1,.kicker,.say,.calc,.bars,.runs,.run,.legend,.sort,.sort *{touch-action:manipulation}
+@media (max-width:900px){.recap.wide{grid-template-columns:minmax(0,1fr)}}
+.sort.sort4 .pick{flex-wrap:wrap}
+
+/* this week */
+.pad{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.pad button{min-width:9ch}
+.nb{white-space:nowrap}
+/* more room between paragraphs */
+.txt{line-height:1.55;max-width:56ch}
+.txt p{margin:0 0 1.35em}
+.txt ol,.txt ul{margin:0 0 1.35em}
+.txt li{margin:0 0 .7em}
+pre.code{margin:0 0 1.5em;line-height:1.7}
+.tbl-wrap{overflow-x:auto;margin:12px 0 0}
+.parts{display:grid;gap:10px}
+.parts div{border:1.5px solid var(--line);border-radius:8px;padding:10px 14px;display:grid;grid-template-columns:9ch 1fr;gap:14px;align-items:baseline}
+.parts b{font-size:1.02rem}
+.parts span{color:var(--muted);font-size:1rem}
+@media (max-width:520px){.parts div{grid-template-columns:1fr;gap:2px}}
+
+/* this week */
+.chips{gap:8px}
+.chips button{font-family:var(--mono);font-size:.92rem;padding:5px 12px}
+.msgs td{white-space:normal}
+.msgs tr.hit td{background:var(--accent-soft)}
+.msgs td.no{font-weight:700}
+.tbl.vs{font-size:1rem}
+.tbl.vs th,.tbl.vs td{white-space:normal;padding:8px 12px;vertical-align:top}
+.tbl.vs tbody th{border-bottom:1px solid var(--line);font-weight:700;color:var(--muted)}
+.stats{margin:14px 0 0}
+</style>
+</head>
+<body>
+<div class="deck">
+<main id="slides">
+
+<!-- 1 -->
+<section class="slide" data-s="teaser"><div class="inner">
+<h1>Many models are better than one</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Every model so far has been a single model making a single prediction. This week we train lots of models and combine their answers, which is called an <b>ensemble</b>.</p>
+      <p>Then we'll look at Naive Bayes, which isn't an ensemble, just one more model to know. It's quick and especially good with text.</p>
+    </div>
+    <div class="recap">
+      <div><b>Bagging and random forests</b><span>Lots of trees trained separately, then they vote</span></div>
+      <div><b>Boosting</b><span>Trees trained one after another, where each one fixes the mistakes of the last</span></div>
+      <div><b>Naive Bayes</b><span>Counts how often each clue shows up in each class</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-1"><button data-m="tree" class="on">one tree</button><button data-m="forest">random forest</button><button data-m="boost">boosting</button></div>
+    <div class="legend fl"></div>
+    <div class="viz"><svg id="v-1" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-1"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 2 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Ensembles</p>
+<h1>Asking a crowd</h1>
+<div class="cols">
+  <div>
+    <p class="big">A crowd only helps when its members make different mistakes</p>
+    <div class="txt">
+      <p>Say you ask 51 people a yes or no question, and each one is right 60% of the time. If they answer on their own, the majority is right about 93% of the time, because it's unlikely that more than half of them are wrong at once.</p>
+      <p>But if everyone copies one person, the crowd is no better than that one person</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s2n">voters</label><input type="range" id="s2n" min="1" max="101" step="2" value="51"><span class="readout" id="n2n"></span></div>
+    <div class="slider"><label for="s2p">each is right</label><input type="range" id="s2p" min="50" max="90" step="1" value="60"><span class="readout" id="n2p"></span></div>
+    <div class="ctrls"><button id="b-2" class="tog">they copy each other</button><button id="b-2c">Hold another vote</button></div>
+    <div class="bars" id="r-2b"></div>
+    <div class="viz"><svg id="v-2" viewBox="0 0 640 116"></svg></div>
+    <p class="say" id="r-2"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 3 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Bagging</p>
+<h1>One tree changes a lot</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Here a tree with no depth limit is trained on 45 of the 60 fruits, picked at random. Every time you train it on a different 45, you get a different tree, and sometimes even a different first question.</p>
+      <p>A model that changes a lot when the training data changes a little has high <b>variance</b>. Deep trees have high variance. We'll put that to use next, since trees trained on different samples make different mistakes.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-3" class="primary">Train on a new sample</button></div>
+    <div class="legend fl"></div>
+    <div class="viz"><svg id="v-3" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-3"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 4 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Bagging</p>
+<h1>Bootstrap samples</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>To get different trees we need different training sets, but we only have one. A <b>bootstrap sample</b> picks 60 fruits from our 60 at random, putting each fruit back before picking the next, so the same fruit can come up more than once.</p>
+      <p>Some fruits get picked two or three times and others don't get picked at all. On average about a third get left out.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-4" class="primary">Draw a bootstrap sample</button><button id="b-4m">Draw 1,000 samples</button></div>
+    <div class="viz"><svg id="v-4" viewBox="0 0 640 310"></svg></div>
+    <div class="bars" id="r-4b"></div>
+    <p class="say" id="r-4"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 5 -->
+<section class="slide" data-s="bag"><div class="inner">
+<p class="kicker">Bagging</p>
+<h1>Let the trees vote</h1>
+<div class="cols">
+  <div>
+    <p class="big">Train a tree on each bootstrap sample and let them vote</p>
+    <div class="txt">
+      <p>This is called <b>bagging</b>, short for bootstrap aggregating. Each tree still overfits, but they all overfit in different ways, so when they vote most of those mistakes cancel out.</p>
+      <p>The accuracy below comes from cross-validation. It goes up quickly at first and then levels off. More trees won't make it overfit, because each new tree is just one more vote, and after a while the result of the vote stops changing.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s5">trees</label><input type="range" id="s5" min="1" max="100" step="1" value="1"><span class="readout" id="n5"></span></div>
+    <div class="legend vl"></div>
+    <div class="viz"><svg id="v-5" viewBox="0 0 640 400"></svg></div>
+    <div class="bars" id="r-5b"></div>
+    <p class="say" id="r-5"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 6 -->
+<section class="slide" data-s="rf"><div class="inner">
+<p class="kicker">Random forests</p>
+<h1>Random questions too</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Bagged trees still look a lot alike. Every question gets to choose from all the features, so the strongest ones keep winning, especially near the top of the tree.</p>
+      <p>A <b>random forest</b> is bagging plus one more rule. Every time a tree asks a question, it can only choose from a few features picked at random for that question. In scikit-learn that's <code>max_features</code>.</p>
+      <p>On their own the trees get a little worse, but they're more different from each other, so the vote is usually better.</p>
+      <p>Here the trees use width, height and weight, and the forest gets 1 random feature per question. The bars show which feature each of 50 trees asks about first.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls" id="p-6"><button data-m="bag" class="on">bagging</button><button data-m="rf">random forest</button></div>
+    <div class="bars" id="r-6"></div>
+    <p class="stats" id="r-6s"></p>
+    <p class="say" id="r-6t"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 7 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Random forests</p>
+<h1>Random forests in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p><code>n_estimators</code> is the number of trees, and <code>max_features</code> is how many features each question can choose from. Forests are made of trees, so they don't need scaling.</p>
+      <p>Each tree leaves out about a third of the fruits, and those fruits can be used to test it. With <code>oob_score=True</code> you get this <b>out-of-bag</b> score for free. You'd still keep a test set for the very end, but the out-of-bag score is handy for trying settings.</p>
+      <p><code>feature_importances_</code> adds up how much each feature's questions cut down the mistakes in all the trees, and the numbers add up to 1</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import cross_val_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+
+df = pd.read_csv("fruits.csv")
+X = df[["width", "height", "weight"]]
+y = df["fruit"]
+
+tree = DecisionTreeClassifier(random_state=0)
+print("one tree:", cross_val_score(tree, X, y, cv=5).mean())
+
+forest = RandomForestClassifier(
+    n_estimators=200,
+    max_features=1,
+    oob_score=True,
+    random_state=0,
+)
+print("forest:", cross_val_score(forest, X, y, cv=5).mean())
+
+forest.fit(X, y)
+print("out-of-bag:", forest.oob_score_)
+pd.Series(forest.feature_importances_, index=X.columns)</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 8 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Boosting</p>
+<h1>Learning from mistakes</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>In a random forest the trees are trained separately, so none of them knows what the others got wrong. <b>Boosting</b> trains them one after another instead, and each new model pays more attention to the fruits the earlier ones got wrong.</p>
+      <p>This version is called <b>AdaBoost</b>. Each round adds a <b>stump</b>, a tree that only asks one question. After each round, the fruits it gets wrong get more weight, and they're drawn bigger. More weight works like having extra copies of that fruit, so the next stump cares more about getting it right.</p>
+      <p>One stump is a weak model, but the stumps vote together, and the ones that made fewer mistakes get a bigger say</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-8" class="primary">Next round</button><button id="b-8f">10 more rounds</button><button id="b-8r">Start over</button></div>
+    <div class="legend fl"></div>
+    <div class="viz"><svg id="v-8" viewBox="0 0 640 400"></svg></div>
+    <p class="say" id="r-8"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 9 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Boosting</p>
+<h1>Fixing what's left</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>The most popular kind of boosting is <b>gradient boosting</b>. To see it, we'll predict a number, the bikes rented on a day from the temperature. More people ride when it's warm, but fewer when it gets too hot.</p>
+      <p>A tree can predict a number too, since each leaf can just give the average of the training days that end up there.</p>
+      <p>Gradient boosting starts by predicting the average for every day. Then it trains a small tree on what's left over, the difference between the real number and the prediction, and adds that tree's guess on. The next tree works on whatever is still left over, and so on.</p>
+      <p class="note">The dashed orange line is what the next tree will add. The name “gradient” comes from the math behind finding what's left over.</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s9">trees</label><input type="range" id="s9" min="0" max="60" step="1" value="0"><span class="readout" id="n9"></span></div>
+    <div class="viz"><svg id="v-9" viewBox="0 0 640 260"></svg></div>
+    <div class="viz"><svg id="v-9r" viewBox="0 0 640 190"></svg></div>
+    <p class="say" id="r-9"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 10 -->
+<section class="slide" data-s="lr"><div class="inner">
+<p class="kicker">Boosting</p>
+<h1>Small steps</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Adding all of each tree's guess can overshoot, so it gets multiplied by the <code>learning_rate</code> first. With 0.1, each tree only fixes a tenth of what it thinks is left over. Smaller steps need more trees, but usually do better on new data.</p>
+      <p>Unlike bagging, boosting can overfit if you keep adding trees. Once the real pattern is learned, the new trees start chasing the noise in the training data, so the training error keeps going down while the test error starts creeping back up.</p>
+      <p>Cross-validation is how you choose the number of trees and the learning rate</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s10l">learning_rate</label><input type="range" id="s10l" min="0.05" max="1" step="0.05" value="0.3"><span class="readout" id="n10l"></span></div>
+    <div class="slider"><label for="s10n">trees</label><input type="range" id="s10n" min="0" max="200" step="1" value="10"><span class="readout" id="n10n"></span></div>
+    <div class="legend" id="lg-10"></div>
+    <div class="viz"><svg id="v-10" viewBox="0 0 640 300"></svg></div>
+    <div class="bars" id="r-10"></div>
+    <p class="say" id="r-10t"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 11 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Boosting</p>
+<h1>Boosting in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>For classes, gradient boosting works with the probability instead of a number of bikes. The real answer is 1 for a lemon and 0 for an orange, and each tree works on what's left over between that and the predicted probability.</p>
+      <p><code>GradientBoostingClassifier</code> takes <code>n_estimators</code>, <code>learning_rate</code> and <code>max_depth</code>, and the trees are usually small, with a depth of 2 to 5.</p>
+      <p>On big datasets, <code>HistGradientBoostingClassifier</code> does the same thing much faster by sorting each feature into bins first, like a histogram. By default it won't make a leaf with fewer than 20 rows, so on 60 fruits it does worse. You'll also hear about XGBoost and LightGBM, which are separate libraries for gradient boosting. For tables of data, one of these is often the most accurate model you can get.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import cross_val_score
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.ensemble import HistGradientBoostingClassifier
+
+df = pd.read_csv("fruits.csv")
+X = df[["width", "height", "weight"]]
+y = df["fruit"]
+
+for lr in [0.01, 0.1, 1.0]:
+    model = GradientBoostingClassifier(
+        n_estimators=100,
+        learning_rate=lr,
+        max_depth=2,
+        random_state=0,
+    )
+    print(lr, cross_val_score(model, X, y, cv=5).mean())
+
+model = HistGradientBoostingClassifier(random_state=0)
+print("hist:", cross_val_score(model, X, y, cv=5).mean())</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 12 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Ensembles</p>
+<h1>Bagging or boosting?</h1>
+<div class="cols">
+  <div>
+    <p class="big">Bagging fixes models that change too much, and boosting fixes models that are too simple</p>
+    <div class="txt">
+      <p>A model with high variance changes a lot with the training data, like a deep tree. A model with high <b>bias</b> is too simple to fit the pattern, like a straight line through a curve or a single stump.</p>
+      <p>Making a model more complex lowers its bias but raises its variance, and that's called the <b>bias-variance tradeoff</b>. Ensembles are one of the best ways around it.</p>
+    </div>
+  </div>
+  <div>
+    <div class="tbl-wrap"><table class="tbl vs">
+      <thead><tr><th></th><th>Bagging and random forests</th><th>Boosting</th></tr></thead>
+      <tbody>
+        <tr><th>Trees are trained</th><td>separately</td><td>one after another</td></tr>
+        <tr><th>Each tree is</th><td>deep</td><td>small</td></tr>
+        <tr><th>Fixes</th><td>high variance</td><td>high bias</td></tr>
+        <tr><th>More trees</th><td>never hurts, just slower</td><td>can overfit</td></tr>
+        <tr><th>Tuning</th><td>works well as is</td><td>needs some</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 13 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Naive Bayes</p>
+<h1>A spam filter that counts words</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Naive Bayes works in a completely different way. It's been used to filter spam since the 1990s, so we'll start there.</p>
+      <p>The training data is 20 text messages, 8 spam and 12 real. To learn, Naive Bayes just counts how many spam messages and how many real messages each word shows up in.</p>
+      <p>Click a word to see its counts</p>
+      <p class="note">scikit-learn counts every time a word shows up, so “free free” counts twice. Counting messages is simpler to follow, and the idea is the same.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls chips" id="p-13"></div>
+    <p class="say" id="r-13"></p>
+    <div class="tbl-wrap" id="t-13"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 14 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Naive Bayes</p>
+<h1>Each word changes the odds</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Naive Bayes works with <b>odds</b>, spam compared to real, instead of spam out of everything. We have 8 spam and 12 real messages, so before reading anything the odds are 8 to 12, or 0.67. This starting point is called the <b>prior</b>.</p>
+      <p>Then each word multiplies the odds by how much more common it is in spam. If a word is in half the spam messages and a sixth of the real ones, it's 3 times as common in spam, so the odds get multiplied by 3.</p>
+      <p>At the end, odds of 3 (3 to 1) become a probability of 3 ÷ 4 = 75%. This is <b>Bayes' rule</b>.</p>
+      <p class="note">In the counts on the right, each count has 1 added and each total has 2 added, which is explained in two slides</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls chips" id="p-14"></div>
+    <pre class="calc" id="c-14"></pre>
+    <div class="bars" id="r-14"></div>
+    <p class="say" id="r-14t"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 15 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Naive Bayes</p>
+<h1>Why it's called naive</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Naive Bayes treats every word as a separate clue, as if knowing one word tells you nothing about the others. That's not true. “claim” and “now” show up together all the time, so they're really one clue counted twice.</p>
+      <p>The button takes this to the extreme by counting “free” over and over.</p>
+      <p>Counting the same clue again pushes the probability toward 0% or 100% very fast. So don't trust the exact percentages it gives you, but its answer, spam or not, is usually still right.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-15" class="primary">Count “free” again</button><button id="b-15r">Start over</button></div>
+    <pre class="calc" id="c-15"></pre>
+    <div class="bars" id="r-15"></div>
+    <p class="say" id="r-15t"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 16 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Naive Bayes</p>
+<h1>A word that never showed up in spam</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>This message looks like spam, but “home” was never in a spam message, so with plain counts its ratio is 0. Anything times 0 is 0, so one word overrules all the others.</p>
+      <p>The fix is to pretend there's one extra message with the word and one without, in both spam and real. That adds 1 to every count and 2 to every total, so no word is ever 0. This is called <b>smoothing</b>, and in scikit-learn it's <code>alpha</code>, which is 1 by default.</p>
+    </div>
+  </div>
+  <div>
+    <div class="ctrls"><button id="b-16" class="tog">smoothing</button></div>
+    <p class="note">Message: “Call now for free home delivery”. “delivery” wasn't in any training message, so the model has nothing to go on and skips it.</p>
+    <pre class="calc" id="c-16"></pre>
+    <div class="bars" id="r-16"></div>
+    <p class="say" id="r-16t"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 17 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Naive Bayes</p>
+<h1>Naive Bayes with numbers</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Width and height aren't words, so we can't count them. <b>Gaussian Naive Bayes</b> fits a bell curve to each feature for each class instead, like the widths of the lemons and the widths of the oranges.</p>
+      <p>For a new fruit, it checks how high each curve is at that fruit's width and height. Then it gives each class a score by multiplying how common the class is by those two heights, and the biggest score wins. This works with any number of classes.</p>
+      <p>It's still naive, since it looks at width and height separately</p>
+    </div>
+  </div>
+  <div>
+    <div class="slider"><label for="s17w">width</label><input type="range" id="s17w" min="4.6" max="8.6" step="0.1" value="6.6"><span class="readout" id="n17w"></span></div>
+    <div class="slider"><label for="s17h">height</label><input type="range" id="s17h" min="6.4" max="8.6" step="0.1" value="7.6"><span class="readout" id="n17h"></span></div>
+    <div class="legend" id="lg-17"></div>
+    <div class="viz"><svg id="v-17w" viewBox="0 0 640 150"></svg></div>
+    <div class="viz"><svg id="v-17h" viewBox="0 0 640 150"></svg></div>
+    <pre class="calc" id="c-17"></pre>
+    <div class="bars" id="r-17"></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 18 -->
+<section class="slide"><div class="inner">
+<p class="kicker">Naive Bayes</p>
+<h1>Naive Bayes in scikit-learn</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p><code>CountVectorizer</code> turns each message into a row of word counts, with one column for every word it has seen. <code>MultinomialNB</code> learns from those counts.</p>
+      <p>This uses 50 messages. The last lines find the words that point most toward spam.</p>
+      <p>For numbers, use <code>GaussianNB</code> the same way you'd use any other model. Both train in a fraction of a second, even on big data.</p>
+    </div>
+  </div>
+  <div>
+<div class="runner"><textarea spellcheck="false">from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.naive_bayes import MultinomialNB
+
+df = pd.read_csv("messages.csv")
+vec = CountVectorizer()
+X = vec.fit_transform(df["text"])
+model = MultinomialNB(alpha=1)
+model.fit(X, df["spam"])
+
+new = [
+    "Free pizza tonight at my place",
+    "Call now to claim your prize",
+    "Can you call me later",
+]
+print(model.predict_proba(vec.transform(new))[:, 1].round(3))
+
+# how much more common each word is in spam (on a log scale)
+spam = model.feature_log_prob_[1] - model.feature_log_prob_[0]
+words = pd.Series(spam, index=vec.get_feature_names_out())
+words.sort_values().tail(8)</textarea></div>
+  </div>
+</div>
+</div></section>
+
+<!-- 19 -->
+<section class="slide"><div class="inner">
+<h1>Which would you try first?</h1>
+<div class="cols">
+  <div>
+    <div class="txt">
+      <p>Naive Bayes is fast, works with little data and handles thousands of word columns. Random forests do well without much tuning. Boosting is often the most accurate on tables, but it takes some tuning.</p>
+      <p>There's often more than one good answer, so look at the reason after you pick</p>
+    </div>
+  </div>
+  <div>
+    <div class="sort" id="v-19"></div>
+    <p class="say" id="r-19"></p>
+  </div>
+</div>
+</div></section>
+
+<!-- 20 -->
+<section class="slide"><div class="inner">
+<h1>Recap</h1>
+<div class="cols cols-recap">
+  <div>
+    <div class="recap">
+      <div><b>Bagging</b><span>Trees trained on bootstrap samples that vote, which lowers the variance</span></div>
+      <div><b>Random forest</b><span>Bagging where each question picks from a few random features. Set <code>n_estimators</code> and <code>max_features</code>.</span></div>
+      <div><b>Boosting</b><span>Small trees in a row, each one fixing what's left. Set <code>n_estimators</code>, <code>learning_rate</code> and <code>max_depth</code>.</span></div>
+      <div><b>Bias and variance</b><span>High bias is too simple to fit the pattern. High variance changes a lot with the training data.</span></div>
+      <div><b>Naive Bayes</b><span>Multiplies the evidence from each feature as if they were separate clues</span></div>
+    </div>
+  </div>
+  <div>
+    <div class="txt"><p>This compares a tree, a random forest, gradient boosting and Naive Bayes on the fruits with 10-fold cross-validation</p></div>
+<div class="runner"><textarea spellcheck="false">from sklearn.model_selection import cross_val_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.naive_bayes import GaussianNB
+
+df = pd.read_csv("fruits.csv")
+X = df[["width", "height"]]
+y = df["fruit"]
+
+models = {
+    "tree": DecisionTreeClassifier(),
+    "forest": RandomForestClassifier(n_estimators=200),
+    "boosting": GradientBoostingClassifier(max_depth=2),
+    "naive bayes": GaussianNB(),
+}
+for name, model in models.items():
+    print(name, round(cross_val_score(model, X, y, cv=10).mean(), 3))</textarea></div>
+    <p class="note">The ensembles change a little every run. Naive Bayes does as well as the best of them here, because the width and height of each fruit really are shaped like bell curves.</p>
+  </div>
+</div>
+</div></section>
+
+</main>
+<nav class="bar">
+  <span id="pystat">Python: loading</span>
+  <button id="prev" aria-label="Previous slide">&larr; Back</button>
+  <span id="count">1 / 20</span>
+  <button id="next" class="primary" aria-label="Next slide">Next &rarr;</button>
+</nav>
+<p id="sr-status" class="sr-only" aria-live="polite"></p>
+</div>
+<script>
+/* ---------- data ---------- */
+const D = {"fruits_csv": "width,height,weight,fruit\n7.8,7.0,179,lemon\n5.3,8.4,107,lemon\n7.3,7.8,180,lemon\n6.3,7.6,121,lemon\n5.7,8.0,149,orange\n6.3,7.7,132,lemon\n7.0,6.9,140,orange\n7.3,7.5,182,orange\n7.1,7.8,157,lemon\n6.7,7.2,145,orange\n6.1,7.4,120,lemon\n6.1,7.2,102,lemon\n6.9,7.5,132,orange\n7.6,7.5,176,orange\n6.6,8.2,141,lemon\n8.0,7.6,231,orange\n6.3,7.3,119,lemon\n6.7,8.1,156,lemon\n7.6,7.4,161,orange\n5.5,8.1,109,lemon\n7.7,7.8,182,orange\n8.4,7.3,207,orange\n7.8,6.9,170,orange\n8.0,7.8,224,orange\n6.9,6.5,118,orange\n7.2,7.4,154,orange\n7.3,7.6,180,orange\n6.8,7.7,147,lemon\n6.2,7.7,114,lemon\n7.6,7.3,158,orange\n6.3,7.0,115,orange\n8.3,7.5,230,orange\n7.9,7.2,192,orange\n7.7,7.0,150,orange\n6.0,7.0,98,lemon\n7.0,6.6,135,orange\n5.6,7.9,108,lemon\n5.3,8.1,95,lemon\n7.3,7.4,174,orange\n6.6,7.1,127,orange\n6.3,8.2,120,lemon\n6.1,7.9,135,lemon\n7.8,6.4,156,orange\n6.3,8.3,148,lemon\n7.9,7.1,193,orange\n6.3,7.2,109,orange\n6.7,7.9,140,lemon\n7.6,7.7,179,lemon\n6.6,8.1,134,lemon\n6.9,7.9,144,lemon\n7.5,7.2,174,orange\n7.5,6.9,163,orange\n6.0,8.4,115,lemon\n6.6,8.3,163,lemon\n7.5,7.4,160,orange\n6.4,7.6,137,lemon\n7.7,7.4,196,orange\n5.7,7.9,100,lemon\n4.8,7.2,96,lemon\n6.1,7.8,130,lemon\n", "messages_csv": "text,spam\nFree entry to win a cash prize text WIN now,1\nYou have won a free prize call now to claim,1\nURGENT your account has a cash reward claim now,1\nWin a free phone today reply YES,1\nClaim your free gift card now,1\nCongratulations you won a prize call to claim,1\nFree ringtones for you text STOP to cancel,1\nLast chance to win cash tonight call now,1\nAre we still on for dinner tonight,0\nCall me when you get home,0\nCan you pick up milk on the way,0\nRunning late be there in 10,0\nLove you see you later,0\nMeeting moved to 3 can you make it,0\nDid you finish the homework,0\nAre you free tonight want to get food,0\nOk see you at home,0\nThanks for the ride today,0\nMom says call her now,0\nCan I borrow your charger later,0\nYou are selected for a free cruise call now,1\nGet cash fast no credit check apply today,1\nYour number won 500 dollars claim it now,1\nFinal notice your car warranty is expiring call today,1\nHot singles in your area text now,1\nYou won a free gift reply CLAIM to get it,1\nCheap meds online order now and save,1\nYour package is waiting click the link to pay the fee,1\nEarn cash from home no experience needed,1\nWin a trip for two text TRIP now,1\nExclusive offer just for you call now,1\nYour bank account is locked reply with your PIN,1\nWant to study together tomorrow,0\nI left my jacket at your place,0\nWhat time does the movie start,0\nHappy birthday hope you have a great day,0\nCan you send me the notes from class,0\nDinner is ready come home,0\nI'll call you after work,0\nGot the tickets for saturday,0\nWhere did you park,0\nText me when you land,0\nDo you need anything from the store,0\nPractice is cancelled today,0\nI'm outside,0\nThat was so funny lol,0\nCan we move our meeting to friday,0\nGood luck on your test tomorrow,0\nIs the wifi working at home,0\nSee you in class,0\n", "cv": {"ns": [1, 2, 3, 4, 5, 6, 8, 10, 15, 20, 25, 30, 40, 50, 60, 70, 80, 90, 100], "tree": 0.825, "tree3": 0.855, "gnb": 0.892, "bag": [0.805, 0.805, 0.81, 0.813, 0.82, 0.828, 0.827, 0.837, 0.857, 0.86, 0.853, 0.852, 0.853, 0.853, 0.852, 0.852, 0.855, 0.853, 0.853], "rf": [0.817, 0.817, 0.812, 0.828, 0.83, 0.847, 0.853, 0.857, 0.872, 0.875, 0.877, 0.877, 0.882, 0.88, 0.885, 0.882, 0.883, 0.882, 0.882]}};
+const QUIZ = [
+  { q:"Sort support emails into 10 folders, using a column for each of 20,000 words", a:2, why:"It handles thousands of word columns easily and trains almost instantly." },
+  { q:"You have 15 minutes to get a solid first model on a messy table of customer data", a:0, why:"It does well on tables right away, with no scaling and not much tuning." },
+  { q:"Predict which loans won't be paid back, using 100,000 rows, where a little more accuracy saves a lot of money", a:1, why:"Tuned gradient boosting is usually the most accurate model on tables, and here it's worth the time to tune it." },
+  { q:"You only have 40 labeled examples, and each feature looks roughly like a bell curve", a:2, why:"Gaussian Naive Bayes only has to learn an average and a spread for each feature, so it needs very little data." },
+  { q:"Your boosted model keeps overfitting and you don't have time to keep tuning it", a:0, why:"Adding more trees to a forest doesn't make it overfit, so it's much harder to get wrong." },
+  { q:"A competition on a big table of sales data, where the top score wins", a:1, why:"Most winning entries on tables of data use gradient boosting, like XGBoost or LightGBM." },
+];
+
+/* ---------- small models, written out so the slides can train them live ---------- */
+function rng(seed){ let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(arr, rnd){ const a = arr.slice(); for (let i = a.length - 1; i > 0; i--){ const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+/* classification tree with Gini impurity. rows: [{v:[...], c:0|1, wt}] */
+function buildTree(rows, o = {}, depth = 0){
+  const feats = o.feats || [0, 1];
+  let w0 = 0, w1 = 0, n0 = 0, n1 = 0;
+  rows.forEach(r => { const w = r.wt ?? 1; if (r.c) { w1 += w; n1++; } else { w0 += w; n0++; } });
+  const leaf = () => ({ c: w1 > w0 ? 1 : 0, p: w1 / (w0 + w1 || 1), n: [n0, n1] });
+  if (depth >= (o.maxDepth ?? Infinity) || w0 === 0 || w1 === 0 || rows.length < 2) return leaf();
+  let cand = feats;
+  if (o.maxFeatures && o.maxFeatures < feats.length) cand = shuffle(feats, o.rnd).slice(0, o.maxFeatures);
+  const tot = w0 + w1, gini = (a, b) => { const s = a + b; return s ? 1 - (a / s) ** 2 - (b / s) ** 2 : 0; };
+  let best = null;
+  cand.forEach(f => {
+    const s = rows.slice().sort((a, b) => a.v[f] - b.v[f]);
+    let l0 = 0, l1 = 0;
+    for (let i = 0; i < s.length - 1; i++){
+      const w = s[i].wt ?? 1; if (s[i].c) l1 += w; else l0 += w;
+      if (s[i].v[f] === s[i + 1].v[f]) continue;
+      const score = ((l0 + l1) * gini(l0, l1) + (tot - l0 - l1) * gini(w0 - l0, w1 - l1)) / tot;
+      if (!best || score < best.score - 1e-12) best = { score, f, t: +((s[i].v[f] + s[i + 1].v[f]) / 2).toFixed(4) };
+    }
+  });
+  if (!best || best.score >= gini(w0, w1) - 1e-12) return leaf();
+  const L = rows.filter(r => r.v[best.f] <= best.t), R = rows.filter(r => r.v[best.f] > best.t);
+  return { f: best.f, t: best.t, l: buildTree(L, o, depth + 1), r: buildTree(R, o, depth + 1) };
+}
+function treeLeaf(t, v){ while (!("c" in t)) t = v[t.f] <= t.t ? t.l : t.r; return t; }
+const treeC = (t, v) => treeLeaf(t, v).c;
+
+/* bootstrap: pick n rows from n, with replacement */
+function bootstrap(n, rnd){ return Array.from({ length: n }, () => Math.floor(rnd() * n)); }
+
+/* bagging and random forests: trees on bootstrap samples, then they vote */
+function forest(rows, o){
+  const rnd = rng(o.seed || 1), trees = [];
+  for (let b = 0; b < o.n; b++){
+    const idx = bootstrap(rows.length, rnd);
+    trees.push({ idx, t: buildTree(idx.map(i => rows[i]), { feats: o.feats, maxFeatures: o.maxFeatures, maxDepth: o.maxDepth, rnd }) });
+  }
+  return trees;
+}
+/* share of the first k trees that vote lemon */
+function forestVote(trees, v, k = trees.length){ let s = 0; for (let i = 0; i < k; i++) s += treeC(trees[i].t, v); return s / k; }
+
+/* AdaBoost with small trees. labels are 0/1, the math uses -1/+1 */
+function adaboost(rows, o){
+  const n = rows.length; let w = Array(n).fill(1 / n);
+  const rounds = [];
+  for (let m = 0; m < o.rounds; m++){
+    const t = buildTree(rows.map((r, i) => ({ ...r, wt: w[i] })), { feats: o.feats, maxDepth: o.depth || 1 });
+    const h = rows.map(r => treeC(t, r.v));
+    let err = 0; h.forEach((p, i) => { if (p !== rows[i].c) err += w[i]; });
+    err = Math.min(Math.max(err, 1e-6), 1 - 1e-6);
+    const alpha = 0.5 * Math.log((1 - err) / err);
+    rounds.push({ t, alpha, err, w: w.slice() });
+    w = w.map((wi, i) => wi * Math.exp(h[i] === rows[i].c ? -alpha : alpha));
+    const s = w.reduce((a, b) => a + b, 0); w = w.map(x => x / s);
+  }
+  rounds.wEnd = w;
+  return rounds;
+}
+/* score above 0 means lemon */
+function adaScore(rounds, v, k = rounds.length){ let s = 0; for (let i = 0; i < k; i++) s += rounds[i].alpha * (treeC(rounds[i].t, v) ? 1 : -1); return s; }
+
+/* regression tree on one feature, for gradient boosting. pts: [{x, y}] */
+function regTree(pts, depth){
+  const mean = pts.reduce((a, p) => a + p.y, 0) / (pts.length || 1);
+  if (depth === 0 || pts.length < 4) return { v: mean };
+  const s = pts.slice().sort((a, b) => a.x - b.x);
+  let tot = 0, tot2 = 0; s.forEach(p => { tot += p.y; tot2 += p.y * p.y; });
+  let best = null, ls = 0, ls2 = 0;
+  for (let i = 0; i < s.length - 1; i++){
+    ls += s[i].y; ls2 += s[i].y * s[i].y;
+    if (s[i].x === s[i + 1].x) continue;
+    const nl = i + 1, nr = s.length - nl;
+    if (nl < 2 || nr < 2) continue;
+    const sse = (ls2 - ls * ls / nl) + ((tot2 - ls2) - (tot - ls) ** 2 / nr);
+    if (!best || sse < best.sse) best = { sse, t: (s[i].x + s[i + 1].x) / 2 };
+  }
+  if (!best) return { v: mean };
+  return { t: best.t, l: regTree(s.filter(p => p.x <= best.t), depth - 1), r: regTree(s.filter(p => p.x > best.t), depth - 1) };
+}
+function regPred(t, x){ while (!("v" in t)) t = x <= t.t ? t.l : t.r; return t.v; }
+function gboost(pts, o){
+  const base = pts.reduce((a, p) => a + p.y, 0) / pts.length;
+  const trees = [], f = pts.map(() => base);
+  for (let m = 0; m < o.n; m++){
+    const t = regTree(pts.map((p, i) => ({ x: p.x, y: p.y - f[i] })), o.depth || 1);
+    trees.push(t);
+    pts.forEach((p, i) => { f[i] += o.lr * regPred(t, p.x); });
+  }
+  return { base, trees, lr: o.lr };
+}
+function gbPred(g, x, k = g.trees.length){ let s = g.base; for (let i = 0; i < k; i++) s += g.lr * regPred(g.trees[i], x); return s; }
+
+/* Gaussian naive Bayes on numbers */
+function gaussFit(rows, feats){
+  const cls = [0, 1].map(c => {
+    const r = rows.filter(x => x.c === c);
+    const mu = feats.map(f => r.reduce((a, x) => a + x.v[f], 0) / r.length);
+    const sd = feats.map((f, k) => Math.sqrt(r.reduce((a, x) => a + (x.v[f] - mu[k]) ** 2, 0) / r.length));
+    return { c, n: r.length, prior: r.length / rows.length, mu, sd };
+  });
+  return { feats, cls };
+}
+const normPdf = (x, mu, sd) => Math.exp(-0.5 * ((x - mu) / sd) ** 2) / (sd * Math.sqrt(2 * Math.PI));
+function gaussProb(m, vals){
+  const s = m.cls.map(k => k.prior * vals.reduce((a, x, i) => a * normPdf(x, k.mu[i], k.sd[i]), 1));
+  return s[1] / (s[0] + s[1]);
+}
+
+
+/* ---------- helpers ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const FG = "#111111", BLUE = "#1a56db", RED = "#c5221f", GREEN = "#137333", MUTED = "#5f6368", LINE = "#d9dce1", SOFT = "#f3f4f6";
+const ORANGE = "#e8590c", LEMON = "#b88a00", OR_SOFT = "#fde3d2", LE_SOFT = "#f8eec2", BLUE_SOFT = "#dbe6fc", GREY_SOFT = "#eceef1", RED_SOFT = "#fce8e6", GREEN_SOFT = "#e6f4ea";
+const SVGNS = "http://www.w3.org/2000/svg";
+function S(tag, attrs = {}, text){
+  const e = document.createElementNS(SVGNS, tag);
+  for (const k in attrs){
+    if (k === "font-size") e.style.fontSize = attrs[k] + "px"; // the stylesheet sets svg text size, so this has to be a style
+    else e.setAttribute(k, attrs[k]);
+  }
+  if (text != null) e.textContent = text;
+  return e;
+}
+const fmt = (x, d = 1) => { const s = Number(x).toFixed(d); return (+s === 0 ? Math.abs(+s).toFixed(d) : s).replace("-", "−"); };
+const pct = x => Math.round(x * 100) + "%";
+const pct1 = x => (x * 100).toFixed(1) + "%";
+let clipN = 0;
+
+/* axes + clipped drawing area, returns scales */
+function plot(svg, o){
+  svg.innerHTML = "";
+  const H = +svg.getAttribute("viewBox").split(" ")[3];
+  const L = o.L ?? 68, R = o.R ?? 624, T = o.T ?? 16, B = H - (o.bot ?? 50);
+  const X = v => L + (v - o.x0) / (o.x1 - o.x0) * (R - L);
+  const Y = v => B - (v - o.y0) / (o.y1 - o.y0) * (B - T);
+  const ax = S("g"); svg.append(ax);
+  (o.yt || []).forEach(t => {
+    ax.append(S("line", {x1:L, x2:R, y1:Y(t), y2:Y(t), stroke:LINE}));
+    ax.append(S("text", {x:L - 8, y:Y(t) + 4, "text-anchor":"end"}, o.yf ? o.yf(t) : t));
+  });
+  (o.xt || []).forEach(t => {
+    ax.append(S("line", {x1:X(t), x2:X(t), y1:B, y2:B + 5, stroke:FG}));
+    ax.append(S("text", {x:X(t), y:B + 20, "text-anchor":"middle"}, o.xf ? o.xf(t) : t));
+  });
+  ax.append(S("line", {x1:L, x2:R, y1:B, y2:B, stroke:FG}));
+  if (o.xlab) ax.append(S("text", {x:(L + R) / 2, y:B + 42, "text-anchor":"middle"}, o.xlab));
+  if (o.ylab) ax.append(S("text", {x:14, y:(T + B) / 2, "text-anchor":"middle", transform:`rotate(-90 14 ${(T + B) / 2})`}, o.ylab));
+  const id = "clip" + (clipN++);
+  const defs = S("defs"), cp = S("clipPath", {id});
+  cp.append(S("rect", {x:L, y:T - 8, width:R - L, height:B - T + 8}));
+  defs.append(cp); svg.append(defs);
+  const under = S("g", {"clip-path":`url(#${id})`}); svg.insertBefore(under, ax);
+  const clip = S("g", {"clip-path":`url(#${id})`}); svg.append(clip);
+  const top = S("g"); svg.append(top);
+  return { X, Y, L, R, T, B, under, clip, top, o, svg };
+}
+function bindSlider(id, fmtFn, cb){
+  const s = $("#" + id), n = $("#n" + id.slice(1));
+  const upd = () => { n.textContent = fmtFn(+s.value); cb(+s.value); };
+  s.addEventListener("input", upd);
+  return { el: s, upd, set: v => { s.value = v; upd(); } };
+}
+function range(a, b, s = 1){ const r = []; for (let v = a; v <= b + 1e-9; v += s) r.push(+v.toFixed(6)); return r; }
+/* buttons in a group that behave like tabs */
+function tabs(sel, attr, cb){
+  const box = $(sel);
+  const set = v => { $$("button[data-" + attr + "]", box).forEach(b => b.classList.toggle("on", b.dataset[attr] === String(v))); cb(v); };
+  box.addEventListener("click", e => { const b = e.target.closest("button[data-" + attr + "]"); if (b) set(b.dataset[attr]); });
+  return set;
+}
+/* horizontal bars: [{lab, v (0-1), txt, cls}] */
+function bars(el, items){
+  el.innerHTML = items.map(it => `<span class="lab">${it.lab}</span><div class="track"><div class="fill ${it.cls || ""}" style="width:${Math.max(0, Math.min(1, it.v)) * 100}%"></div></div><span class="n">${it.txt}</span>`).join("");
+}
+const fmtN = x => Math.round(x).toLocaleString("en-US");
+
+/* ---------- data ---------- */
+const parse = csv => { const [h, ...ls] = csv.trim().split("\n"); const c = h.split(","); return ls.map(l => { const v = l.split(","), o = {}; c.forEach((k,i) => o[k] = isNaN(+v[i]) ? v[i] : +v[i]); return o; }); };
+const FR = parse(D.fruits_csv).map((r, i) => ({ i, x: r.width, y: r.height, wt: r.weight, c: r.fruit === "lemon" ? 1 : 0, v: [r.width, r.height, r.weight] }));
+/* rows for the models. wt is the AdaBoost weight, so the fruit weight lives in v[2] */
+const ROWS = FR.map(p => ({ i: p.i, v: p.v, c: p.c }));
+
+/* ---------- fruit plots ---------- */
+function eqAxes(svg, bounds, xlab, ylab){
+  const H = +svg.getAttribute("viewBox").split(" ")[3], Wp = 624 - 68, Hp = H - 66;
+  const [a, b, c, d] = bounds, sc = Math.min(Wp / (b - a), Hp / (d - c));
+  const xm = (a + b) / 2, ym = (c + d) / 2, xs = Wp / sc / 2, ys = Hp / sc / 2;
+  const x0 = xm - xs, x1 = xm + xs, y0 = ym - ys, y1 = ym + ys;
+  return plot(svg, { x0, x1, y0, y1, xt: range(Math.ceil(x0), Math.floor(x1)), yt: range(Math.ceil(y0), Math.floor(y1)), xlab, ylab });
+}
+const FB = (() => { const xs = FR.map(p => p.x), ys = FR.map(p => p.y); return [Math.min(...xs) - .35, Math.max(...xs) + .35, Math.min(...ys) - .35, Math.max(...ys) + .35]; })();
+const fruitAxes = svg => eqAxes(svg, FB, "width (cm)", "height (cm)");
+const visGrid = (P, nx = 110) => ({ x0:P.o.x0, x1:P.o.x1, y0:P.o.y0, y1:P.o.y1, nx, ny: Math.round(nx * (P.B - P.T) / (P.R - P.L)) });
+function fruitMark(g, x, y, c, o = {}){
+  const k = o.k || 1;
+  const e = c ? S("ellipse", {cx:x, cy:y, rx:4.8 * k, ry:6.8 * k}) : S("circle", {cx:x, cy:y, r:6.2 * k});
+  if (o.hollow){ e.setAttribute("fill", "#fff"); e.setAttribute("stroke", c ? LEMON : ORANGE); e.setAttribute("stroke-width", 2.4); }
+  else { e.setAttribute("fill", c ? LEMON : ORANGE); e.setAttribute("stroke", o.ring || "#fff"); e.setAttribute("stroke-width", o.ring ? 2.4 : 1.2); }
+  if (o.op != null) e.setAttribute("opacity", o.op);
+  g.append(e); return e;
+}
+function drawFruits(P, pts, o = {}){
+  const g = S("g"); (o.g || P.clip).append(g);
+  pts.forEach(p => fruitMark(g, P.X(p.x), P.Y(p.y), p.c, typeof o.style === "function" ? o.style(p) : o));
+  return g;
+}
+const icon = (c, hollow) => `<svg width="14" height="16" viewBox="0 0 14 16">${c
+  ? `<ellipse cx="7" cy="8" rx="4.8" ry="6.8" fill="${hollow ? "#fff" : LEMON}" stroke="${hollow ? LEMON : "none"}" stroke-width="2"/>`
+  : `<circle cx="7" cy="8" r="6" fill="${hollow ? "#fff" : ORANGE}" stroke="${hollow ? ORANGE : "none"}" stroke-width="2"/>`}</svg>`;
+const sq = col => `<svg width="14" height="14"><rect width="14" height="14" rx="2" fill="${col}" stroke="${LINE}"/></svg>`;
+const dotI = (col, hollow) => `<svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="${hollow ? "#fff" : col}" stroke="${col}" stroke-width="2"/></svg>`;
+$$(".legend.fl").forEach(l => l.innerHTML = `<span>${icon(1)} lemon</span><span>${icon(0)} orange</span>`);
+$$(".legend.vl").forEach(l => l.innerHTML = `<span>${sq(LE_SOFT)} most trees say lemon</span><span>${sq(OR_SOFT)} most trees say orange</span><span>${sq("#fff")} the trees are split</span>`);
+
+/* shade a grid of predictions, merging runs of the same value into one rect */
+function shade(P, g, f, cols, layer){
+  const grp = S("g", {"shape-rendering":"crispEdges"});
+  const cw = (g.x1 - g.x0) / g.nx, ch = (g.y1 - g.y0) / g.ny;
+  for (let j = 0; j < g.ny; j++){
+    const row = []; for (let i = 0; i < g.nx; i++) row.push(f(g.x0 + (i + .5) * cw, g.y0 + (j + .5) * ch));
+    let i = 0;
+    while (i < g.nx){
+      const v = row[i]; let k = i + 1;
+      while (k < g.nx && row[k] === v) k++;
+      const x = P.X(g.x0 + i * cw), y = P.Y(g.y0 + (j + 1) * ch);
+      grp.append(S("rect", {x, y, width:P.X(g.x0 + k * cw) - x + .6, height:P.Y(g.y0 + j * ch) - y + .6, fill:cols[v]}));
+      i = k;
+    }
+  }
+  (layer || P.under).append(grp);
+  return grp;
+}
+const FCOL = [OR_SOFT, LE_SOFT];
+/* 5 levels from orange to lemon, white in the middle when the vote is close */
+const mix = (a, b, k) => { const h = s => [1, 3, 5].map(i => parseInt(s.slice(i, i + 2), 16)); const A = h(a), B = h(b); return "#" + A.map((x, i) => Math.round(x + (B[i] - x) * k).toString(16).padStart(2, "0")).join(""); };
+const VCOL = ["#fbc9a8", OR_SOFT, "#ffffff", LE_SOFT, "#f1dc8a"];
+const voteLevel = s => s < .2 ? 0 : s < .45 ? 1 : s <= .55 ? 2 : s <= .8 ? 3 : 4;
+const FNAME = ["width", "height", "weight"];
+const qText = t => `${FNAME[t.f]} ≤ ${fmt(t.t, t.f === 2 ? 0 : 2)}`;
+
+/* ---------- slide navigation ---------- */
+const slides = $$(".slide");
+const onEnter = {};
+let cur = 0;
+function show(i){
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => s.classList.toggle("active", k === cur));
+  $("#count").textContent = `${cur + 1} / ${slides.length}`;
+  $("#prev").disabled = cur === 0;
+  $("#next").disabled = cur === slides.length - 1;
+  slides[cur].scrollTop = 0;
+  try { history.replaceState(null, "", "#" + (cur + 1)); } catch (e) {}
+  const st = $("#sr-status"), h = slides[cur].querySelector("h1");
+  if (st) st.textContent = `Slide ${cur + 1} of ${slides.length}: ${h ? h.textContent : ""}`;
+  const id = slides[cur].dataset.s;
+  if (onEnter[id]) onEnter[id]();
+}
+$("#prev").onclick = () => show(cur - 1);
+$("#next").onclick = () => show(cur + 1);
+document.addEventListener("keydown", e => {
+  const t = e.target.tagName;
+  if (t === "TEXTAREA" || t === "INPUT") return;
+  if (["ArrowRight","PageDown"].includes(e.key) || (e.key === " " && t !== "BUTTON")) { e.preventDefault(); show(cur + 1); }
+  if (["ArrowLeft","PageUp"].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+});
+/* run something the first time a slide is opened, so the heavy ones don't slow down the start */
+function lazy(id, fn){ let done = false; onEnter[id] = () => { if (!done){ done = true; fn(); } }; }
+
+function sorter(box, say, labels, items){
+  let done = 0, right = 0;
+  items.forEach(it => {
+    const c = document.createElement("div"); c.className = "card";
+    c.innerHTML = `<div class="q">${it.q}</div><div class="pick">${labels.map((l, i) => `<button data-i="${i}">${l}</button>`).join("")}</div><div class="why"><b>${labels[it.a]}.</b> ${it.why}</div>`;
+    c.querySelector(".pick").onclick = e => {
+      const b = e.target.closest("button"); if (!b || c.classList.contains("done")) return;
+      const ok = +b.dataset.i === it.a;
+      c.classList.add("done", ok ? "right" : "wrong");
+      b.classList.add("on");
+      $$("button", c).forEach(x => x.disabled = true);
+      done++; if (ok) right++;
+      say.textContent = done < items.length ? `${right} of ${done} right so far` : `You got ${right} of ${items.length} right`;
+    };
+    box.append(c);
+  });
+  say.textContent = "Pick an answer for each";
+}
+
+/* ---------- 1: one tree, a forest, boosting ---------- */
+lazy("teaser", () => {
+  const svg = $("#v-1"), out = $("#r-1");
+  const tree = buildTree(ROWS, { feats: [0, 1] });
+  const rf = forest(ROWS, { n: 100, feats: [0, 1], maxFeatures: 1, seed: 7 });
+  const ada = adaboost(ROWS, { rounds: 60, feats: [0, 1], depth: 2 });
+  const say = {
+    tree: "One deep tree draws lots of small boxes, some around single fruits",
+    forest: "100 trees vote. The pale areas are where the vote is close",
+    boost: "60 small trees in a row, each one fixing the mistakes of the ones before",
+  };
+  tabs("#p-1", "m", m => {
+    const P = fruitAxes(svg), g = visGrid(P);
+    if (m === "tree") shade(P, g, (x, y) => treeC(tree, [x, y]), FCOL);
+    if (m === "forest") shade(P, g, (x, y) => voteLevel(forestVote(rf, [x, y])), VCOL);
+    if (m === "boost") shade(P, g, (x, y) => adaScore(ada, [x, y]) > 0 ? 1 : 0, FCOL);
+    drawFruits(P, FR);
+    out.textContent = say[m];
+  })("tree");
+});
+
+/* ---------- 2: asking a crowd ---------- */
+(function(){
+  const out = $("#r-2"), bx = $("#r-2b"), svg = $("#v-2"), btn = $("#b-2c");
+  let n = 51, p = .6, copy = false, rnd = rng(4);
+  /* chance the majority of n is right, when each is right with chance p */
+  function crowd(n, p){
+    const lf = k => { let s = 0; for (let i = 2; i <= k; i++) s += Math.log(i); return s; };
+    let s = 0;
+    for (let k = Math.floor(n / 2) + 1; k <= n; k++) s += Math.exp(lf(n) - lf(k) - lf(n - k) + k * Math.log(p) + (n - k) * Math.log(1 - p));
+    return s;
+  }
+  function vote(){
+    svg.innerHTML = "";
+    const cols = 17, sz = 36, first = rnd() < p;
+    let right = 0;
+    for (let i = 0; i < n; i++){
+      const ok = copy ? first : rnd() < p; if (ok) right++;
+      const cx = 22 + (i % cols) * sz, cy = 22 + Math.floor(i / cols) * sz;
+      svg.append(S("circle", {cx, cy, r:13, fill: ok ? GREEN : RED, opacity:.85}));
+    }
+    svg.setAttribute("viewBox", `0 0 640 ${Math.max(1, Math.ceil(n / cols)) * sz + 8}`);
+    const win = right * 2 > n;
+    out.textContent = `${right} of ${n} voters are right, so the crowd is ${win ? "right" : "wrong"} this time`;
+  }
+  function upd(){
+    const c = copy ? p : crowd(n, p);
+    bars(bx, [{ lab:"one voter", v:p, txt:pct(p) }, { lab:`majority of ${n}`, v:c, txt:pct(c), cls:"b" }]);
+    if (ready) vote();
+  }
+  let ready = false;
+  bindSlider("s2n", v => v, v => { n = v; upd(); }).upd();
+  bindSlider("s2p", v => v + "%", v => { p = v / 100; upd(); }).upd();
+  ready = true; vote();
+  $("#b-2").onclick = e => { copy = !copy; e.target.classList.toggle("on", copy); upd(); };
+  btn.onclick = vote;
+})();
+
+/* ---------- 3: one tree changes a lot ---------- */
+(function(){
+  const svg = $("#v-3"), out = $("#r-3");
+  let k = 0;
+  function draw(){
+    const rnd = rng(11 + k * 7), pick = new Set(shuffle(FR.map(p => p.i), rnd).slice(0, 45));
+    const t = buildTree(ROWS.filter(r => pick.has(r.i)), { feats: [0, 1] });
+    const P = fruitAxes(svg);
+    shade(P, visGrid(P), (x, y) => treeC(t, [x, y]), FCOL);
+    drawFruits(P, FR.filter(p => !pick.has(p.i)), { op: .18 });
+    drawFruits(P, FR.filter(p => pick.has(p.i)));
+    k++;
+    out.textContent = `Sample ${k}: the first question is "${qText(t)}"`;
+  }
+  $("#b-3").onclick = draw;
+  draw();
+})();
+
+/* ---------- 4: bootstrap samples ---------- */
+(function(){
+  const svg = $("#v-4"), out = $("#r-4"), bx = $("#r-4b");
+  const rnd = rng(5);
+  function draw(cnt){
+    svg.innerHTML = "";
+    const cols = 12, cw = 640 / cols, rh = 60;
+    FR.forEach((p, i) => {
+      const x = cw * (i % cols) + cw / 2, y = 26 + rh * Math.floor(i / cols), c = cnt ? cnt[i] : 1;
+      fruitMark(svg, x, y, p.c, { op: c ? 1 : .18, k: 1.25 });
+      if (cnt) svg.append(S("text", {x, y: y + 27, "text-anchor":"middle", "font-size":14, fill: c ? FG : MUTED, "font-weight": c > 1 ? 700 : 400}, c ? "×" + c : "left out"));
+    });
+  }
+  function counts(){ const c = Array(60).fill(0); bootstrap(60, rnd).forEach(i => c[i]++); return c; }
+  function summary(c){
+    const k = [0, 1, 2, 3].map(t => c.filter(x => t === 3 ? x >= 3 : x === t).length);
+    bars(bx, [{ lab:"left out", v:k[0] / 60, txt:k[0] }, { lab:"picked once", v:k[1] / 60, txt:k[1] }, { lab:"twice", v:k[2] / 60, txt:k[2] }, { lab:"3 or more", v:k[3] / 60, txt:k[3] }]);
+    return k[0];
+  }
+  $("#b-4").onclick = () => { const c = counts(); draw(c); const l = summary(c); out.textContent = `${l} of the 60 fruits were left out of this sample (${pct(l / 60)})`; };
+  $("#b-4m").onclick = () => {
+    let left = 0; for (let s = 0; s < 1000; s++) left += counts().filter(x => x === 0).length;
+    out.textContent = `Over 1,000 samples, ${pct1(left / 60000)} of the fruits were left out on average`;
+  };
+  draw(null);
+  bars(bx, []);
+  out.textContent = "Press the button to draw a sample";
+})();
+
+/* ---------- 5: bagging ---------- */
+lazy("bag", () => {
+  const svg = $("#v-5"), out = $("#r-5"), bx = $("#r-5b");
+  const trees = forest(ROWS, { n: 100, feats: [0, 1], seed: 2 });
+  const NS = D.cv.ns;
+  const accAt = n => { let k = 0; while (k < NS.length - 1 && NS[k + 1] <= n) k++; return D.cv.bag[k]; };
+  let timer = 0;
+  function draw(n){
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const P = fruitAxes(svg);
+      shade(P, visGrid(P, n > 30 ? 90 : 110), (x, y) => n === 1 ? (treeC(trees[0].t, [x, y]) ? 4 : 0) : voteLevel(forestVote(trees, [x, y], n)), VCOL);
+      drawFruits(P, FR);
+    }, 10);
+    bars(bx, [{ lab:"one tree", v:D.cv.tree, txt:pct1(D.cv.tree) }, { lab:`${n} bagged ${n === 1 ? "tree" : "trees"}`, v:accAt(n), txt:pct1(accAt(n)), cls:"b" }]);
+    out.textContent = n === 1 ? "One tree on one bootstrap sample" : `${n} trees vote, and the shading shows how many of them say lemon`;
+  }
+  bindSlider("s5", v => v, draw).upd();
+});
+
+/* ---------- 6: random forests ---------- */
+lazy("rf", () => {
+  const bx = $("#r-6"), st = $("#r-6s"), out = $("#r-6t");
+  const fake = (() => { const r = rng(9); return Array.from({ length: 300 }, () => { const w = 5 + r() * 3.2, h = 6.6 + r() * 1.8; return [w, h, Math.round(31 * w - 80 + (r() - .5) * 40)]; }); })();
+  const res = {};
+  [["bag", 3], ["rf", 1]].forEach(([m, mf]) => {
+    const T = forest(ROWS, { n: 50, feats: [0, 1, 2], maxFeatures: mf, seed: 5 });
+    const first = [0, 0, 0]; T.forEach(t => first[t.t.f]++);
+    let agree = 0, cnt = 0;
+    for (let a = 0; a < T.length; a++) for (let b = a + 1; b < T.length; b++) fake.forEach(v => { cnt++; if (treeC(T[a].t, v) === treeC(T[b].t, v)) agree++; });
+    res[m] = { first, agree: agree / cnt };
+  });
+  tabs("#p-6", "m", m => {
+    const r = res[m];
+    bars(bx, FNAME.map((f, i) => ({ lab:f, v:r.first[i] / 50, txt:r.first[i], cls: m === "rf" ? "b" : "" })));
+    st.innerHTML = `Two trees give the same answer for <b>${pct(r.agree)}</b> of new fruits`;
+    out.textContent = m === "bag" ? "Bagging: every question can use any of the three features" : "Random forest: every question picks from one random feature";
+  })("bag");
+});
+
+/* ---------- 8: AdaBoost, one round at a time ---------- */
+(function(){
+  const svg = $("#v-8"), out = $("#r-8");
+  const R = adaboost(ROWS, { rounds: 40, feats: [0, 1], depth: 1 });
+  let m = 0;
+  function draw(){
+    const P = fruitAxes(svg);
+    const w = m < R.length ? R[m].w : R.wEnd;
+    if (m > 0) shade(P, visGrid(P), (x, y) => adaScore(R, [x, y], m) > 0 ? 1 : 0, FCOL);
+    const wrong = p => m > 0 && (adaScore(R, p.v, m) > 0 ? 1 : 0) !== p.c;
+    drawFruits(P, FR, { style: p => ({ k: Math.min(3.2, Math.max(.45, Math.sqrt(w[p.i] * 60))), ring: wrong(p) ? FG : null }) });
+    if (m > 0){
+      const t = R[m - 1].t;
+      if (t.f === 0) P.top.append(S("line", {x1:P.X(t.t), x2:P.X(t.t), y1:P.T, y2:P.B, stroke:FG, "stroke-width":2.5, "stroke-dasharray":"6 4"}));
+      else P.top.append(S("line", {x1:P.L, x2:P.R, y1:P.Y(t.t), y2:P.Y(t.t), stroke:FG, "stroke-width":2.5, "stroke-dasharray":"6 4"}));
+      const right = FR.filter(p => !wrong(p)).length;
+      out.textContent = `Round ${m}: the new stump asks "${qText(t)}". Together the ${m} ${m === 1 ? "stump gets" : "stumps get"} ${right} of 60 right, and the ringed fruits are still wrong`;
+    } else out.textContent = "Every fruit starts with the same weight";
+  }
+  $("#b-8").onclick = () => { if (m < R.length){ m++; draw(); } };
+  $("#b-8f").onclick = () => { m = Math.min(R.length, m + 10); draw(); };
+  $("#b-8r").onclick = () => { m = 0; draw(); };
+  draw();
+})();
+
+/* ---------- 9 and 10: gradient boosting on bike rentals ---------- */
+const BIKE = (() => {
+  const r = rng(5), g = () => { let u = 0, v = 0; while (!u) u = r(); v = r(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  const f = t => 80 + 55 * t - 1.3 * t * t;
+  const mk = n => Array.from({ length: n }, () => { const x = +(r() * 35).toFixed(1); return { x, y: Math.round(f(x) + g() * 60) }; });
+  return { train: mk(30), test: mk(200) };
+})();
+function bikeAxes(svg, o = {}){
+  return plot(svg, { x0:0, x1:35, y0:o.y0 ?? 0, y1:o.y1 ?? 850, xt:range(0, 35, 5), yt:o.yt ?? range(0, 800, 200), xlab:o.xlab ?? "temperature (°C)", ylab:o.ylab, bot:o.bot, xf:o.xf });
+}
+function stepPath(P, fn){
+  let d = ""; const N = 350;
+  for (let i = 0; i <= N; i++){ const x = 35 * i / N; d += (i ? " L " : "M ") + P.X(x).toFixed(1) + " " + P.Y(fn(x)).toFixed(1); }
+  return d;
+}
+(function(){
+  const svg = $("#v-9"), svr = $("#v-9r"), out = $("#r-9");
+  const G = gboost(BIKE.train, { n: 60, lr: .5, depth: 1 });
+  function draw(n){
+    const P = bikeAxes(svg, { ylab:"bikes rented", xlab:"", bot:28, xf:() => "" });
+    BIKE.train.forEach(p => P.clip.append(S("circle", {cx:P.X(p.x), cy:P.Y(p.y), r:5, fill:FG, opacity:.75})));
+    P.clip.append(S("path", {d:stepPath(P, x => gbPred(G, x, n)), fill:"none", stroke:BLUE, "stroke-width":3}));
+    const Q = bikeAxes(svr, { y0:-450, y1:450, yt:[-400, 0, 400], ylab:"left over" });
+    let sse = 0;
+    BIKE.train.forEach(p => {
+      const e = p.y - gbPred(G, p.x, n); sse += e * e;
+      Q.clip.append(S("line", {x1:Q.X(p.x), x2:Q.X(p.x), y1:Q.Y(0), y2:Q.Y(e), stroke:MUTED, "stroke-width":1.5}));
+      Q.clip.append(S("circle", {cx:Q.X(p.x), cy:Q.Y(e), r:4, fill:FG, opacity:.75}));
+    });
+    if (n < G.trees.length) Q.clip.append(S("path", {d:stepPath(Q, x => G.lr * regPred(G.trees[n], x) / G.lr), fill:"none", stroke:ORANGE, "stroke-width":2.5, "stroke-dasharray":"6 4"}));
+    const rm = Math.sqrt(sse / BIKE.train.length);
+    out.textContent = n === 0 ? `With no trees it just predicts the average, ${fmtN(G.base)} bikes. Typical error: ${fmtN(rm)}` : `${n} ${n === 1 ? "tree" : "trees"} added. Typical error: ${fmtN(rm)} bikes`;
+  }
+  bindSlider("s9", v => v, draw).upd();
+})();
+lazy("lr", () => {
+  const svg = $("#v-10"), bx = $("#r-10"), out = $("#r-10t");
+  const N = 200, cache = {};
+  const rmse = (g, set, k) => Math.sqrt(set.reduce((a, p) => a + (p.y - gbPred(g, p.x, k)) ** 2, 0) / set.length);
+  function curves(lr){
+    if (cache[lr]) return cache[lr];
+    const g = gboost(BIKE.train, { n: N, lr, depth: 2 });
+    /* add trees one at a time and keep the running prediction, so this stays fast */
+    const ftr = BIKE.train.map(() => g.base), fte = BIKE.test.map(() => g.base), tr = [], te = [];
+    const r = (f, set) => Math.sqrt(set.reduce((a, p, i) => a + (p.y - f[i]) ** 2, 0) / set.length);
+    tr.push(r(ftr, BIKE.train)); te.push(r(fte, BIKE.test));
+    g.trees.forEach(t => {
+      BIKE.train.forEach((p, i) => ftr[i] += lr * regPred(t, p.x));
+      BIKE.test.forEach((p, i) => fte[i] += lr * regPred(t, p.x));
+      tr.push(r(ftr, BIKE.train)); te.push(r(fte, BIKE.test));
+    });
+    return cache[lr] = { tr, te };
+  }
+  let lr = .3, n = 10;
+  function draw(){
+    const c = curves(lr);
+    const P = plot(svg, { x0:0, x1:N, y0:0, y1:180, xt:range(0, N, 50), yt:range(0, 180, 30), xlab:"number of trees", ylab:"typical error (bikes)" });
+    const line = (arr, col, dash) => P.clip.append(S("path", {d:arr.map((v, i) => (i ? "L" : "M") + P.X(i).toFixed(1) + " " + P.Y(v).toFixed(1)).join(" "), fill:"none", stroke:col, "stroke-width":2.5, "stroke-dasharray":dash || ""}));
+    line(c.tr, MUTED, "6 4"); line(c.te, BLUE);
+    P.top.append(S("line", {x1:P.X(n), x2:P.X(n), y1:P.T, y2:P.B, stroke:FG, "stroke-width":1.5}));
+    let best = 0; c.te.forEach((v, i) => { if (v < c.te[best]) best = i; });
+    P.clip.append(S("circle", {cx:P.X(best), cy:P.Y(c.te[best]), r:5, fill:BLUE}));
+    bars(bx, [{ lab:"training error", v:c.tr[n] / 180, txt:fmtN(c.tr[n]) }, { lab:"test error", v:c.te[n] / 180, txt:fmtN(c.te[n]), cls:"b" }]);
+    out.textContent = `With this learning rate the test error is lowest at ${best} ${best === 1 ? "tree" : "trees"}`;
+  }
+  $("#lg-10").innerHTML = `<span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="${MUTED}" stroke-width="2.5" stroke-dasharray="6 4"/></svg> training data</span><span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="${BLUE}" stroke-width="2.5"/></svg> test data</span>`;
+  bindSlider("s10l", v => v, v => { lr = v; draw(); }).upd();
+  bindSlider("s10n", v => v, v => { n = v; draw(); }).upd();
+});
+
+/* ---------- 13 to 16: counting words ---------- */
+const MSG = parse(D.messages_csv).slice(0, 20).map(m => ({ text: m.text, spam: m.spam, words: new Set(m.text.toLowerCase().split(/[^a-z0-9']+/).filter(Boolean)) }));
+const NSPAM = MSG.filter(m => m.spam).length, NREAL = MSG.length - NSPAM;
+const inS = w => MSG.filter(m => m.spam && m.words.has(w)).length;
+const inR = w => MSG.filter(m => !m.spam && m.words.has(w)).length;
+/* how much more common a word is in spam. smoothing adds 1 to each count, and 2 to each total */
+function ratio(w, smooth = true){
+  const a = smooth ? (inS(w) + 1) / (NSPAM + 2) : inS(w) / NSPAM;
+  const b = smooth ? (inR(w) + 1) / (NREAL + 2) : inR(w) / NREAL;
+  return { a, b, r: b === 0 ? (a === 0 ? NaN : Infinity) : a / b };
+}
+const fr = (a, b) => `${a}/${b}`;
+function oddsCalc(words, smooth, el){
+  const prior = NSPAM / NREAL;
+  let odds = prior;
+  const lines = [`start      ${NSPAM} spam to ${NREAL} real, odds ${fmt(prior, 2)}`];
+  words.forEach(w => {
+    const q = ratio(w, smooth); odds *= q.r;
+    const top = smooth ? fr(inS(w) + 1, NSPAM + 2) : fr(inS(w), NSPAM), bot = smooth ? fr(inR(w) + 1, NREAL + 2) : fr(inR(w), NREAL);
+    const rs = isFinite(q.r) ? "× " + fmt(q.r, 2) : isNaN(q.r) ? "× ?" : "× ∞";
+    lines.push(`${("“" + w + "”").padEnd(11)}${top} spam vs ${bot} real   ${rs}`);
+  });
+  const p = isNaN(odds) ? NaN : odds === Infinity ? 1 : odds / (1 + odds);
+  lines.push(`odds       ${isNaN(odds) ? "?" : odds === Infinity ? "∞" : fmt(odds, 2)}` + (isFinite(odds) ? `, so ${fmt(odds, 2)} ÷ ${fmt(1 + odds, 2)} = ${pct(odds / (1 + odds))} spam` : ""));
+  el.textContent = lines.join("\n");
+  return p;
+}
+(function(){
+  const box = $("#p-13"), tbl = $("#t-13"), out = $("#r-13");
+  const W = ["free", "now", "claim", "call", "you", "tonight", "home"];
+  box.innerHTML = W.map(w => `<button data-w="${w}">${w}</button>`).join("");
+  tabs("#p-13", "w", w => {
+    tbl.innerHTML = `<table class="tbl sm msgs"><thead><tr><th>message</th><th></th></tr></thead><tbody>${MSG.map(m => `<tr class="${m.words.has(w) ? "hit" : ""}"><td>${m.text.replace(new RegExp("\\b(" + w + ")\\b", "i"), "<b>$1</b>")}</td><td class="${m.spam ? "no" : ""}">${m.spam ? "spam" : "real"}</td></tr>`).join("")}</tbody></table>`;
+    out.textContent = `“${w}” is in ${inS(w)} of the ${NSPAM} spam messages and ${inR(w)} of the ${NREAL} real ones`;
+  })("free");
+})();
+(function(){
+  const box = $("#p-14"), calc = $("#c-14"), bx = $("#r-14"), out = $("#r-14t");
+  const W = ["free", "claim", "now", "call", "you", "tonight", "home", "later"];
+  const on = new Set(["call", "now"]);
+  box.innerHTML = W.map(w => `<button class="tog" data-w="${w}">${w}</button>`).join("");
+  function upd(){
+    $$("button", box).forEach(b => b.classList.toggle("on", on.has(b.dataset.w)));
+    const words = W.filter(w => on.has(w));
+    const p = oddsCalc(words, true, calc);
+    bars(bx, [{ lab:"spam", v:p, txt:pct(p), cls:"b" }]);
+    out.textContent = words.length ? `Message: “${words.join(" ")}”` : "Click words to add them to the message";
+  }
+  box.onclick = e => { const b = e.target.closest("button"); if (!b) return; const w = b.dataset.w; on.has(w) ? on.delete(w) : on.add(w); upd(); };
+  upd();
+})();
+(function(){
+  const calc = $("#c-15"), bx = $("#r-15"), out = $("#r-15t");
+  let k = 1;
+  function upd(){
+    const words = ["tonight", ...Array(k).fill("free")];
+    const p = oddsCalc(words, true, calc);
+    bars(bx, [{ lab:"spam", v:p, txt:pct(p), cls:"b" }]);
+    out.textContent = `“free” counted ${k} ${k === 1 ? "time" : "times"}`;
+  }
+  $("#b-15").onclick = () => { if (k < 5){ k++; upd(); } };
+  $("#b-15r").onclick = () => { k = 1; upd(); };
+  upd();
+})();
+(function(){
+  const calc = $("#c-16"), bx = $("#r-16"), out = $("#r-16t"), btn = $("#b-16");
+  const words = ["call", "now", "for", "free", "home"];
+  let smooth = false;
+  function upd(){
+    btn.classList.toggle("on", smooth);
+    const p = oddsCalc(words, smooth, calc);
+    bars(bx, [{ lab:"spam", v:isNaN(p) ? 0 : p, txt:isNaN(p) ? "?" : pct(p), cls:"b" }]);
+    out.textContent = smooth ? "Every count gets 1 added, so no word can be 0 or ∞" : "“home” was never in spam, so it multiplies the odds by 0";
+  }
+  btn.onclick = () => { smooth = !smooth; upd(); };
+  upd();
+})();
+
+/* ---------- 17: naive Bayes with numbers ---------- */
+(function(){
+  const svw = $("#v-17w"), svh = $("#v-17h"), calc = $("#c-17"), bx = $("#r-17");
+  const G = gaussFit(ROWS, [0, 1]);
+  let w = 6.6, h = 7.6;
+  function panel(svg, k, x0, x1, val, lab){
+    const P = plot(svg, { x0, x1, y0:0, y1:1.35, xt:range(Math.ceil(x0), Math.floor(x1)), yt:[], xlab:lab, bot:44, T:8 });
+    FR.forEach(p => { const x = p.v[k]; P.clip.append(S("line", {x1:P.X(x), x2:P.X(x), y1:P.B, y2:P.B - 10, stroke: p.c ? LEMON : ORANGE, "stroke-width":2, opacity:.8})); });
+    G.cls.forEach(c => {
+      let d = ""; for (let i = 0; i <= 200; i++){ const x = x0 + (x1 - x0) * i / 200; d += (i ? " L " : "M ") + P.X(x).toFixed(1) + " " + P.Y(normPdf(x, c.mu[k], c.sd[k])).toFixed(1); }
+      P.clip.append(S("path", {d, fill:"none", stroke: c.c ? LEMON : ORANGE, "stroke-width":3}));
+      P.clip.append(S("circle", {cx:P.X(val), cy:P.Y(normPdf(val, c.mu[k], c.sd[k])), r:5.5, fill: c.c ? LEMON : ORANGE, stroke:"#fff", "stroke-width":1.5}));
+    });
+    P.top.append(S("line", {x1:P.X(val), x2:P.X(val), y1:P.T, y2:P.B, stroke:FG, "stroke-width":1.5, "stroke-dasharray":"4 3"}));
+  }
+  function upd(){
+    panel(svw, 0, 4.4, 8.8, w, "width (cm)");
+    panel(svh, 1, 6.2, 8.8, h, "height (cm)");
+    const [o, l] = G.cls;
+    const fl = [normPdf(w, l.mu[0], l.sd[0]), normPdf(h, l.mu[1], l.sd[1])], fo = [normPdf(w, o.mu[0], o.sd[0]), normPdf(h, o.mu[1], o.sd[1])];
+    const sl = l.prior * fl[0] * fl[1], so = o.prior * fo[0] * fo[1];
+    calc.textContent = `lemon    ${fmt(l.prior, 2)} × ${fmt(fl[0], 2)} × ${fmt(fl[1], 2)} = ${fmt(sl, 3)}\norange   ${fmt(o.prior, 2)} × ${fmt(fo[0], 2)} × ${fmt(fo[1], 2)} = ${fmt(so, 3)}`;
+    const p = sl / (sl + so);
+    bars(bx, [{ lab:"lemon", v:p, txt:pct(p), cls:"b" }]);
+  }
+  bindSlider("s17w", v => fmt(v, 1), v => { w = v; upd(); }).upd();
+  bindSlider("s17h", v => fmt(v, 1), v => { h = v; upd(); }).upd();
+  $("#lg-17").innerHTML = `<span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="${LEMON}" stroke-width="3"/></svg> lemons</span><span><svg width="22" height="10"><line x1="0" y1="5" x2="22" y2="5" stroke="${ORANGE}" stroke-width="3"/></svg> oranges</span>`;
+  upd();
+})();
+
+/* ---------- 19: which would you try first ---------- */
+sorter($("#v-19"), $("#r-19"), ["Random forest", "Boosting", "Naive Bayes"], QUIZ);
+
+/* ---------- no double-tap zoom ---------- */
+(function(){
+  let last = 0;
+  document.addEventListener("touchend", e => {
+    const now = e.timeStamp;
+    if (now - last < 350 && e.changedTouches.length === 1 && !e.target.closest("input, textarea, select")){
+      e.preventDefault();
+      const t = e.changedTouches[0];
+      e.target.dispatchEvent(new MouseEvent("click", { bubbles:true, cancelable:true, view:window, clientX:t.clientX, clientY:t.clientY }));
+    }
+    last = now;
+  }, { passive:false });
+})();
+
+/* ---------- Python in the browser (Pyodide) ---------- */
+const PY_HELPER = `
+import ast, io, sys, warnings
+import pandas as pd
+warnings.filterwarnings("ignore")
+pd.set_option("display.width", 160)
+pd.set_option("display.max_columns", 30)
+pd.set_option("display.max_rows", 60)
+
+def _run(code):
+    ns = {"pd": pd}
+    buf = io.StringIO()
+    old = sys.stdout
+    sys.stdout = buf
+    try:
+        tree = ast.parse(code)
+        last = None
+        if tree.body and isinstance(tree.body[-1], ast.Expr):
+            last = ast.Expression(tree.body.pop().value)
+        exec(compile(tree, "<code>", "exec"), ns)
+        if last is not None:
+            result = eval(compile(last, "<code>", "eval"), ns)
+            if result is not None:
+                print(repr(result) if isinstance(result, str) else result)
+    except Exception as e:
+        print(type(e).__name__ + ": " + str(e))
+    finally:
+        sys.stdout = old
+    return buf.getvalue()
+`;
+let pyPromise = null;
+const pystat = $("#pystat");
+function loadPy(){
+  if (pyPromise) return pyPromise;
+  pystat.textContent = "Python: loading"; pystat.classList.remove("ready");
+  pyPromise = new Promise((res, rej) => {
+    const s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js";
+    s.onload = res;
+    s.onerror = () => rej(new Error("Could not load Python. Check the internet connection and press Run again."));
+    document.head.appendChild(s);
+  }).then(() => loadPyodide())
+    .then(async py => {
+      await py.loadPackage(["pandas", "scikit-learn"]);
+      py.FS.writeFile("fruits.csv", D.fruits_csv);
+      py.FS.writeFile("messages.csv", D.messages_csv);
+      py.runPython(PY_HELPER);
+      pystat.textContent = "Python: ready"; pystat.classList.add("ready");
+      return py;
+    })
+    .catch(e => { pyPromise = null; pystat.textContent = "Python: not loaded"; throw e; });
+  return pyPromise;
+}
+$$(".runner").forEach(r => {
+  const ta = $("textarea", r), orig = ta.value;
+  const fit = () => { ta.rows = Math.max(ta.value.split("\n").length, 2); };
+  fit();
+  ta.addEventListener("input", fit);
+  const bar = document.createElement("div"); bar.className = "run-bar";
+  bar.innerHTML = `<button class="primary run">Run</button><button class="reset">Reset code</button><span class="hint">Ctrl+Enter runs</span>`;
+  const out = document.createElement("pre"); out.className = "out"; out.hidden = true;
+  r.append(bar, out);
+  async function run(){
+    out.hidden = false;
+    out.textContent = "Running... (the first run loads Python, it can take a few seconds)";
+    try {
+      const py = await loadPy();
+      await new Promise(res => setTimeout(res, 30)); // let the message show before Python takes over
+      out.textContent = py.globals.get("_run")(ta.value) || "(no output)";
+    } catch (e) { out.textContent = e.message || String(e); }
+  }
+  $(".run", bar).onclick = run;
+  $(".reset", bar).onclick = () => { ta.value = orig; fit(); out.hidden = true; };
+  ta.addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)){ e.preventDefault(); run(); }
+    if (e.key === "Tab" && !e.shiftKey){
+      e.preventDefault();
+      const s = ta.selectionStart; ta.setRangeText("    ", s, ta.selectionEnd, "end");
+    }
+  });
+});
+
+/* ---------- accessibility ---------- */
+(function(){
+  const SVG = {
+    "v-1": "Lemons and oranges by width and height, shaded by what the chosen model predicts",
+    "v-2": "One dot for each voter, green if the voter is right and red if wrong",
+    "v-3": "Lemons and oranges, shaded by a tree trained on the highlighted sample",
+    "v-4": "The 60 fruits, each marked with how many times it was picked",
+    "v-5": "Lemons and oranges, shaded by how many of the bagged trees say lemon",
+    "v-8": "Lemons and oranges sized by their weight in this round of boosting, with the newest question as a dashed line",
+    "v-9": "Bikes rented by temperature, with the boosted prediction as a line",
+    "v-9r": "What is left over for each day after the trees so far, and what the next tree predicts",
+    "v-10": "Typical error on the training data and the test data as more trees are added",
+    "v-17w": "Bell curves for the width of lemons and oranges",
+    "v-17h": "Bell curves for the height of lemons and oranges",
+  };
+  Object.entries(SVG).forEach(([id, label]) => {
+    const el = document.getElementById(id); if (!el) return;
+    el.setAttribute("role", "img"); el.setAttribute("aria-label", label);
+    const say = el.closest(".slide").querySelector(".say");
+    if (say){ if (!say.id) say.id = id + "-say"; el.setAttribute("aria-describedby", say.id); }
+  });
+  $$(".say").forEach(p => p.setAttribute("aria-live", "polite"));
+  const sync = b => b.setAttribute("aria-pressed", b.classList.contains("on") ? "true" : "false");
+  $$(".ctrls button, .chips button").filter(b => b.dataset.m || b.dataset.w || b.classList.contains("tog")).forEach(b => { sync(b); new MutationObserver(() => sync(b)).observe(b, { attributes:true, attributeFilter:["class"] }); });
+  slides.forEach((s, i) => { s.setAttribute("role", "group"); s.setAttribute("aria-roledescription", "slide"); s.setAttribute("aria-label", `${i + 1} of ${slides.length}`); });
+  $$(".runner").forEach(r => { $("textarea", r).setAttribute("aria-label", "Python code"); const o = $(".out", r); o.setAttribute("aria-live", "polite"); o.setAttribute("tabindex", "0"); });
+})();
+
+show((parseInt(location.hash.slice(1)) || 1) - 1);
+window.addEventListener("load", () => setTimeout(() => loadPy().catch(() => {}), 400));
+
+</script>
+</body>
+</html>
